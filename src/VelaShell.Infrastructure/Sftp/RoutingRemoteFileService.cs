@@ -73,6 +73,10 @@ public sealed class RoutingRemoteFileService(
         Resolve(sessionId).SetPermissionsAsync(sessionId, remotePath, octalMode, cancellationToken);
 
     /// <inheritdoc />
+    public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) =>
+        Resolve(sessionId).CreateSymbolicLinkAsync(sessionId, linkPath, targetPath, cancellationToken);
+
+    /// <inheritdoc />
     public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) =>
         Resolve(sessionId).GetFileInfoAsync(sessionId, remotePath, cancellationToken);
 

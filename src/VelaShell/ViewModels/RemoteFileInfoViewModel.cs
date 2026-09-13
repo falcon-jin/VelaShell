@@ -41,8 +41,29 @@ public class RemoteFileInfoViewModel(RemoteFileInfo model)
     /// <summary>条目在远程主机上的绝对路径。</summary>
     public string FullPath => Model.FullPath;
 
-    /// <summary>该条目是否为目录。</summary>
+    /// <summary>该条目是否为目录(符号链接时描述的是它指向的对象,因此指向目录的链接可以直接进入)。</summary>
     public bool IsDirectory => Model.IsDirectory;
+
+    /// <summary>该条目本身是否为符号链接。</summary>
+    public bool IsSymbolicLink => Model.IsSymbolicLink;
+
+    /// <summary>链接的原始目标文本;非链接或后端给不出时为 null。</summary>
+    public string? LinkTarget => Model.LinkTarget;
+
+    /// <summary>名称列的悬停提示:链接显示「→ 目标」,其余为 null(不弹提示)。</summary>
+    public string? LinkTargetTip => LinkTarget is { Length: > 0 } target ? "→ " + target : null;
+
+    /// <summary>行首画普通文件夹图标:真实目录且不是链接。</summary>
+    public bool ShowsFolderIcon => IsRegularDirectory && !IsSymbolicLink;
+
+    /// <summary>行首画普通文件图标:不是目录也不是链接。</summary>
+    public bool ShowsFileIcon => !IsDirectory && !IsSymbolicLink;
+
+    /// <summary>指向目录的符号链接(folder-symlink 图标)。</summary>
+    public bool IsDirectoryLink => IsSymbolicLink && IsDirectory && !IsParentEntry;
+
+    /// <summary>指向文件的符号链接,含断链(file-symlink 图标)。</summary>
+    public bool IsFileLink => IsSymbolicLink && !IsDirectory;
 
     /// <summary>远程主机报告的权限字符串(例如 rwxr-xr-x)。</summary>
     public string Permissions => Model.Permissions;
@@ -62,6 +83,8 @@ public class RemoteFileInfoViewModel(RemoteFileInfo model)
     /// </summary>
     public string FileTypeDisplay => IsParentEntry
                                          ? string.Empty
+                                         : IsSymbolicLink
+                                             ? Strings.Get("Sftp_SymlinkType")
                                          : IsDirectory
                                              ? Strings.Folder
                                              : DescribeFileType(Name);

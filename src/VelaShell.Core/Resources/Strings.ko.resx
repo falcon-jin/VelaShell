@@ -889,6 +889,21 @@
   <data name="Monitor_WindowSeconds" xml:space="preserve">
     <value>{0}초 전</value>
   </data>
+  <data name="Sftp_NewSymlink" xml:space="preserve">
+    <value>심볼릭 링크 만들기</value>
+  </data>
+  <data name="Sftp_SymlinkTargetPrompt" xml:space="preserve">
+    <value>링크 대상 경로</value>
+  </data>
+  <data name="Sftp_SymlinkNamePrompt" xml:space="preserve">
+    <value>링크 이름</value>
+  </data>
+  <data name="Sftp_SymlinkType" xml:space="preserve">
+    <value>심볼릭 링크</value>
+  </data>
+  <data name="Sftp_LinkTarget" xml:space="preserve">
+    <value>링크 대상</value>
+  </data>
   <data name="Sftp_FileTypeExt" xml:space="preserve">
     <value>{0} 파일</value>
   </data>

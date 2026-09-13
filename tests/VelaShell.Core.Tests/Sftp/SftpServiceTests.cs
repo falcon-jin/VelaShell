@@ -795,6 +795,100 @@ public class SftpServiceTests
         return sshClient;
     }
 
+    // --- 符号链接 ---
+
+    /// <summary>
+    /// 删一个指向目录的链接,只删链接本身。
+    /// 回归:旧实现 stat 跟随链接把它判成目录,再列举"链接下的"子项逐个删掉 —— 删光的是链接目标里的东西。
+    /// </summary>
+    [TestMethod]
+    public async Task DeleteAsync_OnSymlinkToDirectory_RemovesOnlyTheLink()
+    {
+        const string linkPath = "/srv/app/current";
+        SftpEntry link = CreateMockSftpFile("current", linkPath, 0, true, "rwxrwxrwx") with
+        {
+            IsSymbolicLink = true,
+            LinkTarget = "/srv/app/releases/42"
+        };
+        _sftpClient.GetEntryAsync(linkPath, Arg.Any<CancellationToken>()).Returns(link);
+
+        await _sftpService.DeleteAsync(_sessionId, linkPath);
+
+        await _sftpClient.Received(1).DeleteFileAsync(linkPath, Arg.Any<CancellationToken>());
+        await _sftpClient.DidNotReceive().ListDirectoryAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _sftpClient.DidNotReceive().DeleteDirectoryAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>递归删除遇到子目录里的链接:当叶子删掉,不进去(否则指向 / 的链接就是一场事故)。</summary>
+    [TestMethod]
+    public async Task DeleteAsync_Recursive_DoesNotDescendIntoNestedDirectoryLinks()
+    {
+        const string dir = "/home/user/proj";
+        SftpEntry mockDir = CreateMockSftpFile("proj", dir, 0, true, "rwxr-xr-x");
+        SftpEntry nestedLink = CreateMockSftpFile("shared", "/home/user/proj/shared", 0, true, "rwxrwxrwx") with
+        {
+            IsSymbolicLink = true,
+            LinkTarget = "/"
+        };
+        _sftpClient.GetEntryAsync(dir, Arg.Any<CancellationToken>()).Returns(mockDir);
+        _sftpClient.ListDirectoryAsync(dir, Arg.Any<CancellationToken>())
+                   .Returns(Task.FromResult<IEnumerable<SftpEntry>>([nestedLink]));
+        var reports = new List<SftpDeleteProgress>();
+
+        await _sftpService.DeleteAsync(_sessionId, dir, new SynchronousProgress<SftpDeleteProgress>(reports.Add));
+
+        await _sftpClient.DidNotReceive().ListDirectoryAsync(nestedLink.FullName, Arg.Any<CancellationToken>());
+        await _sftpClient.Received(1).DeleteFileAsync(nestedLink.FullName, Arg.Any<CancellationToken>());
+        await _sftpClient.Received(1).DeleteDirectoryAsync(dir, Arg.Any<CancellationToken>());
+        Assert.AreEqual(2, reports[^1].TotalCount, "链接计 1 条、目录自身计 1 条,链接目标里的条目不能算进来。");
+    }
+
+    /// <summary>复制链接得到链接(cp -P 口径),不去下载目标内容。</summary>
+    [TestMethod]
+    public async Task CopyAsync_OnSymlink_RecreatesTheLinkInsteadOfCopyingTarget()
+    {
+        SftpEntry link = CreateMockSftpFile("current", "/srv/app/current", 0, true, "rwxrwxrwx") with
+        {
+            IsSymbolicLink = true,
+            LinkTarget = "releases/42"
+        };
+        _sftpClient.GetEntryAsync(link.FullName, Arg.Any<CancellationToken>()).Returns(link);
+
+        await _sftpService.CopyAsync(_sessionId, link.FullName, "/srv/app/current-copy");
+
+        await _sftpClient.Received(1).CreateSymbolicLinkAsync("/srv/app/current-copy", "releases/42", Arg.Any<CancellationToken>());
+        await _sftpClient.DidNotReceive().ListDirectoryAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _sftpClient.DidNotReceive().DownloadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<Action<ulong>?>(), Arg.Any<CancellationToken>());
+    }
+
+    [TestMethod]
+    public async Task ListDirectoryAsync_CarriesSymlinkFlagTargetAndLPermissionPrefix()
+    {
+        SftpEntry link = CreateMockSftpFile("current", "/srv/app/current", 4096, true, "rwxr-xr-x") with
+        {
+            IsSymbolicLink = true,
+            LinkTarget = "releases/42"
+        };
+        _sftpClient.ListDirectoryAsync("/srv/app", Arg.Any<CancellationToken>())
+                   .Returns(Task.FromResult<IEnumerable<SftpEntry>>([link]));
+
+        List<RemoteFileInfo> result = await _sftpService.ListDirectoryAsync(_sessionId, "/srv/app");
+
+        RemoteFileInfo entry = result.Single();
+        Assert.IsTrue(entry.IsSymbolicLink);
+        Assert.IsTrue(entry.IsDirectory, "指向目录的链接要能直接进入。");
+        Assert.AreEqual("releases/42", entry.LinkTarget);
+        Assert.AreEqual("lrwxr-xr-x", entry.Permissions);
+    }
+
+    [TestMethod]
+    public async Task CreateSymbolicLinkAsync_PassesLinkThenTargetToTheClient()
+    {
+        await _sftpService.CreateSymbolicLinkAsync(_sessionId, "/srv/app/current", "releases/43");
+
+        await _sftpClient.Received(1).CreateSymbolicLinkAsync("/srv/app/current", "releases/43", Arg.Any<CancellationToken>());
+    }
+
     private static SftpEntry CreateMockSftpFile(string name, string fullName, long length, bool isDirectory, string permissions)
     {
         // SftpEntry 是 Core 的中立不可变记录(不再是 SSH 库的接口),直接构造即可。

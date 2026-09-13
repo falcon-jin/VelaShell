@@ -35,6 +35,8 @@ public interface ISftpClientWrapper : IDisposable
 
     /// <summary>
     /// 异步列出指定远端目录下的条目。
+    /// 符号链接条目的 <see cref="SftpEntry.IsSymbolicLink" /> 为 true,其余字段描述链接指向的对象
+    /// (断链除外,见 <see cref="SftpEntry.IsSymbolicLink" />)。
     /// </summary>
     Task<IEnumerable<SftpEntry>> ListDirectoryAsync(string path, CancellationToken cancellationToken);
 
@@ -114,11 +116,21 @@ public interface ISftpClientWrapper : IDisposable
     /// 直接 stat 单个远端条目,不存在时返回 <c>null</c>。
     /// <para>
     /// 用于替代"列举父目录再从中挑一条"的做法 —— 后者在父目录条目很多时代价极高
-    /// (批量传输会退化成每个文件一次全目录列举)。跟随符号链接,与
-    /// <see cref="ListDirectoryAsync" /> 的默认枚举语义保持一致。
+    /// (批量传输会退化成每个文件一次全目录列举)。
+    /// </para>
+    /// <para>
+    /// 符号链接与 <see cref="ListDirectoryAsync" /> 同一口径:<see cref="SftpEntry.IsSymbolicLink" /> 为 true,
+    /// 其余字段描述链接指向的对象;断链返回 <c>IsDirectory == false</c> 的链接条目,而不是 <c>null</c>
+    /// —— 链接本身是存在的,删除它不能先报"找不到"。
     /// </para>
     /// </summary>
     Task<SftpEntry?> GetEntryAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 在 <paramref name="linkPath" /> 创建指向 <paramref name="targetPath" /> 的符号链接。
+    /// <paramref name="targetPath" /> 原样写入链接(相对路径按链接所在目录解析,与 <c>ln -s</c> 一致)。
+    /// </summary>
+    Task CreateSymbolicLinkAsync(string linkPath, string targetPath, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将流上传到远端路径,写入前先定位到 <paramref name="resumeOffset"/> 字节处。

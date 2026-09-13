@@ -889,6 +889,21 @@
   <data name="Monitor_WindowSeconds" xml:space="preserve">
     <value>{0} 秒前</value>
   </data>
+  <data name="Sftp_NewSymlink" xml:space="preserve">
+    <value>シンボリックリンクを作成</value>
+  </data>
+  <data name="Sftp_SymlinkTargetPrompt" xml:space="preserve">
+    <value>リンク先のパス</value>
+  </data>
+  <data name="Sftp_SymlinkNamePrompt" xml:space="preserve">
+    <value>リンク名</value>
+  </data>
+  <data name="Sftp_SymlinkType" xml:space="preserve">
+    <value>シンボリックリンク</value>
+  </data>
+  <data name="Sftp_LinkTarget" xml:space="preserve">
+    <value>リンク先</value>
+  </data>
   <data name="Sftp_FileTypeExt" xml:space="preserve">
     <value>{0} ファイル</value>
   </data>

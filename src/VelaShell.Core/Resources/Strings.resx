@@ -749,6 +749,23 @@
   <data name="FileType" xml:space="preserve">
     <value>Type</value>
   </data>
+  <data name="Sftp_NewSymlink" xml:space="preserve">
+    <value>New Symbolic Link</value>
+  </data>
+  <data name="Sftp_SymlinkTargetPrompt" xml:space="preserve">
+    <value>Link target path</value>
+    <comment>新建符号链接第一步:链接指向哪里。相对路径按链接所在目录解析(ln -s 语义)。</comment>
+  </data>
+  <data name="Sftp_SymlinkNamePrompt" xml:space="preserve">
+    <value>Link name</value>
+  </data>
+  <data name="Sftp_SymlinkType" xml:space="preserve">
+    <value>Symbolic Link</value>
+    <comment>文件浏览器“类型”列与属性弹窗。</comment>
+  </data>
+  <data name="Sftp_LinkTarget" xml:space="preserve">
+    <value>Link Target</value>
+  </data>
   <data name="Sftp_FileTypeExt" xml:space="preserve">
     <value>{0} File</value>
     <comment>文件浏览器“类型”列:{0} 为大写扩展名,如 "PHP File"。</comment>
