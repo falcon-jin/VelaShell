@@ -1,0 +1,386 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:VelaShell.ViewModels"
+        xmlns:pc="using:VelaShell.Controls.Controls"
+        xmlns:loc="using:VelaShell.Localization"
+        xmlns:res="clr-namespace:VelaShell.Core.Resources;assembly=VelaShell.Core"
+        xmlns:sys="using:System"
+        mc:Ignorable="d" d:DesignWidth="1080" d:DesignHeight="700"
+        x:Class="VelaShell.Views.DirectorySyncWindow"
+        x:DataType="vm:DirectorySyncViewModel"
+        Icon="/Assets/velashell.ico"
+        Title="{loc:Localize Sync_Title}"
+        Width="1080" Height="700"
+        MinWidth="880" MinHeight="520"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        WindowDecorations="None">
+
+  <!-- 目录同步窗口。窗体规格与链路追踪 / 任务管理器一致:透明窗口 + 自绘 8px 圆角卡片 + 自绘缩放抓取区。
+       自上而下:选项 → 预览(或「保持最新」的记录)→ 汇总与提示 → 状态与操作按钮。 -->
+
+  <Window.Styles>
+    <Style Selector="Button.caption">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Width" Value="42" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource VelaBgHover}" />
+    </Style>
+    <Style Selector="Button.caption-close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource VelaDangerHover}" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextMuted}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,14,0" />
+    </Style>
+    <Style Selector="TextBox.field">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="FontFamily" Value="{DynamicResource VelaUiMonoFont}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- 分段选择:选中项用强调色的半透明底(与主操作按钮同一套"不贴实色块"的规矩)。 -->
+    <Style Selector="Button.seg">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextSecondary}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.seg:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource VelaBgHover}" />
+    </Style>
+    <Style Selector="Button.seg.active /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource VelaAccentDim}" />
+    </Style>
+    <Style Selector="Button.seg.active">
+      <Setter Property="Foreground" Value="{DynamicResource VelaAccent}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.seg:disabled">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="CheckBox.opt">
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextSecondary}" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Margin" Value="0,0,18,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.col">
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextMuted}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize10}" />
+      <Setter Property="LetterSpacing" Value="1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.cell">
+      <Setter Property="FontFamily" Value="{DynamicResource VelaUiMonoFont}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextTertiary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem">
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+  </Window.Styles>
+
+  <Panel>
+  <Border x:Name="RootCard"
+          Margin="16" CornerRadius="8" ClipToBounds="True"
+          Background="{DynamicResource VelaBgPage}"
+          BorderBrush="{DynamicResource VelaBorderSecondary}"
+          BorderThickness="1"
+          BoxShadow="{DynamicResource VelaShadowWindow}">
+    <Grid RowDefinitions="34,Auto,26,*,Auto,44">
+
+      <!-- 标题栏 -->
+      <Border x:Name="TitleBarStrip" Grid.Row="0"
+              Background="{DynamicResource VelaBgSurface}"
+              BorderBrush="{DynamicResource VelaBorderSecondary}"
+              BorderThickness="0,0,0,1"
+              CornerRadius="7,7,0,0"
+              PointerPressed="Header_PointerPressed">
+        <Grid ColumnDefinitions="*,Auto" Margin="12,0,0,0">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <pc:LucideIcon Width="14" Height="14" Data="{StaticResource Icon.folder-sync}"
+                           Foreground="{DynamicResource VelaAccent}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding $parent[Window].Title}"
+                       Foreground="{DynamicResource VelaTextPrimary}"
+                       FontSize="{DynamicResource VelaFontSize12}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+            <Button Classes="caption" Click="Minimize_Click">
+              <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.minus}"
+                             Foreground="{DynamicResource VelaTextSecondary}" />
+            </Button>
+            <Button Classes="caption" Click="Maximize_Click">
+              <pc:LucideIcon Width="10" Height="10" Data="{StaticResource Icon.square}"
+                             Foreground="{DynamicResource VelaTextSecondary}" />
+            </Button>
+            <Button Classes="caption caption-close" Click="Close_Click">
+              <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.x}"
+                             Foreground="{DynamicResource VelaTextSecondary}" />
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 选项 -->
+      <Border Grid.Row="1"
+              Background="{DynamicResource VelaBgSurface}"
+              BorderBrush="{DynamicResource VelaBorderSecondary}"
+              BorderThickness="0,0,0,1"
+              Padding="14,10">
+        <Grid ColumnDefinitions="Auto,*,Auto"
+              RowDefinitions="Auto,8,Auto,8,Auto,8,Auto,8,Auto,8,Auto,8,Auto"
+              IsEnabled="{Binding CanEditOptions}">
+          <TextBlock Grid.Row="0" Classes="label" Text="{loc:Localize Sync_LocalDirectory}" />
+          <TextBox x:Name="LocalPathBox" Grid.Row="0" Grid.Column="1" Classes="field" Text="{Binding LocalPath}" />
+          <Button Grid.Row="0" Grid.Column="2" Margin="8,0,0,0"
+                  Theme="{DynamicResource VelaOutlineButtonTheme}"
+                  Command="{Binding BrowseLocalCommand}"
+                  Content="{loc:Localize Sync_Browse}" />
+
+          <TextBlock Grid.Row="2" Classes="label" Text="{loc:Localize Sync_RemoteDirectory}" />
+          <TextBox x:Name="RemotePathBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Classes="field" Text="{Binding RemotePath}" />
+
+          <TextBlock Grid.Row="4" Classes="label" Text="{loc:Localize Sync_Direction}" />
+          <StackPanel Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="2">
+            <Button Classes="seg" Classes.active="{Binding IsDirectionToRemote}"
+                    Command="{Binding SetDirectionCommand}" CommandParameter="ToRemote"
+                    Content="{loc:Localize Sync_DirectionToRemote}" />
+            <Button Classes="seg" Classes.active="{Binding IsDirectionToLocal}"
+                    Command="{Binding SetDirectionCommand}" CommandParameter="ToLocal"
+                    Content="{loc:Localize Sync_DirectionToLocal}" />
+            <Button Classes="seg" Classes.active="{Binding IsDirectionBoth}"
+                    Command="{Binding SetDirectionCommand}" CommandParameter="Both"
+                    Content="{loc:Localize Sync_DirectionBoth}" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="6" Classes="label" Text="{loc:Localize Sync_Mode}" />
+          <StackPanel Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="2">
+            <Button Classes="seg" Classes.active="{Binding IsModeSynchronize}"
+                    Command="{Binding SetModeCommand}" CommandParameter="Synchronize"
+                    Content="{loc:Localize Sync_ModeSynchronize}"
+                    ToolTip.Tip="{loc:Localize Sync_ModeSynchronizeTip}" />
+            <Button Classes="seg" Classes.active="{Binding IsModeMirror}"
+                    IsEnabled="{Binding CanChooseMode}"
+                    Command="{Binding SetModeCommand}" CommandParameter="Mirror"
+                    Content="{loc:Localize Sync_ModeMirror}"
+                    ToolTip.Tip="{loc:Localize Sync_ModeMirrorTip}" />
+            <Button Classes="seg" Classes.active="{Binding IsModeTimestamps}"
+                    IsEnabled="{Binding CanChooseMode}"
+                    Command="{Binding SetModeCommand}" CommandParameter="Timestamps"
+                    Content="{loc:Localize Sync_ModeTimestamps}"
+                    ToolTip.Tip="{loc:Localize Sync_ModeTimestampsTip}" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="8" Classes="label" Text="{loc:Localize Sync_Criteria}" />
+          <StackPanel Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+            <CheckBox Classes="opt" IsChecked="{Binding CompareByTime}" IsEnabled="{Binding CanChooseCriteria}"
+                      Content="{loc:Localize Sync_CriteriaTime}" />
+            <CheckBox Classes="opt" IsChecked="{Binding CompareBySize}" IsEnabled="{Binding CanChooseCriteria}"
+                      Content="{loc:Localize Sync_CriteriaSize}" />
+            <!-- 时间戳模式下也可用:算出摘要而内容不同的文件,不会被改时间掩盖差异。 -->
+            <CheckBox Classes="opt" IsChecked="{Binding CompareByChecksum}"
+                      Content="{loc:Localize Sync_CriteriaChecksum}"
+                      ToolTip.Tip="{loc:Localize Sync_CriteriaChecksumTip}" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="10" Classes="label" Text="{loc:Localize Sync_Options}" />
+          <StackPanel Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+            <CheckBox Classes="opt" IsChecked="{Binding DeleteExtraneous}" IsEnabled="{Binding CanDeleteExtraneous}"
+                      Content="{loc:Localize Sync_DeleteExtraneous}"
+                      ToolTip.Tip="{loc:Localize Sync_DeleteExtraneousTip}" />
+            <CheckBox Classes="opt" IsChecked="{Binding ExistingOnly}"
+                      Content="{loc:Localize Sync_ExistingOnly}"
+                      ToolTip.Tip="{loc:Localize Sync_ExistingOnlyTip}" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="12" Classes="label" Text="{loc:Localize Sync_FileMask}" />
+          <TextBox Grid.Row="12" Grid.Column="1" Grid.ColumnSpan="2" Classes="field"
+                   Text="{Binding FileMask}"
+                   PlaceholderText="{loc:Localize Sync_FileMaskPlaceholder}"
+                   ToolTip.Tip="{loc:Localize Sync_FileMaskTip}" />
+        </Grid>
+      </Border>
+
+      <!-- 列头(预览)/ 记录标题(保持最新) -->
+      <Border Grid.Row="2"
+              Background="{DynamicResource VelaBgContentHeader}"
+              BorderBrush="{DynamicResource VelaBorderSecondary}"
+              BorderThickness="0,0,0,1" Padding="14,0">
+        <Panel>
+          <Grid ColumnDefinitions="28,170,*,210,210" IsVisible="{Binding !ShowWatchLog}">
+            <TextBlock Grid.Column="1" Classes="col" Text="{loc:Localize Sync_ColAction}" />
+            <TextBlock Grid.Column="2" Classes="col" Text="{loc:Localize Sync_ColPath}" />
+            <TextBlock Grid.Column="3" Classes="col" Text="{loc:Localize Sync_ColLocal}" />
+            <TextBlock Grid.Column="4" Classes="col" Text="{loc:Localize Sync_ColRemote}" />
+          </Grid>
+          <TextBlock Classes="col" Text="{loc:Localize Sync_WatchLogHeader}" IsVisible="{Binding ShowWatchLog}" />
+        </Panel>
+      </Border>
+
+      <Panel Grid.Row="3">
+        <ListBox x:Name="PreviewList" Classes="rows"
+                 ItemsSource="{Binding Items}"
+                 IsVisible="{Binding !ShowWatchLog}"
+                 Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SyncActionItemViewModel">
+              <Grid ColumnDefinitions="28,170,*,210,210">
+                <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked}"
+                          MinWidth="0" MinHeight="0" Padding="0" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.upload}"
+                                 Foreground="{DynamicResource VelaAccent}" IsVisible="{Binding IsToRemote}" />
+                  <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.download}"
+                                 Foreground="{DynamicResource VelaAccent}" IsVisible="{Binding IsToLocal}" />
+                  <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.trash-2}"
+                                 Foreground="{DynamicResource VelaError}" IsVisible="{Binding IsDelete}" />
+                  <pc:LucideIcon Width="12" Height="12" Data="{StaticResource Icon.timer}"
+                                 Foreground="{DynamicResource VelaInfo}" IsVisible="{Binding IsTimestamp}" />
+                  <TextBlock Text="{Binding KindText}" FontSize="{DynamicResource VelaFontSize11}"
+                             Foreground="{DynamicResource VelaTextSecondary}" VerticalAlignment="Center"
+                             IsVisible="{Binding !IsDelete}" />
+                  <TextBlock Text="{Binding KindText}" FontSize="{DynamicResource VelaFontSize11}"
+                             Foreground="{DynamicResource VelaError}" VerticalAlignment="Center"
+                             IsVisible="{Binding IsDelete}" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Classes="cell" Text="{Binding Path}" ToolTip.Tip="{Binding Path}"
+                           Foreground="{DynamicResource VelaTextPrimary}" />
+                <TextBlock Grid.Column="3" Classes="cell" Text="{Binding LocalDetail}" />
+                <TextBlock Grid.Column="4" Classes="cell" Text="{Binding RemoteDetail}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Classes="rows"
+                 ItemsSource="{Binding WatchLog}"
+                 IsVisible="{Binding ShowWatchLog}"
+                 Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="sys:String">
+              <TextBlock Classes="cell" Text="{Binding}" Foreground="{DynamicResource VelaTextSecondary}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock IsVisible="{Binding ShowEmptyHint}"
+                   Text="{loc:Localize Sync_EmptyHint}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   MaxWidth="520" TextAlignment="Center" TextWrapping="Wrap"
+                   Foreground="{DynamicResource VelaTextMuted}"
+                   FontSize="{DynamicResource VelaFontSize12}" />
+      </Panel>
+
+      <!-- 汇总 / 附注 / 错误 -->
+      <StackPanel Grid.Row="4">
+        <TextBlock Margin="14,6,14,0" Text="{Binding SummaryText}"
+                   IsVisible="{Binding SummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource VelaTextSecondary}"
+                   FontSize="{DynamicResource VelaFontSize11}" TextWrapping="Wrap" />
+        <TextBlock Margin="14,4,14,0" Text="{Binding NoteText}"
+                   IsVisible="{Binding NoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource VelaWarning}"
+                   FontSize="{DynamicResource VelaFontSize11}" TextWrapping="Wrap" />
+        <SelectableTextBlock Margin="14,4,14,6" Text="{Binding ErrorText}"
+                             IsVisible="{Binding ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                             Foreground="{DynamicResource VelaError}"
+                             FontSize="{DynamicResource VelaFontSize11}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <!-- 状态栏与操作 -->
+      <Border x:Name="StatusStrip" Grid.Row="5"
+              Background="{DynamicResource VelaBgSurface}"
+              BorderBrush="{DynamicResource VelaBorderSecondary}"
+              BorderThickness="0,1,0,0"
+              CornerRadius="0,0,7,7"
+              Padding="14,0">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <ProgressBar Width="54" Height="3" IsIndeterminate="True" VerticalAlignment="Center"
+                         IsVisible="{Binding IsBusy}" />
+            <TextBlock Text="{Binding StatusText}"
+                       Foreground="{DynamicResource VelaTextMuted}"
+                       FontSize="{DynamicResource VelaFontSize11}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="440" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Theme="{DynamicResource VelaOutlineButtonTheme}"
+                    Command="{Binding CheckAllCommand}"
+                    IsVisible="{Binding HasItems}" IsEnabled="{Binding CanEditOptions}"
+                    Content="{loc:Localize Sync_CheckAll}" />
+            <Button Theme="{DynamicResource VelaOutlineButtonTheme}"
+                    Command="{Binding UncheckAllCommand}"
+                    IsVisible="{Binding HasItems}" IsEnabled="{Binding CanEditOptions}"
+                    Content="{loc:Localize Sync_CheckNone}" />
+            <Button Theme="{DynamicResource VelaOutlineButtonTheme}"
+                    Command="{Binding ToggleWatchCommand}"
+                    IsVisible="{Binding !IsBusy}"
+                    ToolTip.Tip="{loc:Localize Sync_KeepUpToDateTip}">
+              <Panel>
+                <TextBlock Text="{loc:Localize Sync_KeepUpToDate}" IsVisible="{Binding !IsWatching}" />
+                <TextBlock Text="{loc:Localize Sync_StopWatching}" IsVisible="{Binding IsWatching}" />
+              </Panel>
+            </Button>
+            <Button Theme="{DynamicResource VelaOutlineButtonTheme}"
+                    Command="{Binding CancelCommand}"
+                    IsVisible="{Binding IsBusy}"
+                    Content="{x:Static res:Strings.Cancel}" />
+            <Button Theme="{DynamicResource VelaOutlineButtonTheme}"
+                    Command="{Binding CompareCommand}"
+                    IsVisible="{Binding !IsBusy}" IsEnabled="{Binding CanCompare}"
+                    Content="{loc:Localize Sync_Compare}" />
+            <Button Theme="{DynamicResource VelaAccentPillButtonTheme}" Height="28"
+                    Command="{Binding SynchronizeCommand}"
+                    IsVisible="{Binding !IsBusy}" IsEnabled="{Binding CanSynchronize}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <pc:LucideIcon Width="13" Height="13" Data="{StaticResource Icon.folder-sync}"
+                               Foreground="{Binding $parent[Button].Foreground}" VerticalAlignment="Center" />
+                <TextBlock Text="{loc:Localize Sync_Start}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+
+  <Panel x:Name="ResizeGrips" ZIndex="200">
+    <Border Tag="North" Height="16" VerticalAlignment="Top" Margin="22,0" Background="Transparent" Cursor="TopSide" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="South" Height="16" VerticalAlignment="Bottom" Margin="22,0" Background="Transparent" Cursor="BottomSide" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="West" Width="16" HorizontalAlignment="Left" Margin="0,22" Background="Transparent" Cursor="LeftSide" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="East" Width="16" HorizontalAlignment="Right" Margin="0,22" Background="Transparent" Cursor="RightSide" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="NorthWest" Width="22" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Transparent" Cursor="TopLeftCorner" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="NorthEast" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Cursor="TopRightCorner" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="SouthWest" Width="22" Height="22" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomLeftCorner" PointerPressed="ResizeEdge_PointerPressed" />
+    <Border Tag="SouthEast" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomRightCorner" PointerPressed="ResizeEdge_PointerPressed" />
+  </Panel>
+  </Panel>
+</Window>

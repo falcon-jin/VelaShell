@@ -5019,4 +5019,259 @@ Windows 填 exe 完整路徑或命令名稱(如 notepad);Linux 填命令名稱(�
   <data name="SetTransfer_AutoUploadOnEditDesc" xml:space="preserve">
     <value>關閉後完全不監看本機副本，變更一律不回傳</value>
   </data>
+  <data name="Sync_Title" xml:space="preserve">
+    <value>目錄同步</value>
+  </data>
+  <data name="Sync_TitleFormat" xml:space="preserve">
+    <value>目錄同步 · {0}</value>
+  </data>
+  <data name="Sync_CompareDirectories" xml:space="preserve">
+    <value>比較目錄</value>
+  </data>
+  <data name="Sync_CompareDirectoriesTip" xml:space="preserve">
+    <value>在兩欄各自選取目前目錄中不同的項目(僅目前一層)</value>
+  </data>
+  <data name="Sync_SynchronizeEllipsis" xml:space="preserve">
+    <value>同步…</value>
+  </data>
+  <data name="Sync_SynchronizeTip" xml:space="preserve">
+    <value>比較兩棵目錄樹並同步,或保持遠端目錄最新</value>
+  </data>
+  <data name="Sync_CompareSummary" xml:space="preserve">
+    <value>本機 {0} 項不同 · 遠端 {1} 項不同 · {2} 項相同</value>
+  </data>
+  <data name="Sync_CompareIdentical" xml:space="preserve">
+    <value>兩個目錄相同({0} 項)</value>
+  </data>
+  <data name="Sync_LocalDirectory" xml:space="preserve">
+    <value>本機目錄</value>
+  </data>
+  <data name="Sync_RemoteDirectory" xml:space="preserve">
+    <value>遠端目錄</value>
+  </data>
+  <data name="Sync_Browse" xml:space="preserve">
+    <value>瀏覽…</value>
+  </data>
+  <data name="Sync_Direction" xml:space="preserve">
+    <value>方向</value>
+  </data>
+  <data name="Sync_DirectionBoth" xml:space="preserve">
+    <value>雙向</value>
+  </data>
+  <data name="Sync_DirectionToRemote" xml:space="preserve">
+    <value>本機 → 遠端</value>
+  </data>
+  <data name="Sync_DirectionToLocal" xml:space="preserve">
+    <value>遠端 → 本機</value>
+  </data>
+  <data name="Sync_Mode" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="Sync_ModeSynchronize" xml:space="preserve">
+    <value>同步檔案</value>
+  </data>
+  <data name="Sync_ModeSynchronizeTip" xml:space="preserve">
+    <value>傳輸新增的、較新的或大小不同的檔案;不覆寫較新的目標</value>
+  </data>
+  <data name="Sync_ModeMirror" xml:space="preserve">
+    <value>鏡像檔案</value>
+  </data>
+  <data name="Sync_ModeMirrorTip" xml:space="preserve">
+    <value>讓目標與來源一致:只要不同就覆寫,即使目標較新</value>
+  </data>
+  <data name="Sync_ModeTimestamps" xml:space="preserve">
+    <value>僅同步時間戳記</value>
+  </data>
+  <data name="Sync_ModeTimestampsTip" xml:space="preserve">
+    <value>不傳內容:兩邊都有且大小相同的檔案,將目標的修改時間改為來源的</value>
+  </data>
+  <data name="Sync_Criteria" xml:space="preserve">
+    <value>比較依據</value>
+  </data>
+  <data name="Sync_CriteriaTime" xml:space="preserve">
+    <value>修改時間</value>
+  </data>
+  <data name="Sync_CriteriaSize" xml:space="preserve">
+    <value>檔案大小</value>
+  </data>
+  <data name="Sync_Options" xml:space="preserve">
+    <value>選項</value>
+  </data>
+  <data name="Sync_DeleteExtraneous" xml:space="preserve">
+    <value>刪除多餘檔案</value>
+  </data>
+  <data name="Sync_DeleteExtraneousTip" xml:space="preserve">
+    <value>刪除只存在於目標一側的項目(僅單向)</value>
+  </data>
+  <data name="Sync_ExistingOnly" xml:space="preserve">
+    <value>僅已存在的檔案</value>
+  </data>
+  <data name="Sync_ExistingOnlyTip" xml:space="preserve">
+    <value>只更新兩邊都已存在的檔案,不新建任何項目</value>
+  </data>
+  <data name="Sync_FileMask" xml:space="preserve">
+    <value>檔案遮罩</value>
+  </data>
+  <data name="Sync_FileMaskPlaceholder" xml:space="preserve">
+    <value>例如 *.php; *.js | .git/; *.tmp</value>
+  </data>
+  <data name="Sync_FileMaskTip" xml:space="preserve">
+    <value>以 ; 分隔多個遮罩,| 之後的是排除項。以 / 結尾的只比對目錄,中間含 / 的依相對路徑比對。被排除的目錄不會被掃描。</value>
+  </data>
+  <data name="Sync_Compare" xml:space="preserve">
+    <value>比較</value>
+  </data>
+  <data name="Sync_Start" xml:space="preserve">
+    <value>同步</value>
+  </data>
+  <data name="Sync_CheckAll" xml:space="preserve">
+    <value>全選</value>
+  </data>
+  <data name="Sync_CheckNone" xml:space="preserve">
+    <value>全不選</value>
+  </data>
+  <data name="Sync_ColAction" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="Sync_ColPath" xml:space="preserve">
+    <value>路徑</value>
+  </data>
+  <data name="Sync_ColLocal" xml:space="preserve">
+    <value>本機</value>
+  </data>
+  <data name="Sync_ColRemote" xml:space="preserve">
+    <value>遠端</value>
+  </data>
+  <data name="Sync_WatchLogHeader" xml:space="preserve">
+    <value>同步紀錄</value>
+  </data>
+  <data name="Sync_EmptyHint" xml:space="preserve">
+    <value>選好目錄與選項後按「比較」預覽要變更的內容;按「同步」之前不會傳輸任何東西。</value>
+  </data>
+  <data name="Sync_KeepUpToDate" xml:space="preserve">
+    <value>保持遠端最新</value>
+  </data>
+  <data name="Sync_KeepUpToDateTip" xml:space="preserve">
+    <value>監看本機目錄,一有變更就上傳(固定為本機 → 遠端;沿用上方的遮罩、比較依據與「刪除多餘檔案」)</value>
+  </data>
+  <data name="Sync_StopWatching" xml:space="preserve">
+    <value>停止監看</value>
+  </data>
+  <data name="Sync_KindUpload" xml:space="preserve">
+    <value>上傳</value>
+  </data>
+  <data name="Sync_KindDownload" xml:space="preserve">
+    <value>下載</value>
+  </data>
+  <data name="Sync_KindCreateRemoteDirectory" xml:space="preserve">
+    <value>新建遠端目錄</value>
+  </data>
+  <data name="Sync_KindCreateLocalDirectory" xml:space="preserve">
+    <value>新建本機目錄</value>
+  </data>
+  <data name="Sync_KindSetRemoteTime" xml:space="preserve">
+    <value>改遠端時間</value>
+  </data>
+  <data name="Sync_KindSetLocalTime" xml:space="preserve">
+    <value>改本機時間</value>
+  </data>
+  <data name="Sync_KindDeleteRemote" xml:space="preserve">
+    <value>刪除遠端</value>
+  </data>
+  <data name="Sync_KindDeleteLocal" xml:space="preserve">
+    <value>刪除本機</value>
+  </data>
+  <data name="Sync_Summary" xml:space="preserve">
+    <value>上傳 {0} 個({1})· 下載 {2} 個({3})· 刪除 {4} 項 · 其他 {5} 項</value>
+  </data>
+  <data name="Sync_ScanningProgress" xml:space="preserve">
+    <value>正在掃描…本機 {0} 個目錄,遠端 {1} 個目錄</value>
+  </data>
+  <data name="Sync_NothingToDo" xml:space="preserve">
+    <value>沒有差異,無需同步</value>
+  </data>
+  <data name="Sync_PreviewReady" xml:space="preserve">
+    <value>共 {0} 項操作:取消勾選不需要的,再按「同步」</value>
+  </data>
+  <data name="Sync_Cancelled" xml:space="preserve">
+    <value>已取消</value>
+  </data>
+  <data name="Sync_LocalMissing" xml:space="preserve">
+    <value>本機目錄不存在:{0}</value>
+  </data>
+  <data name="Sync_LocalRequired" xml:space="preserve">
+    <value>請填寫本機目錄</value>
+  </data>
+  <data name="Sync_RemoteRequired" xml:space="preserve">
+    <value>請填寫遠端目錄</value>
+  </data>
+  <data name="Sync_InvalidMask" xml:space="preserve">
+    <value>檔案遮罩無效:最多只能有一個 |,單獨的 / 不是遮罩</value>
+  </data>
+  <data name="Sync_ConfirmDelete" xml:space="preserve">
+    <value>本次同步將刪除 {0} 項(目錄連同其中內容),無法復原。繼續嗎?</value>
+  </data>
+  <data name="Sync_ConfirmWatchDelete" xml:space="preserve">
+    <value>已勾選「刪除多餘檔案」:監看期間,本機刪除的內容也會從遠端刪除。繼續嗎?</value>
+  </data>
+  <data name="Sync_Running" xml:space="preserve">
+    <value>正在同步 {0}/{1} · {2}</value>
+  </data>
+  <data name="Sync_DoneVerified" xml:space="preserve">
+    <value>同步完成:成功 {0} 項,失敗 {1} 項。已重新比較,沒有剩餘差異</value>
+  </data>
+  <data name="Sync_DoneRemaining" xml:space="preserve">
+    <value>同步完成:成功 {0} 項,失敗 {1} 項。重新比較後仍有 {2} 項待同步</value>
+  </data>
+  <data name="Sync_NoteConflicts" xml:space="preserve">
+    <value>{0} 處衝突未處理(一邊是檔案一邊是目錄,或遠端有只差大小寫的同名項目)</value>
+  </data>
+  <data name="Sync_NoteSkippedLinks" xml:space="preserve">
+    <value>{0} 個指向目錄的連結未進入</value>
+  </data>
+  <data name="Sync_TimestampsUnsupported" xml:space="preserve">
+    <value>這台伺服器無法設定修改時間:上傳的檔案下次比較時會顯得遠端較新(雙向同步會把它們再下載回來)</value>
+  </data>
+  <data name="Sync_MoreErrors" xml:space="preserve">
+    <value>…另有 {0} 條</value>
+  </data>
+  <data name="Sync_TransferFailed" xml:space="preserve">
+    <value>傳輸失敗(詳見傳輸面板)</value>
+  </data>
+  <data name="Sync_UnsafeLocalName" xml:space="preserve">
+    <value>「{0}」無法寫到本機:這個名稱在本機不合法</value>
+  </data>
+  <data name="Sync_WatchStarted" xml:space="preserve">
+    <value>正在監看 {0} → {1}</value>
+  </data>
+  <data name="Sync_WatchStopped" xml:space="preserve">
+    <value>已停止監看</value>
+  </data>
+  <data name="Sync_WatchUnavailable" xml:space="preserve">
+    <value>無法監看這個本機目錄(網路磁碟,或已達系統監看數上限)</value>
+  </data>
+  <data name="Sync_WatchError" xml:space="preserve">
+    <value>錯誤:{0}</value>
+  </data>
+  <data name="Sync_CriteriaChecksum" xml:space="preserve">
+    <value>SHA-256 校驗</value>
+  </data>
+  <data name="Sync_CriteriaChecksumTip" xml:space="preserve">
+    <value>兩邊都有且大小相同的檔案先比 SHA-256(SFTP 在伺服器上執行 sha256sum,FTP 使用 HASH / XSHA256):內容相同就不傳,即使時間不同。算不出摘要的回退到大小與修改時間。這些檔案要在兩邊各完整讀一遍。</value>
+  </data>
+  <data name="Sync_HashingProgress" xml:space="preserve">
+    <value>正在校驗 SHA-256…{0}/{1}</value>
+  </data>
+  <data name="Sync_NoteChecksumUnsupported" xml:space="preserve">
+    <value>無法使用 SHA-256 校驗({0}),已改依大小與修改時間比較</value>
+  </data>
+  <data name="Sync_NoteChecksumPartial" xml:space="preserve">
+    <value>{1} 個檔案中有 {0} 個算不出 SHA-256,已依大小與修改時間比較</value>
+  </data>
+  <data name="Sync_CompareHashing" xml:space="preserve">
+    <value>正在比較…校驗 SHA-256</value>
+  </data>
+  <data name="Sync_CompareFellBack" xml:space="preserve">
+    <value>(SHA-256 不可用,依大小與時間比較)</value>
+  </data>
 </root>

@@ -564,6 +564,8 @@ A standalone dock document hosting a side-by-side local + remote file browser fo
 - **Left pane header**: `hard-drive` icon (14px, `VelaTextTertiary`) + root selector + full current path (`VelaUiMonoFont` 11px Medium `VelaTextPrimary`) + Go Up and local refresh buttons
 - **Right pane header**: Reuses existing `FileBrowserView` header exactly (session badge + `folder-open` accent + remote breadcrumb + upload pill + toolbar)
 - **Shared header** (top bar): Session identity (if applicable) and distinct local/remote refresh actions with accessible names
+- **Document toolbar** (32px, `VelaBgSftpPanel`, no bottom border — each pane already draws its own 1px top border): actions that span both panes. `Compare Directories` (`git-compare`) and `Synchronize…` (`folder-sync`) are icon + text `.doc-tool` buttons (24px high, `CornerRadius:3`, `VelaTextSecondary` text, `VelaAccent` icon, `VelaBgHover` on hover). The last comparison's verdict is right-aligned in 11px `VelaTextTertiary` and disappears when either pane changes directory
+- **Synchronize window**: same self-drawn card spec as the route-tracing window. Option segments use `VelaAccentDim` fill + `VelaAccent` text for the active choice (the translucent-pill rule of §5.1, not a solid accent block); delete rows in the preview use `VelaError` for icon and label; the primary `Synchronize` button is `VelaAccentPillButtonTheme` with the `folder-sync` icon, every other footer action is `VelaOutlineButtonTheme`
 
 #### Column Headers (26px, `VelaBgSurface`)
 

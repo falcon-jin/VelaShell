@@ -1,4 +1,5 @@
 using System.Text;
+using VelaShell.Core.DirectorySync;
 using VelaShell.Core.Ftp;
 using VelaShell.Core.Models;
 using VelaShell.Core.Sftp;
@@ -303,6 +304,88 @@ public class FtpFileServiceIntegrationTests
         {
             Directory.Delete(outDir, true);
         }
+    }
+
+    /// <summary>
+    /// 目录同步在 FTP 上成立的前提:上传后用 MFMT 把远端时间对齐本地,再经 LIST 读回来,
+    /// 比较器必须判「相同」。这一路上有三处会让它判成「不同」—— MFMT 按 UTC 发、LIST 按服务器
+    /// 当地时间给且只到分钟、FluentFTP 不做时区换算 —— 单测用替身一处都测不到。
+    /// </summary>
+    [TestMethod]
+    public async Task SetLastWriteTime_SurvivesTheListingRoundTrip_SoASyncCompareSeesNoDifference()
+    {
+        string localDir = Path.Combine(Path.GetTempPath(), $"vela-ftp-sync-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(localDir);
+        try
+        {
+            string localFile = Path.Combine(localDir, "a.txt");
+            await File.WriteAllTextAsync(localFile, "sync me", TestContext.CancellationToken);
+            // 几小时前、秒不为 0:LIST 只给到分钟,这样才验得到「按分钟截断后相同」。
+            DateTime stamp = DateTime.UtcNow.AddHours(-3);
+            stamp = new DateTime(stamp.Year, stamp.Month, stamp.Day, stamp.Hour, stamp.Minute, 37, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(localFile, stamp);
+            Guid sessionId = await OpenAsync();
+
+            await _service.UploadFileAsync(sessionId, localFile, "/a.txt", null, 0, TestContext.CancellationToken);
+            Assert.AreNotEqual(stamp, File.GetLastWriteTimeUtc(Path.Combine(_root, "a.txt")), "刚上传的文件时间应当是现在,否则后面的断言验不出 MFMT");
+            await _service.SetLastWriteTimeAsync(sessionId, "/a.txt", stamp, TestContext.CancellationToken);
+
+            Assert.AreEqual(stamp, File.GetLastWriteTimeUtc(Path.Combine(_root, "a.txt")), "服务器收到的应当是 UTC 时间");
+            SyncTree remote = await DirectoryTreeScanner.ScanRemoteAsync(
+                _service, sessionId, "/", SyncFileMask.Empty, inferPrecision: true, cancellationToken: TestContext.CancellationToken);
+            SyncTree local = await DirectoryTreeScanner.ScanLocalAsync(localDir, SyncFileMask.Empty, cancellationToken: TestContext.CancellationToken);
+            SyncItem listed = remote.Items.Single();
+            Assert.AreEqual(SyncTimePrecision.Minute, listed.Precision);
+            Assert.AreEqual(SyncComparisonState.Same,
+                DirectoryComparer.Compare(local.Items, remote.Items, new SyncOptions()).Single().State);
+
+            // 反证:本地再晚一分钟,就必须判成本地较新。
+            File.SetLastWriteTimeUtc(localFile, stamp.AddMinutes(1));
+            SyncTree touched = await DirectoryTreeScanner.ScanLocalAsync(localDir, SyncFileMask.Empty, cancellationToken: TestContext.CancellationToken);
+            Assert.AreEqual(SyncComparisonState.LocalNewer,
+                DirectoryComparer.Compare(touched.Items, remote.Items, new SyncOptions()).Single().State);
+        }
+        finally
+        {
+            Directory.Delete(localDir, true);
+        }
+    }
+
+    [TestMethod]
+    public async Task SetLastWriteTime_OnAServerWithoutMfmt_ReportsNotSupported()
+    {
+        _server.SupportsMfmt = false;
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "x", TestContext.CancellationToken);
+        Guid sessionId = await OpenAsync();
+
+        await Assert.ThrowsExactlyAsync<NotSupportedException>(() =>
+            _service.SetLastWriteTimeAsync(sessionId, "/a.txt", DateTime.UtcNow, TestContext.CancellationToken));
+    }
+
+    /// <summary>服务器端 SHA-256:FluentFTP 经 FEAT 发现 XSHA256,摘要与本地算的一致;不存在的文件只让它自己为 null。</summary>
+    [TestMethod]
+    public async Task ComputeSha256_UsesTheServerSideCommand_AndMatchesTheLocalDigest()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("checksum me");
+        await File.WriteAllBytesAsync(Path.Combine(_root, "a.txt"), payload, TestContext.CancellationToken);
+        Guid sessionId = await OpenAsync();
+
+        IReadOnlyDictionary<string, string?> digests =
+            await _service.ComputeSha256Async(sessionId, ["/a.txt", "/missing.txt"], TestContext.CancellationToken);
+
+        Assert.AreEqual(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload)), digests["/a.txt"]);
+        Assert.IsNull(digests["/missing.txt"]);
+    }
+
+    [TestMethod]
+    public async Task ComputeSha256_OnAServerWithoutHashCommands_ReportsNotSupported()
+    {
+        _server.SupportsSha256 = false;
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "x", TestContext.CancellationToken);
+        Guid sessionId = await OpenAsync();
+
+        await Assert.ThrowsExactlyAsync<NotSupportedException>(() =>
+            _service.ComputeSha256Async(sessionId, ["/a.txt"], TestContext.CancellationToken));
     }
 
     /// <summary>MSTest 注入的测试上下文(取消令牌)。</summary>

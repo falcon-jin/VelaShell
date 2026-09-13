@@ -2083,6 +2083,20 @@ public class FileBrowserViewModel : ReactiveObject
                 resolved.Add(settled);
             }
         }
+        return await ExecuteResolvedBatchAsync(resolved, conflictDecision, settled: null, ct);
+    }
+
+    /// <summary>
+    /// 执行一批已经过冲突与续传处理的传输:登记批次、按全窗口并发上限分派、收尾通知。
+    /// <paramref name="settled" /> 在每一项落定(完成/失败/跳过)后回调,取消时不回调。
+    /// </summary>
+    private async Task<bool> ExecuteResolvedBatchAsync(
+        IReadOnlyList<PlannedFileTransfer> resolved,
+        BatchConflictDecision conflictDecision,
+        Func<PlannedFileTransfer, TransferStatus, Task>? settled,
+        CancellationToken ct
+    )
+    {
         if (resolved.Count == 0)
         {
             return true;
@@ -2103,9 +2117,16 @@ public class FileBrowserViewModel : ReactiveObject
                 foreach (PlannedFileTransfer item in resolved)
                 {
                     // 顺序路径同样要过闸:否则"上限 1"的两个批次会各跑各的,合起来是 2。
-                    using IDisposable slot = await AcquireTransferSlotAsync(maxConcurrent, cts.Token);
-                    await RunTransferAsync(item.Type, item.LocalPath, item.RemotePath, item.ResumeOffset, cts.Token, conflictDecision);
+                    TransferStatus status;
+                    using (await AcquireTransferSlotAsync(maxConcurrent, cts.Token))
+                    {
+                        status = await RunTransferAsync(item.Type, item.LocalPath, item.RemotePath, item.ResumeOffset, cts.Token, conflictDecision);
+                    }
                     TransferSink?.NotifyBatchItemSettled(batchId);
+                    if (settled is not null)
+                    {
+                        await settled(item, status);
+                    }
                 }
             }
             else
@@ -2143,9 +2164,10 @@ public class FileBrowserViewModel : ReactiveObject
                         }
                         // 名额在**每个文件**上取放,不是一个工作任务霸着一个:这样上限
                         // 才是"同时在传几个文件",而不是"起了几个工作任务"。
+                        TransferStatus status;
                         using (await AcquireTransferSlotAsync(maxConcurrent, cts.Token))
                         {
-                            await RunTransferAsync(
+                            status = await RunTransferAsync(
                                 item.Type,
                                 item.LocalPath,
                                 item.RemotePath,
@@ -2155,6 +2177,10 @@ public class FileBrowserViewModel : ReactiveObject
                             );
                         }
                         TransferSink?.NotifyBatchItemSettled(batchId);
+                        if (settled is not null)
+                        {
+                            await settled(item, status);
+                        }
                     }
                 }
             }
@@ -2506,7 +2532,7 @@ public class FileBrowserViewModel : ReactiveObject
     /// 并落定最终状态。失败将行标红并返回;取消将行标为取消、清理本地部分文件,
     /// 并传播取消使批量任务中止。
     /// </summary>
-    private async Task RunTransferAsync(
+    private async Task<TransferStatus> RunTransferAsync(
         TransferType type,
         string localPath,
         string remotePath,
@@ -2626,7 +2652,7 @@ public class FileBrowserViewModel : ReactiveObject
         {
             await RunTransferAsync(fresh.Type, fresh.LocalPath, fresh.RemotePath, 0, ct, conflictDecision);
         }
-        return;
+        return finalStatus;
 
         Task TransferOnceAsync(long startAt) => type switch
         {
@@ -3315,6 +3341,32 @@ public class FileBrowserViewModel : ReactiveObject
     private void ToggleVisibility() => IsVisible = !IsVisible;
 
     /// <summary>
+    /// 目录同步专用的传输入口:计划已经由用户在预览里逐条确认过,所以<b>不走</b>冲突策略
+    /// (否则「文件已存在时:询问」会对每个要覆盖的文件再弹一次窗),也<b>不做</b>续传探测
+    /// (目标比源小正是「内容不同」的常态,当成半截文件去续传会拼出一个错的文件)。
+    /// 进度、并发上限、取消、传输日志与普通传输完全共用。
+    /// </summary>
+    /// <param name="requests">要执行的传输(目标父目录须已存在)。</param>
+    /// <param name="settled">每项落定后回调,用于回写修改时间;取消时不回调。</param>
+    /// <param name="ct">取消令牌。</param>
+    /// <returns>false 表示被取消。</returns>
+    internal Task<bool> RunSyncTransfersAsync(
+        IReadOnlyList<SyncTransferRequest> requests,
+        Func<SyncTransferRequest, TransferStatus, Task>? settled,
+        CancellationToken ct
+    )
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        PlannedFileTransfer[] plan = [.. requests.Select(r => new PlannedFileTransfer(r.Type, r.LocalPath, r.RemotePath))];
+        return ExecuteResolvedBatchAsync(
+            plan,
+            new BatchConflictDecision { OverwriteAll = true },
+            settled is null ? null : (item, status) => settled(new(item.Type, item.LocalPath, item.RemotePath), status),
+            ct
+        );
+    }
+
+    /// <summary>
     /// A single file scheduled for transfer, resolved up front so the whole batch can be
     /// counted and cancelled as one unit.
     /// For Copy: LocalPath = remote source, RemotePath = remote destination.
@@ -3327,3 +3379,6 @@ public class FileBrowserViewModel : ReactiveObject
         long ResumeOffset = 0
     );
 }
+
+/// <summary>目录同步交给传输管道的一项:方向、本地路径、远端路径。</summary>
+internal readonly record struct SyncTransferRequest(TransferType Type, string LocalPath, string RemotePath);

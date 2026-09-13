@@ -5019,4 +5019,259 @@ Windows 填 exe 完整路径或命令名(如 notepad);Linux 填命令名(如 ged
   <data name="SetTransfer_AutoUploadOnEditDesc" xml:space="preserve">
     <value>关闭后完全不监视本地副本，改动一律不回传</value>
   </data>
+  <data name="Sync_Title" xml:space="preserve">
+    <value>目录同步</value>
+  </data>
+  <data name="Sync_TitleFormat" xml:space="preserve">
+    <value>目录同步 · {0}</value>
+  </data>
+  <data name="Sync_CompareDirectories" xml:space="preserve">
+    <value>比较目录</value>
+  </data>
+  <data name="Sync_CompareDirectoriesTip" xml:space="preserve">
+    <value>在两栏各自选中当前目录里不同的条目(仅当前一层)</value>
+  </data>
+  <data name="Sync_SynchronizeEllipsis" xml:space="preserve">
+    <value>同步…</value>
+  </data>
+  <data name="Sync_SynchronizeTip" xml:space="preserve">
+    <value>比较两棵目录树并同步,或保持远端目录最新</value>
+  </data>
+  <data name="Sync_CompareSummary" xml:space="preserve">
+    <value>本地 {0} 项不同 · 远端 {1} 项不同 · {2} 项相同</value>
+  </data>
+  <data name="Sync_CompareIdentical" xml:space="preserve">
+    <value>两个目录相同({0} 项)</value>
+  </data>
+  <data name="Sync_LocalDirectory" xml:space="preserve">
+    <value>本地目录</value>
+  </data>
+  <data name="Sync_RemoteDirectory" xml:space="preserve">
+    <value>远端目录</value>
+  </data>
+  <data name="Sync_Browse" xml:space="preserve">
+    <value>浏览…</value>
+  </data>
+  <data name="Sync_Direction" xml:space="preserve">
+    <value>方向</value>
+  </data>
+  <data name="Sync_DirectionBoth" xml:space="preserve">
+    <value>双向</value>
+  </data>
+  <data name="Sync_DirectionToRemote" xml:space="preserve">
+    <value>本地 → 远端</value>
+  </data>
+  <data name="Sync_DirectionToLocal" xml:space="preserve">
+    <value>远端 → 本地</value>
+  </data>
+  <data name="Sync_Mode" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="Sync_ModeSynchronize" xml:space="preserve">
+    <value>同步文件</value>
+  </data>
+  <data name="Sync_ModeSynchronizeTip" xml:space="preserve">
+    <value>传输新增的、较新的或大小不同的文件;不覆盖较新的目标</value>
+  </data>
+  <data name="Sync_ModeMirror" xml:space="preserve">
+    <value>镜像文件</value>
+  </data>
+  <data name="Sync_ModeMirrorTip" xml:space="preserve">
+    <value>让目标与源一致:只要不同就覆盖,即使目标更新</value>
+  </data>
+  <data name="Sync_ModeTimestamps" xml:space="preserve">
+    <value>仅同步时间戳</value>
+  </data>
+  <data name="Sync_ModeTimestampsTip" xml:space="preserve">
+    <value>不传内容:两边都有且大小相同的文件,把目标的修改时间改成源的</value>
+  </data>
+  <data name="Sync_Criteria" xml:space="preserve">
+    <value>比较依据</value>
+  </data>
+  <data name="Sync_CriteriaTime" xml:space="preserve">
+    <value>修改时间</value>
+  </data>
+  <data name="Sync_CriteriaSize" xml:space="preserve">
+    <value>文件大小</value>
+  </data>
+  <data name="Sync_Options" xml:space="preserve">
+    <value>选项</value>
+  </data>
+  <data name="Sync_DeleteExtraneous" xml:space="preserve">
+    <value>删除多余文件</value>
+  </data>
+  <data name="Sync_DeleteExtraneousTip" xml:space="preserve">
+    <value>删除只在目标一侧存在的条目(仅单向)</value>
+  </data>
+  <data name="Sync_ExistingOnly" xml:space="preserve">
+    <value>仅已存在的文件</value>
+  </data>
+  <data name="Sync_ExistingOnlyTip" xml:space="preserve">
+    <value>只更新两边都已存在的文件,不新建任何东西</value>
+  </data>
+  <data name="Sync_FileMask" xml:space="preserve">
+    <value>文件掩码</value>
+  </data>
+  <data name="Sync_FileMaskPlaceholder" xml:space="preserve">
+    <value>例如 *.php; *.js | .git/; *.tmp</value>
+  </data>
+  <data name="Sync_FileMaskTip" xml:space="preserve">
+    <value>以 ; 分隔多个掩码,| 之后的是排除项。以 / 结尾的只匹配目录,中间含 / 的按相对路径匹配。被排除的目录不会被扫描。</value>
+  </data>
+  <data name="Sync_Compare" xml:space="preserve">
+    <value>比较</value>
+  </data>
+  <data name="Sync_Start" xml:space="preserve">
+    <value>同步</value>
+  </data>
+  <data name="Sync_CheckAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="Sync_CheckNone" xml:space="preserve">
+    <value>全不选</value>
+  </data>
+  <data name="Sync_ColAction" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="Sync_ColPath" xml:space="preserve">
+    <value>路径</value>
+  </data>
+  <data name="Sync_ColLocal" xml:space="preserve">
+    <value>本地</value>
+  </data>
+  <data name="Sync_ColRemote" xml:space="preserve">
+    <value>远端</value>
+  </data>
+  <data name="Sync_WatchLogHeader" xml:space="preserve">
+    <value>同步记录</value>
+  </data>
+  <data name="Sync_EmptyHint" xml:space="preserve">
+    <value>选好目录与选项后点「比较」预览要改动的内容;点「同步」之前不会传输任何东西。</value>
+  </data>
+  <data name="Sync_KeepUpToDate" xml:space="preserve">
+    <value>保持远端最新</value>
+  </data>
+  <data name="Sync_KeepUpToDateTip" xml:space="preserve">
+    <value>监视本地目录,一有改动就上传(恒为本地 → 远端;沿用上面的掩码、比较依据与「删除多余文件」)</value>
+  </data>
+  <data name="Sync_StopWatching" xml:space="preserve">
+    <value>停止监视</value>
+  </data>
+  <data name="Sync_KindUpload" xml:space="preserve">
+    <value>上传</value>
+  </data>
+  <data name="Sync_KindDownload" xml:space="preserve">
+    <value>下载</value>
+  </data>
+  <data name="Sync_KindCreateRemoteDirectory" xml:space="preserve">
+    <value>新建远端目录</value>
+  </data>
+  <data name="Sync_KindCreateLocalDirectory" xml:space="preserve">
+    <value>新建本地目录</value>
+  </data>
+  <data name="Sync_KindSetRemoteTime" xml:space="preserve">
+    <value>改远端时间</value>
+  </data>
+  <data name="Sync_KindSetLocalTime" xml:space="preserve">
+    <value>改本地时间</value>
+  </data>
+  <data name="Sync_KindDeleteRemote" xml:space="preserve">
+    <value>删除远端</value>
+  </data>
+  <data name="Sync_KindDeleteLocal" xml:space="preserve">
+    <value>删除本地</value>
+  </data>
+  <data name="Sync_Summary" xml:space="preserve">
+    <value>上传 {0} 个({1})· 下载 {2} 个({3})· 删除 {4} 项 · 其他 {5} 项</value>
+  </data>
+  <data name="Sync_ScanningProgress" xml:space="preserve">
+    <value>正在扫描…本地 {0} 个目录,远端 {1} 个目录</value>
+  </data>
+  <data name="Sync_NothingToDo" xml:space="preserve">
+    <value>没有差异,无需同步</value>
+  </data>
+  <data name="Sync_PreviewReady" xml:space="preserve">
+    <value>共 {0} 项操作:取消勾选不需要的,再点「同步」</value>
+  </data>
+  <data name="Sync_Cancelled" xml:space="preserve">
+    <value>已取消</value>
+  </data>
+  <data name="Sync_LocalMissing" xml:space="preserve">
+    <value>本地目录不存在:{0}</value>
+  </data>
+  <data name="Sync_LocalRequired" xml:space="preserve">
+    <value>请填写本地目录</value>
+  </data>
+  <data name="Sync_RemoteRequired" xml:space="preserve">
+    <value>请填写远端目录</value>
+  </data>
+  <data name="Sync_InvalidMask" xml:space="preserve">
+    <value>文件掩码无效:最多只能有一个 |,单独的 / 不是掩码</value>
+  </data>
+  <data name="Sync_ConfirmDelete" xml:space="preserve">
+    <value>本次同步将删除 {0} 项(目录连同其中内容),无法撤销。继续吗?</value>
+  </data>
+  <data name="Sync_ConfirmWatchDelete" xml:space="preserve">
+    <value>已勾选「删除多余文件」:监视期间,本地删除的内容也会从远端删除。继续吗?</value>
+  </data>
+  <data name="Sync_Running" xml:space="preserve">
+    <value>正在同步 {0}/{1} · {2}</value>
+  </data>
+  <data name="Sync_DoneVerified" xml:space="preserve">
+    <value>同步完成:成功 {0} 项,失败 {1} 项。已重新比较,没有剩余差异</value>
+  </data>
+  <data name="Sync_DoneRemaining" xml:space="preserve">
+    <value>同步完成:成功 {0} 项,失败 {1} 项。重新比较后仍有 {2} 项待同步</value>
+  </data>
+  <data name="Sync_NoteConflicts" xml:space="preserve">
+    <value>{0} 处冲突未处理(一边是文件一边是目录,或远端有只差大小写的同名条目)</value>
+  </data>
+  <data name="Sync_NoteSkippedLinks" xml:space="preserve">
+    <value>{0} 个指向目录的链接未进入</value>
+  </data>
+  <data name="Sync_TimestampsUnsupported" xml:space="preserve">
+    <value>这台服务器不能设置修改时间:上传的文件下次比较时会显得远端较新(双向同步会把它们再下载回来)</value>
+  </data>
+  <data name="Sync_MoreErrors" xml:space="preserve">
+    <value>…另有 {0} 条</value>
+  </data>
+  <data name="Sync_TransferFailed" xml:space="preserve">
+    <value>传输失败(详见传输面板)</value>
+  </data>
+  <data name="Sync_UnsafeLocalName" xml:space="preserve">
+    <value>「{0}」无法写到本地:这个名字在本机不合法</value>
+  </data>
+  <data name="Sync_WatchStarted" xml:space="preserve">
+    <value>正在监视 {0} → {1}</value>
+  </data>
+  <data name="Sync_WatchStopped" xml:space="preserve">
+    <value>已停止监视</value>
+  </data>
+  <data name="Sync_WatchUnavailable" xml:space="preserve">
+    <value>无法监视这个本地目录(网络盘,或已达到系统监视数上限)</value>
+  </data>
+  <data name="Sync_WatchError" xml:space="preserve">
+    <value>错误:{0}</value>
+  </data>
+  <data name="Sync_CriteriaChecksum" xml:space="preserve">
+    <value>SHA-256 校验</value>
+  </data>
+  <data name="Sync_CriteriaChecksumTip" xml:space="preserve">
+    <value>两边都有且大小相同的文件先比 SHA-256(SFTP 在服务器上跑 sha256sum,FTP 用 HASH / XSHA256):内容相同就不传,哪怕时间不同。算不出摘要的回退到大小与修改时间。这些文件要在两边各完整读一遍。</value>
+  </data>
+  <data name="Sync_HashingProgress" xml:space="preserve">
+    <value>正在校验 SHA-256…{0}/{1}</value>
+  </data>
+  <data name="Sync_NoteChecksumUnsupported" xml:space="preserve">
+    <value>无法使用 SHA-256 校验({0}),已改按大小与修改时间比较</value>
+  </data>
+  <data name="Sync_NoteChecksumPartial" xml:space="preserve">
+    <value>{1} 个文件中有 {0} 个算不出 SHA-256,已按大小与修改时间比较</value>
+  </data>
+  <data name="Sync_CompareHashing" xml:space="preserve">
+    <value>正在比较…校验 SHA-256</value>
+  </data>
+  <data name="Sync_CompareFellBack" xml:space="preserve">
+    <value>(SHA-256 不可用,按大小与时间比较)</value>
+  </data>
 </root>
