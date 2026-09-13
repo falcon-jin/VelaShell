@@ -66,6 +66,9 @@ public sealed class SerializedSftpService(ISftpService inner, Guid sessionId) : 
     /// <summary>设置远端文件权限的串行化透传。</summary>
     public Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.SetPermissionsAsync(sessionId, remotePath, octalMode, token), cancellationToken);
 
+    /// <summary>创建符号链接的串行化透传。</summary>
+    public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.CreateSymbolicLinkAsync(sessionId, linkPath, targetPath, token), cancellationToken);
+
     /// <summary>获取远端文件元数据的串行化透传。</summary>
     public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.GetFileInfoAsync(sessionId, remotePath, token), cancellationToken);
 

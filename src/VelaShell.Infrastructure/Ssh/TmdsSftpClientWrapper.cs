@@ -287,19 +287,36 @@ public sealed class TmdsSftpClientWrapper(Func<Task<SftpClient>> clientFactory) 
     /// 直接 stat 单个条目;不存在返回 <c>null</c>。
     /// </summary>
     /// <remarks>
-    /// followLinks 传 true,与 <see cref="ListEntriesAsync" /> 所用的
-    /// <see cref="Tmds.Ssh.EnumerationOptions" /> 默认值(FollowFileLinks / FollowDirectoryLinks 均为 true)
-    /// 保持一致 —— 否则"指向目录的符号链接"会被判成非目录,删除/复制的递归分支就会走错。
+    /// 先 lstat(不跟随):只有这样才看得出路径本身是不是链接。是链接再补跟随的 stat 与 readlink
+    /// (见 <see cref="ResolveLinkAsync" />),于是 <see cref="SftpEntry.IsDirectory" /> 仍描述链接指向的对象,
+    /// 而删除/复制据 <see cref="SftpEntry.IsSymbolicLink" /> 不沿链接递归 —— 旧实现直接跟随,
+    /// 删一个指向目录的链接会把目标目录里的东西逐个删光。非链接仍是一次往返。
     /// </remarks>
     public Task<SftpEntry?> GetEntryAsync(string path, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return GuardedAsync(async () =>
+        return GuardedAsync<SftpEntry?>(async () =>
         {
-            FileEntryAttributes? attrs = await EnsureClient()
-                .GetAttributesAsync(path, true, null, ct).ConfigureAwait(false);
-            return attrs is null ? null : MapEntry(path, attrs);
+            SftpClient client = EnsureClient();
+            FileEntryAttributes? attrs = await client.GetAttributesAsync(path, false, null, ct).ConfigureAwait(false);
+            if (attrs is null)
+            {
+                return null;
+            }
+            SftpEntry entry = MapEntry(path, attrs);
+            return entry.IsSymbolicLink ? await ResolveLinkAsync(client, entry, ct).ConfigureAwait(false) : entry;
         }, ct);
+    }
+
+    /// <summary>在 <paramref name="linkPath" /> 创建指向 <paramref name="targetPath" /> 的符号链接。</summary>
+    /// <remarks>
+    /// OpenSSH 服务端把 SSH_FXP_SYMLINK 的两个参数实现反了(bugzilla #861),Tmds.Ssh 已按 OpenSSH 的顺序发包,
+    /// 这里照常传「链接、目标」,不要再自己对调一次。
+    /// </remarks>
+    public Task CreateSymbolicLinkAsync(string linkPath, string targetPath, CancellationToken ct = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return GuardedAsync(async () => await EnsureClient().CreateSymbolicLinkAsync(linkPath, targetPath, ct).ConfigureAwait(false), ct);
     }
 
     /// <summary>
@@ -385,13 +402,46 @@ public sealed class TmdsSftpClientWrapper(Func<Task<SftpClient>> clientFactory) 
     private static async Task<IEnumerable<SftpEntry>> ListEntriesAsync(SftpClient client, string dir, CancellationToken ct)
     {
         var entries = new List<SftpEntry>();
+        // 不跟随链接:默认的 FollowFileLinks / FollowDirectoryLinks 会把每个链接换成目标的属性,
+        // 类型位 SymbolicLink 从此消失,上层就分不出"链接"与"它指向的东西"。
+        var options = new Tmds.Ssh.EnumerationOptions { FollowFileLinks = false, FollowDirectoryLinks = false };
         await foreach ((string Path, FileEntryAttributes Attributes) result in SftpDirectoryExtensions.GetDirectoryEntriesAsync(
-            client, dir, new Tmds.Ssh.EnumerationOptions())
+            client, dir, options)
             .WithCancellation(ct).ConfigureAwait(false))
         {
             entries.Add(MapEntry(result.Path, result.Attributes));
         }
+
+        // 链接再补上目标信息。请求一齐发出(SFTP 请求可在同一通道上流水线),
+        // /usr/lib 那种一目录几百个 .so 链接也只是一轮并发往返,而不是几百轮串行。
+        // 各任务写入互不相同的下标,无需加锁。
+        await Task.WhenAll(entries
+            .Select((entry, index) => (entry, index))
+            .Where(static pair => pair.entry.IsSymbolicLink)
+            .Select(async pair => entries[pair.index] = await ResolveLinkAsync(client, pair.entry, ct).ConfigureAwait(false)))
+            .ConfigureAwait(false);
         return entries;
+    }
+
+    /// <summary>
+    /// 给一个(lstat 得来的)链接条目补上目标信息:readlink 取原始目标文本,跟随的 stat 取目标的类型/大小/时间。
+    /// 断链(跟随 stat 为 null)保留链接自身的属性,<c>IsDirectory</c> 为 false。
+    /// </summary>
+    private static async Task<SftpEntry> ResolveLinkAsync(SftpClient client, SftpEntry link, CancellationToken ct)
+    {
+        string? target = null;
+        try
+        {
+            target = await client.GetLinkTargetAsync(link.FullName, ct).ConfigureAwait(false);
+        }
+        catch (SftpException)
+        {
+            // 读不到目标文本(权限、服务器不支持 readlink)不影响条目本身,只是少一行"指向哪里"。
+        }
+        FileEntryAttributes? resolved = await client.GetAttributesAsync(link.FullName, true, null, ct).ConfigureAwait(false);
+        return resolved is null
+            ? link with { LinkTarget = target }
+            : MapEntry(link.FullName, resolved) with { IsSymbolicLink = true, LinkTarget = target };
     }
 
     internal static SftpEntry MapEntry(string fullPath, FileEntryAttributes attrs)
@@ -404,6 +454,7 @@ public sealed class TmdsSftpClientWrapper(Func<Task<SftpClient>> clientFactory) 
             FullName = fullPath,
             Length = attrs.Length,
             IsDirectory = attrs.FileType == UnixFileType.Directory,
+            IsSymbolicLink = attrs.FileType == UnixFileType.SymbolicLink,
             // 必须 LocalDateTime 而非 .DateTime:后者把 DateTimeOffset 的偏移剥掉,留下
             // "UTC 墙钟数 + Kind=Unspecified" —— 文件浏览器显示成 +0 时区,下载保留时间戳
             // (File.SetLastWriteTime 按本地解读)还会再错一次时差。SFTP mtime 是 Unix 纪元秒,

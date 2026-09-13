@@ -119,6 +119,7 @@ public class FileBrowserViewModel : ReactiveObject
         UploadCommand = ReactiveCommand.CreateFromTask(UploadAsync);
         NewFolderCommand = ReactiveCommand.CreateFromTask(NewFolderAsync);
         NewFileCommand = ReactiveCommand.CreateFromTask(NewFileAsync);
+        NewSymbolicLinkCommand = ReactiveCommand.CreateFromTask<RemoteFileInfoViewModel?>(NewSymbolicLinkAsync);
         DownloadItemCommand = ReactiveCommand.CreateFromTask<RemoteFileInfoViewModel>(
             DownloadItemAsync
         );
@@ -250,6 +251,8 @@ public class FileBrowserViewModel : ReactiveObject
                 || a.FullPath != b.FullPath
                 || a.Size != b.Size
                 || a.IsDirectory != b.IsDirectory
+                || a.IsSymbolicLink != b.IsSymbolicLink
+                || a.LinkTarget != b.LinkTarget
                 || a.Permissions != b.Permissions
                 || a.LastModified != b.LastModified
                 || a.Owner != b.Owner
@@ -916,6 +919,9 @@ public class FileBrowserViewModel : ReactiveObject
 
     /// <summary>在当前目录下新建空文件(提示输入名称)。</summary>
     public ReactiveCommand<RxVoid, RxVoid> NewFileCommand { get; }
+
+    /// <summary>在当前目录下新建符号链接(依次提示目标与名称;参数为右键所在行,用来预填目标)。</summary>
+    public ReactiveCommand<RemoteFileInfoViewModel?, RxVoid> NewSymbolicLinkCommand { get; }
 
     /// <summary>下载选中的单个文件或目录到本地(目录递归)。</summary>
     public ReactiveCommand<RemoteFileInfoViewModel, RxVoid> DownloadItemCommand { get; }
@@ -1914,6 +1920,13 @@ public class FileBrowserViewModel : ReactiveObject
             );
             foreach (RemoteFileInfo child in children)
             {
+                // 目录里嵌套的「指向目录的链接」不跟进去(rsync -r 不带 -L 的口径):链接可以指回祖先
+                // 形成无限展开,也可以指向 / 把整台机器拖下来。用户显式选中的那一个链接照常跟随;
+                // 指向文件的链接照常下载其内容(Windows 本地建不了链接,内容才是有用的那份)。
+                if (child is { IsSymbolicLink: true, IsDirectory: true })
+                {
+                    continue;
+                }
                 await BuildDownloadPlanAsync(
                     child.FullPath,
                     child.Name,
@@ -2858,6 +2871,54 @@ public class FileBrowserViewModel : ReactiveObject
             await _sftpService.CreateFileAsync(
                 _sessionId,
                 RemotePath.Combine(CurrentPath, trimmedName),
+                ct
+            );
+            await RefreshAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 在当前目录新建符号链接:先问指向哪里(右键某一行时预填该行路径),再问链接叫什么
+    /// (预填目标的最后一段)。目标原样写入,相对路径按链接所在目录解析(ln -s 语义)。
+    /// 后端不支持时由服务抛 NotSupportedException,错误条如实说出来。
+    /// </summary>
+    private async Task NewSymbolicLinkAsync(RemoteFileInfoViewModel? source, CancellationToken ct = default)
+    {
+        if (PromptForText is null)
+        {
+            return;
+        }
+        string suggestedTarget = source is { IsParentEntry: false } ? source.FullPath : string.Empty;
+        string? target = await PromptForText(Strings.Get("Sftp_SymlinkTargetPrompt"), suggestedTarget);
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return;
+        }
+        string trimmedTarget = target.Trim();
+        string targetLeaf = trimmedTarget.TrimEnd('/');
+        targetLeaf = targetLeaf[(targetLeaf.LastIndexOf('/') + 1)..];
+        string? name = await PromptForText(Strings.Get("Sftp_SymlinkNamePrompt"), targetLeaf);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+        string trimmedName = name.Trim();
+        if (!LocalPathSafety.IsSafeLeafName(trimmedName))
+        {
+            ErrorMessage = Strings.Get("KeySvc_InvalidName");
+            return;
+        }
+        try
+        {
+            ErrorMessage = null;
+            await _sftpService.CreateSymbolicLinkAsync(
+                _sessionId,
+                RemotePath.Combine(CurrentPath, trimmedName),
+                trimmedTarget,
                 ct
             );
             await RefreshAsync(ct);

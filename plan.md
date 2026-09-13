@@ -4265,3 +4265,69 @@ AI 插件把聊天标签、协作窗口、模型配置/MCP 那一组对话框统
 **旧代码 3/3 挂,新代码同样压力下 3/3 过**(单轮耗时从 4 秒拉到 23 秒,压力是真的)。
 不做这一步的话,“改完本机还是绿的”证明不了任何事情 —— 它本来就是绿的。
 
+## ✅ 72. 2026-09-12 远端符号链接:认得出、进得去、建得了,以及删链接会删光目标目录那个洞(用户需求)
+
+> 「为我 SFTP,FTP 等文件操作添加符号链接支持。」
+
+`feature-plan.md` 路线图 C 组原话是「`ISftpService` 现在**没有任何 symlink 面**,远端一个软链目录当场就走不进去」。
+摸下去发现"走不进去"说轻了:SFTP 这边其实**一直在跟随链接**(`EnumerationOptions` 与 `GetEntryAsync` 都默认跟随),
+所以链接目录能进,只是认不出来是链接;真正的问题是**跟随这件事被用在了删除上**。
+
+### 一、先说那个洞
+
+`SftpService.DeleteAsync` 用一次 stat 判「是不是目录」,而那次 stat 跟随链接。
+对一个指向目录的链接(`current -> releases/42`),它被判成目录,于是列举"链接下的"子项逐个删掉,
+最后 `rmdir` 链接本身失败或成功 —— **不管哪种,`releases/42` 里的东西已经没了**。
+递归删除途中遇到子目录里的链接同理;链接要是指向 `/`,那就是一场事故。
+
+修法:单条查询改为先 lstat,是链接再补跟随的 stat 与 readlink;删除与计数只进 `IsDirectory && !IsSymbolicLink` 的条目,
+链接一律当叶子走 `SSH_FXP_REMOVE`(删的是链接本身)。FTP 侧原本就是 `Type != Directory` 走 `DELE`,链接天然是叶子,不用改。
+
+### 二、模型:两个字段,一条口径
+
+`RemoteFileInfo` / `SftpEntry` 各加 `IsSymbolicLink` 与 `LinkTarget`(readlink 原文,可能是相对路径)。
+**`IsDirectory` 描述链接指向的对象** —— 这是刻意的:文件浏览器、排序、双击、AI 插件的文件选择器
+全都只认 `IsDirectory`,指向目录的链接因此零改动就能进;真正需要区分"链接本身"的只有删除、复制、递归下载三处。
+断链(目标不存在)保留链接自身属性、`IsDirectory = false`,而且 `GetEntryAsync` **返回条目而不是 null** ——
+链接确实存在,删它不能先报「找不到」。
+
+| 后端 | 列举 / stat | 建链接 |
+| --- | --- | --- |
+| SFTP(Tmds.Ssh) | 列举改为不跟随(否则 `SymbolicLink` 类型位被抹掉),链接再并发补 stat + readlink;非链接零额外往返 | `CreateSymbolicLinkAsync` |
+| FTP(FluentFTP) | LIST 给得出 `Link` 与目标文本,给不出目标是不是目录(库已不提供解引用),对链接补一次 `DirectoryExists` | 非标 `SITE SYMLINK`(ProFTPD 类);回 500/501/502/504 或路径含空格 → `NotSupportedException` |
+| 插件协议 | SDK 的 `RemoteFileEntry` 没有链接字段,不变 | 抛 `NotSupportedException`。要支持得先发 SDK 契约,**没在宿主这边编** |
+
+**OpenSSH 的参数顺序坑**:服务端把 `SSH_FXP_SYMLINK` 的两个参数实现反了(bugzilla #861)。
+动手前去 Tmds.Ssh 源码核过,它已按 OpenSSH 顺序发包,包装层照常传「链接、目标」,**不能再自己对调一次**。
+这一条单测测不到(替身不在乎顺序),所以写了真实服务端用例钉住。
+
+### 三、复制与下载:各选一个现成口径
+
+- **复制链接得到链接**(`cp -P`):同一台服务器上目标文本依旧有效,也不会因为链接指回祖先而无限展开。
+  读不到目标文本的链接才退回按内容复制,由原有的环检测与 64 层深度上限兜底。
+- **文件夹下载不跟进嵌套的目录链接**(`rsync -r` 不带 `-L`):本地是 Windows,建不了等价的链接;
+  跟进去又可能指向 `/` 把整台机器拖下来。用户**显式选中**的那一个链接照常跟随,指向文件的链接照常下载内容。
+  代价是嵌套的目录链接在本地副本里缺席 —— 这是有意的取舍,已登记进文档待同步。
+
+### 四、界面
+
+行首图标换成 lucide 的 `folder-symlink` / `file-symlink`(颜色不变,仍答「能不能进去」),名称悬停显示「→ 目标」,
+类型列「符号链接」,权限列首位 `l`(与 `ls -l` 一致),属性弹窗多一行「链接目标」。
+右键(空白处与行上都有)「新建符号链接」:先问目标(在行上右键时预填该行路径),再问名称(预填目标最后一段)。
+五份 resx 各加 5 个键。
+
+### 五、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3381 通过 / 47 跳过 / 0 失败**。
+
+- **反证**:把 `DeleteAsync` 里的 `IsTraversableDirectory(entry)` 退回 `entry.IsDirectory`,
+  `DeleteAsync_OnSymlinkToDirectory_RemovesOnlyTheLink` 当场红(没收到对链接的 `DeleteFileAsync`,走进了递归);改回即绿。
+- **真实服务端**:新增 `Core.Tests/Ssh/SftpSymlinkIntegrationTests`(`DockerIntegration`),对容器里的 OpenSSH
+  验证列举认得出链接与断链、断链 stat 不返回 null、`CreateSymbolicLinkAsync` 建出来 `readlink` 读回的是目标、
+  删链接后目标文件仍在 —— **本机实跑通过**,不是跳过。
+- **顺带记一个坑**:这台机器上 `TransferRealChannelIntegrationTests` 那组 Docker 用例**一直在跳过**,容器明明 healthy。
+  原因是 `localhost` 先解析到 `::1`,而 Docker Desktop 的端口转发只在 IPv4 上应答,探测与登录都连空。
+  新用例写死 `127.0.0.1`;旧用例本次**未改**(不在范围内),但「全绿」里那几条从来没跑过这件事值得知道。
+- FTP 的 `SITE SYMLINK` 与链接目录探测**没有真实服务端验证**:测试容器里没有 ProFTPD。
+

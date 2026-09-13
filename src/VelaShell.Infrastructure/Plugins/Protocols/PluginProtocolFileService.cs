@@ -249,6 +249,17 @@ public sealed class PluginProtocolFileService(PluginProtocolRegistry registry)
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// SDK 的 <see cref="IProtocolFileSystem" /> 没有链接这一面(S3 / WebDAV 这类对象存储本来也没有),
+    /// 所以如实报不支持。真要支持得先在 SDK 里加契约,不能在宿主这边编一个。
+    /// </remarks>
+    public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default)
+    {
+        Session session = Require(sessionId);
+        return Task.FromException(new NotSupportedException($"Protocol '{session.Descriptor.Id}' does not support symbolic links."));
+    }
+
+    /// <inheritdoc />
     public async Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default)
     {
         Session session = Require(sessionId);

@@ -857,7 +857,14 @@ public partial class FileBrowserView : UserControl
             Width = 18,
             Height = 18,
             VerticalAlignment = VerticalAlignment.Center,
-            Data = this.FindResource(file.IsDirectory ? "Icon.folder" : "Icon.file") as Geometry,
+            Data = this.FindResource(
+                (file.IsSymbolicLink, file.IsDirectory) switch
+                {
+                    (true, true) => "Icon.folder-symlink",
+                    (true, false) => "Icon.file-symlink",
+                    (false, true) => "Icon.folder",
+                    _ => "Icon.file",
+                }) as Geometry,
         };
         typeIcon.Classes.Add(file.IsDirectory ? "folder" : "file");
         header.Children.Add(typeIcon);
@@ -896,8 +903,12 @@ public partial class FileBrowserView : UserControl
             rows.Children.Add(grid);
         }
 
-        AddRow(Strings.FileType, file.IsDirectory ? Strings.Folder : Strings.File, false);
+        AddRow(
+            Strings.FileType,
+            file.IsSymbolicLink ? Strings.Get("Sftp_SymlinkType") : file.IsDirectory ? Strings.Folder : Strings.File,
+            false);
         AddRow(Strings.FilePath, file.FullPath);
+        AddRow(Strings.Get("Sftp_LinkTarget"), file.LinkTarget ?? string.Empty);
         AddRow(Strings.Size, file.FormattedSize);
         AddRow(Strings.Modified, file.FormattedModifiedTime);
         AddRow(Strings.PermissionOwner, file.Owner);

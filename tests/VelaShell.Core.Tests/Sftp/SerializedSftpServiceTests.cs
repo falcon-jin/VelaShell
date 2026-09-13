@@ -280,6 +280,7 @@ public sealed class SerializedSftpServiceTests
         public Task EnsureDirectoryAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("EnsureDirectory", sessionId, cancellationToken);
         public Task RenameAsync(Guid sessionId, string oldPath, string newPath, CancellationToken cancellationToken = default) => InvokeAsync("Rename", sessionId, cancellationToken);
         public Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default) => InvokeAsync("SetPermissions", sessionId, cancellationToken);
+        public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) => InvokeAsync("CreateSymbolicLink", sessionId, cancellationToken);
         public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("GetFileInfo", sessionId, CreateRemoteFileInfo(remotePath), cancellationToken);
 
         public Task<Stream> OpenReadAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync<Stream>("OpenRead", sessionId, new MemoryStream(), cancellationToken);

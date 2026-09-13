@@ -861,6 +861,21 @@
   <data name="FileType" xml:space="preserve">
     <value>类型</value>
   </data>
+  <data name="Sftp_NewSymlink" xml:space="preserve">
+    <value>新建符号链接</value>
+  </data>
+  <data name="Sftp_SymlinkTargetPrompt" xml:space="preserve">
+    <value>链接指向的路径</value>
+  </data>
+  <data name="Sftp_SymlinkNamePrompt" xml:space="preserve">
+    <value>链接名称</value>
+  </data>
+  <data name="Sftp_SymlinkType" xml:space="preserve">
+    <value>符号链接</value>
+  </data>
+  <data name="Sftp_LinkTarget" xml:space="preserve">
+    <value>链接目标</value>
+  </data>
   <data name="Sftp_FileTypeExt" xml:space="preserve">
     <value>{0} 文件</value>
   </data>

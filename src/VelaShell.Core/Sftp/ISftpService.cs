@@ -61,6 +61,14 @@ public interface ISftpService : IAsyncDisposable
     /// </summary>
     Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 在 <paramref name="linkPath" /> 创建指向 <paramref name="targetPath" /> 的符号链接。
+    /// <paramref name="targetPath" /> 原样写入(相对路径按链接所在目录解析,与 <c>ln -s</c> 一致)。
+    /// 后端没有这种能力(插件协议、不支持 <c>SITE SYMLINK</c> 的 FTP 服务器)时抛
+    /// <see cref="NotSupportedException" />,而不是静默成功。
+    /// </summary>
+    Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default);
+
     /// <summary>获取单个远端文件或目录的元数据。</summary>
     Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default);
 
