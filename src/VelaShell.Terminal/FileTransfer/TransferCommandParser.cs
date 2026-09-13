@@ -5,9 +5,14 @@ namespace VelaShell.Terminal.FileTransfer;
 /// <summary>从用户敲下的命令行推断出的传输意图。</summary>
 /// <param name="Protocol">将要使用的协议变体。</param>
 /// <param name="Direction">本地扮演的方向(远端 <c>s*</c> 发文件 = 本地接收)。</param>
+/// <param name="FileName">
+/// 命令行里的第一个文件参数(只取基名),没有则为 <c>null</c>。XMODEM 协议本身不传文件名,
+/// <c>sx abc.txt</c> 下载时这是唯一能知道真实文件名的地方。
+/// </param>
 public readonly record struct TransferCommandIntent(
     TerminalTransferProtocol Protocol,
-    FileTransferDirection Direction);
+    FileTransferDirection Direction,
+    string? FileName = null);
 
 /// <summary>
 /// 把用户键入的命令行解析成传输意图。
@@ -75,7 +80,29 @@ public static class TransferCommandParser
         }
 
         // lrzsz 的 sz/rz 可以用开关切到 X/YMODEM(sz -X file、rz --ymodem)。
-        return new(OverrideProtocol(protocol, tokens.AsSpan(i + 1)), direction);
+        ReadOnlySpan<string> arguments = tokens.AsSpan(i + 1);
+        return new(OverrideProtocol(protocol, arguments), direction, FirstOperand(arguments));
+    }
+
+    /// <summary>取第一个非开关参数的基名(<c>--</c> 之后的一律算参数);没有则返回 <c>null</c>。</summary>
+    private static string? FirstOperand(ReadOnlySpan<string> arguments)
+    {
+        bool optionsEnded = false;
+        foreach (string argument in arguments)
+        {
+            if (!optionsEnded && argument == "--")
+            {
+                optionsEnded = true;
+                continue;
+            }
+            if (!optionsEnded && argument.StartsWith('-'))
+            {
+                continue;
+            }
+            string name = BaseName(argument.Trim('\'', '"'));
+            return name.Length > 0 ? name : null;
+        }
+        return null;
     }
 
     /// <summary>跳过环境变量赋值前缀与 <c>sudo</c>,定位到真正的命令名。</summary>

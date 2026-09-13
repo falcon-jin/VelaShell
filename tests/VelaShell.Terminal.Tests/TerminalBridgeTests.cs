@@ -571,6 +571,69 @@ public class TerminalBridgeTests
         router.CancelActiveSession();
     }
 
+    /// <summary>
+    /// 回归(2026-09-13 真机):敲 <c>sb file</c> 回车后毫无反应。终端控件先抛 TypedInput(跟踪器识别命令)、
+    /// 后抛 UserInput(桥写 PTY),会话曾在前者里就开了,桥在后者里把这个回车当「传输期间击键」丢掉 ——
+    /// 远端命令根本没执行,我们发的 'C' 被 shell 原样回显。这里按真实事件顺序重放:先武装、再走 UserInput,
+    /// 断言回车确实写出、会话随后启动,且回车先于引擎的握手 'C' 上链。
+    /// </summary>
+    [TestMethod]
+    public async Task TypedXYModemCommand_EnterReachesShellBeforeSessionTakesOver()
+    {
+        _shellStream.CanRead.Returns(false);
+        _shellStream.CanWrite.Returns(true);
+        var written = new List<byte>();
+        _shellStream.WriteAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                lock (written)
+                {
+                    written.AddRange(((byte[])ci[0]).AsSpan((int)ci[1], (int)ci[2]).ToArray());
+                }
+                return Task.CompletedTask;
+            });
+
+        using var bridge = new SshTerminalBridge(_terminal, _shellStream);
+        var router = new TerminalTransferRouter(_shellStream, () => Substitute.For<IFileTransferSink>());
+        bridge.TransferRouter = router;
+
+        // TypedInput 阶段:视图模型识别出命令 → 只武装。
+        Assert.IsTrue(router.NoteCommandSubmitted("sb payload.bin"));
+        Assert.IsFalse(router.IsInSession, "回车还没写出去,不能先开会话");
+
+        // UserInput 阶段:回车交给桥。
+        _terminal.UserInput += Raise.Event<Action<byte[]>>(new[] { (byte)'\r' });
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (true)
+        {
+            lock (written)
+            {
+                if (written.Contains((byte)'C'))
+                {
+                    break;
+                }
+            }
+            await Task.Delay(10, cts.Token);
+        }
+
+        try
+        {
+            Assert.IsTrue(router.IsInSession, "回车写出之后会话应已接管");
+            lock (written)
+            {
+                int enter = written.IndexOf((byte)'\r');
+                int handshake = written.IndexOf((byte)'C');
+                Assert.IsGreaterThanOrEqualTo(0, enter, "回车必须写到流上,而不是被会话吞掉");
+                Assert.IsLessThan(handshake, enter, "回车必须先于引擎的握手 'C' 上链");
+            }
+        }
+        finally
+        {
+            router.CancelActiveSession();
+        }
+    }
+
     [TestMethod]
     public async Task UserInput_CtrlXDuringFileTransferSession_CancelsSession_ThenInputFlowsAgain()
     {

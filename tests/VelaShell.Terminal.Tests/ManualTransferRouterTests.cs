@@ -119,6 +119,48 @@ public class ManualTransferRouterTests
         Assert.IsFalse(router.IsInSession, "会话结束后路由器必须复位回常态");
     }
 
+    /// <summary>
+    /// XMODEM 不传文件名。回归(2026-09-13):用户 <c>sx abc.txt</c> 下载,磁盘上落的却是
+    /// <c>xmodem-received (1).bin</c>。命令行里的文件名必须一路传到引擎,作为落地名。
+    /// </summary>
+    [TestMethod]
+    public async Task ManualXModemReceive_UsesFileNameFromCommandLine()
+    {
+        var outbound = new MemoryStream();
+        var outboundSignal = new SemaphoreSlim(0);
+        IShellStreamWrapper shell = Substitute.For<IShellStreamWrapper>();
+        shell.CanWrite.Returns(true);
+        shell.WriteAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                lock (outbound)
+                {
+                    outbound.Write(call.ArgAt<byte[]>(0), call.ArgAt<int>(1), call.ArgAt<int>(2));
+                }
+                outboundSignal.Release();
+                return Task.CompletedTask;
+            });
+
+        var sink = new CapturingSink();
+        var completed = new TaskCompletionSource<FileTransferSession>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var router = new TerminalTransferRouter(shell, () => sink);
+        router.SessionEnded += s => completed.TrySetResult(s);
+
+        Assert.IsTrue(router.NoteCommandSubmitted("sx /var/log/abc.txt"));
+        Assert.IsTrue(router.StartPendingManualSession());
+        await WaitForOutboundAsync(outboundSignal, outbound, 1); // 'C'
+
+        byte[] content = Encoding.UTF8.GetBytes("xmodem 内容");
+        router.ProcessIncoming(DataBlock(1, content));
+        await WaitForOutboundAsync(outboundSignal, outbound, 2); // ACK
+        router.ProcessIncoming(new byte[] { EOT });
+
+        FileTransferSession session = await completed.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.AreEqual(FileTransferState.Completed, session.Status);
+        Assert.IsTrue(sink.Completed.ContainsKey("abc.txt"), "落地名应取命令行里的文件名(基名)");
+        Assert.AreSequenceEqual(content, sink.Completed["abc.txt"]);
+    }
+
     /// <summary>会话进行中,入站字节全部转交引擎,一个也不能漏进终端。</summary>
     [TestMethod]
     public void DuringManualSession_NoBytesReachTerminal()
@@ -132,6 +174,64 @@ public class ManualTransferRouterTests
 
         Assert.IsEmpty(route.TerminalBytes);
         router.CancelActiveSession();
+    }
+
+    /// <summary>
+    /// 回归(2026-09-13 真机):桥的读循环把缓冲租自 ArrayPool,调 ProcessIncoming 后立刻还回池,
+    /// 下一次网络读就会覆写同一块数组。路由器曾把这段内存原样塞进通道而不拷贝 —— 引擎正卡在
+    /// 「选择保存目录」时,排队的块被后面的分片改写:sb 下载看到重复的 0 号块、ACK 错位后被中止,
+    /// sz 第一轮 ZDATA 帧头被抹掉。这里让 sink 卡住(引擎此刻必然没读),喂完块立刻把缓冲清零,
+    /// 再放行:引擎必须仍拿到原始字节。
+    /// </summary>
+    [TestMethod]
+    public async Task InboundChunk_IsCopied_SoCallerMayReuseItsBufferWhileEngineIsBusy()
+    {
+        var outbound = new MemoryStream();
+        var outboundSignal = new SemaphoreSlim(0);
+        IShellStreamWrapper shell = Substitute.For<IShellStreamWrapper>();
+        shell.CanWrite.Returns(true);
+        shell.WriteAsync(Arg.Any<byte[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                lock (outbound)
+                {
+                    outbound.Write(call.ArgAt<byte[]>(0), call.ArgAt<int>(1), call.ArgAt<int>(2));
+                }
+                outboundSignal.Release();
+                return Task.CompletedTask;
+            });
+
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sink = new CapturingSink(gate.Task);
+        var completed = new TaskCompletionSource<FileTransferSession>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var router = new TerminalTransferRouter(shell, () => sink);
+        router.SessionEnded += s => completed.TrySetResult(s);
+
+        Assert.AreEqual(
+            TransferStartFailure.None,
+            router.StartManualSession(TerminalTransferProtocol.YModem, FileTransferDirection.Receive));
+        await WaitForOutboundAsync(outboundSignal, outbound, 1); // 'C'
+
+        byte[] content = Encoding.UTF8.GetBytes("pooled buffer 内容");
+        router.ProcessIncoming(BlockZero("reuse.txt", content.Length));
+        await WaitForOutboundAsync(outboundSignal, outbound, 2); // ACK,随后引擎卡在 sink(保存目录框)
+
+        // 引擎此刻必然没在读:喂入数据块,然后像桥那样把缓冲「还回池、被下一次读覆写」。
+        byte[] shared = DataBlock(1, content);
+        router.ProcessIncoming(shared);
+        Array.Fill(shared, (byte)0x00);
+        gate.SetResult();
+
+        await WaitForOutboundAsync(outboundSignal, outbound, 4); // 'C' + ACK(块 1)
+        Assert.AreEqual((byte)0x06, ReadOutbound(outbound)[3], "被覆写的缓冲不能影响已交给引擎的块");
+
+        router.ProcessIncoming(new byte[] { EOT });
+        await WaitForOutboundAsync(outboundSignal, outbound, 6); // ACK(EOT) + 'C'
+        router.ProcessIncoming(TerminatorBlock());
+
+        FileTransferSession session = await completed.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.AreEqual(FileTransferState.Completed, session.Status);
+        Assert.AreSequenceEqual(content, sink.Completed["reuse.txt"]);
     }
 
     private static async Task WaitForOutboundAsync(SemaphoreSlim signal, MemoryStream outbound, int expectedBytes)
@@ -186,17 +286,22 @@ public class ManualTransferRouterTests
 
     private static byte[] TerminatorBlock() => Block(0, [], 0x00);
 
-    private sealed class CapturingSink : IFileTransferSink
+    /// <summary>收集落地文件的 sink;可选的 <paramref name="offerGate" /> 模拟用户停在「选择保存目录」框里。</summary>
+    private sealed class CapturingSink(Task? offerGate = null) : IFileTransferSink
     {
         private readonly Dictionary<Guid, MemoryStream> _streams = [];
 
         public Dictionary<string, byte[]> Completed { get; } = [];
 
-        public ValueTask<(TransferFileDisposition Disposition, long ResumeOffset)> OnFileOfferedAsync(
+        public async ValueTask<(TransferFileDisposition Disposition, long ResumeOffset)> OnFileOfferedAsync(
             TransferFileMetadata metadata, FileTransferItem item, CancellationToken cancellationToken)
         {
+            if (offerGate is not null)
+            {
+                await offerGate.WaitAsync(cancellationToken);
+            }
             _streams[item.Id] = new MemoryStream();
-            return ValueTask.FromResult((TransferFileDisposition.Accept, 0L));
+            return (TransferFileDisposition.Accept, 0L);
         }
 
         public ValueTask WriteAsync(FileTransferItem item, ReadOnlyMemory<byte> data, CancellationToken cancellationToken)

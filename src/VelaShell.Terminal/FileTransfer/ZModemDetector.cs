@@ -54,7 +54,7 @@ public sealed class ZModemDetector
     /// </summary>
     private const int HexHeaderLength = 18;
 
-    /// <summary>帧头之后允许出现的收尾字节:CR、LF、XON(lrzsz 补 XON 释放流控)。</summary>
+    /// <summary>帧头之后允许出现的收尾字节:CR、LF(lrzsz 实发 0x8A)、XON(lrzsz 补 XON 释放流控)。</summary>
     private const int MaxTrailerLength = 3;
 
     /// <summary>
@@ -214,7 +214,7 @@ public sealed class ZModemDetector
     }
 
     /// <summary>
-    /// 帧头之后是不是一个干净的帧边界:跳过收尾字节(CR / LF / XON)后,要么到此为止
+    /// 帧头之后是不是一个干净的帧边界:跳过收尾字节(CR / LF / LF|0x80 / XON)后,要么到此为止
     /// (<c>sz</c>/<c>rz</c> 写完引导就阻塞等应答,常态如此),要么紧接着另一个 ZMODEM 帧
     /// (所有帧都以 ZPAD 起头 —— 对端把引导和后续帧塞进同一次写时如此)。
     /// <para>
@@ -224,8 +224,11 @@ public sealed class ZModemDetector
     /// </summary>
     private static bool IsFrameBoundary(ReadOnlySpan<byte> span)
     {
+        // 真实 lrzsz 的 zshhdr() 发的换行是八进制 0212 = LF|0x80(0x8A),不是裸 LF。
+        // 漏掉它,真 rz/sz 的引导一律被判成「帧头后跟着普通输出」而放过 —— rz 上传整个起不来,
+        // 只有恰好命中「刚敲过 rz」的放宽窗口时才碰巧能用。字节取自对真机 rz 的 PTY 抓包。
         int i = 0;
-        while (i < span.Length && span[i] is 0x0D or 0x0A or ZModemConstants.XON)
+        while (i < span.Length && span[i] is 0x0D or 0x0A or 0x8A or ZModemConstants.XON)
         {
             i++;
         }

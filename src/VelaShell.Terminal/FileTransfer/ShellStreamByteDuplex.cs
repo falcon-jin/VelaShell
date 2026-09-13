@@ -15,12 +15,11 @@ public sealed class ShellStreamByteDuplex(IShellStreamWrapper shellStream) : IBy
     private readonly IShellStreamWrapper _shellStream =
         shellStream ?? throw new ArgumentNullException(nameof(shellStream));
 
-    private readonly Channel<ReadOnlyMemory<byte>> _inbound =
-        Channel.CreateUnbounded<ReadOnlyMemory<byte>>(new UnboundedChannelOptions
-        {
-            SingleReader = true,
-            SingleWriter = true
-        });
+    // 刻意不设 SingleReader:单消费者的无界通道(SingleConsumerUnboundedChannel)不支持 Reader.Count,
+    // HasPendingInbound 一读就抛 NotSupportedException —— 上传发完第一个数据子包、去探测对端是否插话时
+    // 当场炸掉,会话判失败并发 CAN,表现为「rz 上传传了 8KB 就失败」(2026-09-13 真机日志)。
+    // 也不设 SingleWriter:CompleteInbound 由 UI 线程调用,与读循环线程的 Push 并不是同一个写者。
+    private readonly Channel<ReadOnlyMemory<byte>> _inbound = Channel.CreateUnbounded<ReadOnlyMemory<byte>>();
 
     // 被引擎退回的、其实不属于本次传输的字节(见 Unread)。会话收尾时与通道里的残余一起交还终端。
     private readonly List<ReadOnlyMemory<byte>> _unread = [];
