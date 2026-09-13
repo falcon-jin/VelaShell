@@ -98,6 +98,8 @@ public class RealLrzszProcessTests
     [Timeout(90_000, CooperativeCancellation = true)]
     public async Task XModem_UploadToRealRx_ArrivesIntact()
     {
+        // 先过门:没配 WSL lrzsz 的环境(CI)必须跳过,而不是去跑 wsl.exe 然后红掉。
+        RequireBin();
         // XMODEM 不传大小,末块 SUB 填充会留在对端文件里:按前缀比对,并确认填充全是 SUB。
         byte[] payload = RandomNumberGenerator.GetBytes(20_000);
         payload[^1] = 0x42; // 末字节不是 SUB,才能明确裁剪边界。
@@ -121,6 +123,7 @@ public class RealLrzszProcessTests
     [Timeout(90_000, CooperativeCancellation = true)]
     public async Task XModem_DownloadFromRealSx_ArrivesIntact()
     {
+        RequireBin();
         byte[] payload = RandomNumberGenerator.GetBytes(20_000);
         payload[^1] = 0x42;
         string dir = await MakeRemoteDirAsync();
