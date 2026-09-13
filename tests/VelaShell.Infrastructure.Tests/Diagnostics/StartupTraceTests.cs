@@ -71,9 +71,9 @@ public sealed class StartupTraceTests
 
         string table = StartupTrace.Format();
 
-        StringAssert.Contains(table, tag);
-        StringAssert.Contains(table, "ms");
-        StringAssert.Contains(table, "(+");
+        Assert.Contains(tag, table);
+        Assert.Contains("ms", table);
+        Assert.Contains("(+", table);
     }
 
     [TestMethod]

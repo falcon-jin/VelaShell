@@ -59,20 +59,20 @@ public class LazyActivationTests
 
     private PluginManager CreateManager(TimeSpan? idleTimeout = null, TimeSpan? inProcessIdleTimeout = null,
         IReadOnlyList<IPluginSurfaceSource>? surfaces = null) => new(new()
-    {
-        PluginRoots = [_root],
-        DataRootDirectory = _dataRoot,
-        HostVersion = "1.0.0",
-        ActivationTimeout = TimeSpan.FromSeconds(30),
-        IsolatedStartupTimeout = TimeSpan.FromSeconds(60), // 惰性激活也真的拉子进程:冷启动预算与激活分开
-        DeactivationTimeout = TimeSpan.FromSeconds(10),
-        CommandsFactory = (_, _) => _commands,
-        IdleTimeout = idleTimeout ?? TimeSpan.FromMinutes(15),
-        // 默认关掉进程内回收:其余用例断言的是激活后的状态,不该和一个 1 分钟的计时器赛跑。
-        InProcessIdleTimeout = inProcessIdleTimeout ?? Timeout.InfiniteTimeSpan,
-        IdleCheckInterval = TimeSpan.FromMilliseconds(300),
-        SurfaceSources = surfaces ?? []
-    });
+        {
+            PluginRoots = [_root],
+            DataRootDirectory = _dataRoot,
+            HostVersion = "1.0.0",
+            ActivationTimeout = TimeSpan.FromSeconds(30),
+            IsolatedStartupTimeout = TimeSpan.FromSeconds(60), // 惰性激活也真的拉子进程:冷启动预算与激活分开
+            DeactivationTimeout = TimeSpan.FromSeconds(10),
+            CommandsFactory = (_, _) => _commands,
+            IdleTimeout = idleTimeout ?? TimeSpan.FromMinutes(15),
+            // 默认关掉进程内回收:其余用例断言的是激活后的状态,不该和一个 1 分钟的计时器赛跑。
+            InProcessIdleTimeout = inProcessIdleTimeout ?? Timeout.InfiniteTimeSpan,
+            IdleCheckInterval = TimeSpan.FromMilliseconds(300),
+            SurfaceSources = surfaces ?? []
+        });
 
     /// <summary>可控的界面数来源:测试直接拨数字。</summary>
     private sealed class FakeSurfaceSource : IPluginSurfaceSource

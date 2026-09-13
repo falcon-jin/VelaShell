@@ -75,7 +75,7 @@ public sealed class DirectorySyncViewModel : ReactiveObject, IDisposable
 
     // —— 保持远端目录最新 ——
     private readonly Lock _watchLock = new();
-    private readonly Dictionary<string, bool> _pendingScopes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _pendingScopes = [with(StringComparer.Ordinal)];
     private readonly SemaphoreSlim _flushGate = new(1, 1);
     private CancellationTokenSource? _watchCts;
     private IDisposable? _watcher;

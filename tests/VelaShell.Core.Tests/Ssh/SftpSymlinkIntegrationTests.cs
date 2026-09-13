@@ -70,8 +70,8 @@ public class SftpSymlinkIntegrationTests
             // 删除链接:目标目录与其中的文件原样留着。
             await sftp.DeleteFileAsync($"{root}/dirlink");
             string after = await ssh.RunCommandAsync($"test -e {root}/dirlink || echo gone; cat {root}/real/a.txt");
-            StringAssert.Contains(after, "gone");
-            StringAssert.Contains(after, "hi");
+            Assert.Contains("gone", after);
+            Assert.Contains("hi", after);
         }
         finally
         {
