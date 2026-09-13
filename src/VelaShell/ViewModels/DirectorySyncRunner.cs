@@ -288,7 +288,7 @@ internal sealed class DirectorySyncRunner(ISftpService sftp, Guid sessionId, Fil
 
         public string RemoteRoot { get; } = remoteRoot;
 
-        public HashSet<string> EnsuredRemote { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> EnsuredRemote { get; } = [with(StringComparer.Ordinal)];
 
         public bool TimestampsUnsupported { get; set; }
 

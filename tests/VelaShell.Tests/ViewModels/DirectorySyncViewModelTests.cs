@@ -103,7 +103,7 @@ public sealed class DirectorySyncViewModelTests
     [TestMethod]
     public async Task ToLocal_DownloadsIntoNewFolders_AndStampsTheRemoteTime()
     {
-        DateTime remoteTime = new DateTime(2026, 8, 1, 9, 15, 42, DateTimeKind.Utc);
+        var remoteTime = new DateTime(2026, 8, 1, 9, 15, 42, DateTimeKind.Utc);
         _remote.AddDirectory(RemoteRoot + "/logs");
         _remote.AddFile(RemoteRoot + "/logs/app.log", "log line", remoteTime);
         DirectorySyncViewModel vm = CreateViewModel(new() { Direction = SyncDirection.ToLocal });
@@ -168,16 +168,13 @@ public sealed class DirectorySyncViewModelTests
         await vm.CompareCommand.Execute().FirstAsync();
 
         Assert.AreSequenceEqual(["a.txt:Upload"], vm.Items.Select(i => $"{i.Action.RelativePath}:{i.Action.Kind}").ToArray());
-        StringAssert.Contains(vm.NoteText, Strings.Format("Sync_NoteChecksumUnsupported", FakeRemote.UnsupportedReason));
+        Assert.Contains(Strings.Format("Sync_NoteChecksumUnsupported", FakeRemote.UnsupportedReason), vm.NoteText);
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public async Task RemoteNamesThatAreInvalidLocally_AreRefused_NotWrittenSomewhereElse()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Inconclusive("冒号只在 Windows 上是非法文件名字符。");
-        }
         _remote.AddFile(RemoteRoot + "/bad:name.txt", "x", DateTime.UtcNow);
         DirectorySyncViewModel vm = CreateViewModel(new() { Direction = SyncDirection.ToLocal });
 
@@ -187,7 +184,7 @@ public sealed class DirectorySyncViewModelTests
         await _remote.Service.DidNotReceive().DownloadFileAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IProgress<TransferProgress>?>(),
             Arg.Any<long>(), Arg.Any<CancellationToken>());
-        StringAssert.Contains(vm.ErrorText, "bad:name.txt");
+        Assert.Contains("bad:name.txt", vm.ErrorText);
         Assert.IsEmpty(Directory.EnumerateFileSystemEntries(_local));
     }
 
@@ -244,7 +241,7 @@ public sealed class DirectorySyncViewModelTests
 
         Assert.Contains(RemoteRoot + "/sub/nested.txt", _remote.Uploads);
         await _remote.Service.Received().EnsureDirectoryAsync(_session, RemoteRoot + "/sub", Arg.Any<CancellationToken>());
-        Assert.AreEqual(2, _remote.Uploads.Count, "已经对齐的 existing.txt 不该再传一遍");
+        Assert.HasCount(2, _remote.Uploads, "已经对齐的 existing.txt 不该再传一遍");
 
         await vm.ToggleWatchCommand.Execute().FirstAsync();
         Assert.IsFalse(vm.IsWatching);
@@ -297,7 +294,7 @@ public sealed class DirectorySyncViewModelTests
     {
         public const string UnsupportedReason = "no sha256sum on this host";
 
-        private readonly Dictionary<string, RemoteEntry> _entries = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, RemoteEntry> _entries = [with(StringComparer.Ordinal)];
         private readonly Lock _lock = new();
 
         public FakeRemote()
@@ -391,7 +388,7 @@ public sealed class DirectorySyncViewModelTests
 
         public List<string> Deletes { get; } = [];
 
-        public Dictionary<string, DateTime> TimesSet { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, DateTime> TimesSet { get; } = [with(StringComparer.Ordinal)];
 
         public void AddDirectory(string path)
         {

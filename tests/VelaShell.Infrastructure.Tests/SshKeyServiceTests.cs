@@ -142,13 +142,9 @@ public sealed class SshKeyServiceTests : IDisposable
 
     /// <summary>导入的私钥要收成仅属主可读写,否则 OpenSSH 直接拒用。</summary>
     [TestMethod]
+    [OSCondition(ConditionMode.Exclude, OperatingSystems.Windows)]
     public async Task Import_TightensPermissionsOnThePrivateKey()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            Assert.Inconclusive("Unix 权限位在 Windows 上不适用。");
-            return;
-        }
         (string privatePath, _) = await CreateExternalKeyAsync("perm_key");
         File.SetUnixFileMode(
             privatePath,

@@ -107,10 +107,7 @@ public partial class RemoteFileEditorView : Window
         // EffectiveThemeChanged 在新令牌贴到应用资源之后才触发(见 IThemeService),
         // 此时解析出来的主题与界面上的底色是同一套。
         _themeService = (Application.Current as App)?.Services?.GetService<IThemeService>();
-        if (_themeService is not null)
-        {
-            _themeService.EffectiveThemeChanged += OnEffectiveThemeChanged;
-        }
+        _themeService?.EffectiveThemeChanged += OnEffectiveThemeChanged;
 
         _ = LoadFileAsync();
         Editor.TextChanged += (_, _) =>
@@ -386,10 +383,7 @@ public partial class RemoteFileEditorView : Window
     protected override void OnClosed(EventArgs e)
     {
         // 先退订:主题服务活得比窗口久,悬着的委托会把已关闭的窗口一直吊在内存里。
-        if (_themeService is not null)
-        {
-            _themeService.EffectiveThemeChanged -= OnEffectiveThemeChanged;
-        }
+        _themeService?.EffectiveThemeChanged -= OnEffectiveThemeChanged;
 
         // 清理本地临时副本(整个独占子目录)。
         try
