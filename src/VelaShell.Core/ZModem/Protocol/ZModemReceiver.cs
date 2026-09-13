@@ -57,9 +57,13 @@ public sealed class ZModemReceiver(
                         cancellationToken,
                         handshakeDone ? null : _options.HandshakeTimeout)
                     .ConfigureAwait(false);
-                TransferTrace.Log(frame.Status == ZModemReadStatus.Header
-                    ? $"RECV frame {frame.Header.Type} fmt={frame.Format} pos={frame.Header.Position}"
-                    : $"RECV frame status={frame.Status}");
+                // 三元表达式会先拼成 string,走不到插值处理器的「关闭时不拼」,显式判一次。
+                if (TransferTrace.IsEnabled)
+                {
+                    TransferTrace.Log(frame.Status == ZModemReadStatus.Header
+                        ? $"RECV frame {frame.Header.Type} fmt={frame.Format} pos={frame.Header.Position}"
+                        : $"RECV frame status={frame.Status}");
+                }
                 switch (frame.Status)
                 {
                     case ZModemReadStatus.Cancelled:

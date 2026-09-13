@@ -629,9 +629,13 @@ public sealed class ZModemSender(
         }
         // 发送端的每一次判断都基于这里读到的帧:上传失败时只有看得到对端回了什么(ZRPOS 到哪、ZNAK、超时),
         // 才分得清是链路吞字节、对端拒收还是我们自己的重试预算耗尽。
-        TransferTrace.Log(result.Status == ZModemReadStatus.Header
-            ? $"SEND got {result.Header.Type} fmt={result.Format} pos={result.Header.Position}"
-            : $"SEND got status={result.Status}");
+        // 三元表达式会先拼成 string,走不到插值处理器的「关闭时不拼」—— 这里每读一帧都要过,显式判一次。
+        if (TransferTrace.IsEnabled)
+        {
+            TransferTrace.Log(result.Status == ZModemReadStatus.Header
+                ? $"SEND got {result.Header.Type} fmt={result.Format} pos={result.Header.Position}"
+                : $"SEND got status={result.Status}");
+        }
         return result;
     }
 
