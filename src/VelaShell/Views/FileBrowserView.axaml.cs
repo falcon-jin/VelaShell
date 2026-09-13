@@ -118,8 +118,8 @@ public partial class FileBrowserView : UserControl
             DragDrop.SetAllowDrop(fileList, true);
             fileList.AddHandler(DragDrop.DragOverEvent, OnFileListDragOver);
             fileList.AddHandler(DragDrop.DropEvent, OnFileListDrop);
-            fileList.AddHandler(InputElement.PointerPressedEvent, OnRemoteDragPointerPressedTunnel, RoutingStrategies.Tunnel, true);
-            fileList.AddHandler(InputElement.PointerPressedEvent, OnRemoteDragPointerPressedBubble, RoutingStrategies.Bubble, true);
+            fileList.AddHandler(PointerPressedEvent, OnRemoteDragPointerPressedTunnel, RoutingStrategies.Tunnel, true);
+            fileList.AddHandler(PointerPressedEvent, OnRemoteDragPointerPressedBubble, RoutingStrategies.Bubble, true);
 
             // 跨面板拖拽发起(行 → 本地面板)。
             fileList.AddHandler(PointerMovedEvent, OnRemoteDragPointerMoved);

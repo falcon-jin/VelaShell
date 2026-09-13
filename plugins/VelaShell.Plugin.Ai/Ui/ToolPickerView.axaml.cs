@@ -101,7 +101,7 @@ public sealed class ToolPickerView : UserControl
         right.Children.Add(_status);
         right.Children.Add(new ScrollViewer
         {
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             // 覆盖式滚动条会压住右缘,留白放在内容上而不是 ScrollViewer.Padding
             Content = new Border { Padding = new Avalonia.Thickness(0, 0, Gutter, 0), Child = _groups }
         });
@@ -127,7 +127,7 @@ public sealed class ToolPickerView : UserControl
         left.Children.Add(paneHint);
         var serverScroll = new ScrollViewer
         {
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Content = _servers
         };
         Grid.SetRow(serverScroll, 2);
@@ -325,7 +325,7 @@ public sealed class ToolPickerView : UserControl
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center
         };
-        refresh[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
+        refresh[!ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
         refresh.Click += async (_, _) => await RefreshAsync(server, refresh);
 
         // 刷新时刻是次要信息,压成小字跟在名字后面,别和名字抢同一个字重
@@ -452,7 +452,7 @@ public sealed class ToolPickerView : UserControl
             Padding = new Avalonia.Thickness(8, 4, 0, 4),
             VerticalContentAlignment = VerticalAlignment.Top
         };
-        check[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("AiCheckBoxTheme");
+        check[!ThemeProperty] = new DynamicResourceExtension("AiCheckBoxTheme");
         check.IsCheckedChanged += (_, _) => onChanged(check.IsChecked == true);
         return check;
     }

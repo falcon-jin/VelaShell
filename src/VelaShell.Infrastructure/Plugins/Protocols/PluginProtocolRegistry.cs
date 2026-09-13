@@ -602,7 +602,7 @@ public sealed class PluginProtocolRegistry
             }
             if (removed)
             {
-                PluginProtocolRegistry.Detach(entry); // 锁外拆订阅,理由同 RemovePlugin
+                Detach(entry); // 锁外拆订阅,理由同 RemovePlugin
                 owner.RaiseUnregistered(id);
                 owner.RaiseChanged();
             }

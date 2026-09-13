@@ -202,7 +202,7 @@ public sealed class PluginPanelUiTests
             var api = new PluginUiApi("acme.demo", new NullLog(), () => viewModel);
 
             IPluginPanel panel = await api.ShowPanelAsync(
-                new() { Title = "Demo Tab", DisplayMode = PluginSdk.Ui.PanelDisplayMode.Document },
+                new() { Title = "Demo Tab", DisplayMode = PanelDisplayMode.Document },
                 () => new TextBlock { Text = "from factory (UI thread)" });
 
             PluginDocument document = viewModel.Layout.AllDocuments().OfType<PluginDocument>().Single();
@@ -225,7 +225,7 @@ public sealed class PluginPanelUiTests
         {
             var content = new TextBlock { Text = "hello from plugin" };
             var panel = new PluginPanel("acme.demo", new NullLog(),
-                new() { Title = "Demo", DisplayMode = PluginSdk.Ui.PanelDisplayMode.Window, WindowWidth = 400, WindowHeight = 300 },
+                new() { Title = "Demo", DisplayMode = PanelDisplayMode.Window, WindowWidth = 400, WindowHeight = 300 },
                 content, owner: null);
             Dispatcher.UIThread.RunJobs();
             Assert.IsTrue(panel.IsOpen);
@@ -250,7 +250,7 @@ public sealed class PluginPanelUiTests
                 new()
                 {
                     Title = "Demo",
-                    DisplayMode = PluginSdk.Ui.PanelDisplayMode.Window,
+                    DisplayMode = PanelDisplayMode.Window,
                     TitleActions =
                     [
                         new PanelTitleAction("M0 0 L24 24", "first", () => clicked += 1),
@@ -297,7 +297,7 @@ public sealed class PluginPanelUiTests
                 new()
                 {
                     Title = "Demo",
-                    DisplayMode = PluginSdk.Ui.PanelDisplayMode.Window,
+                    DisplayMode = PanelDisplayMode.Window,
                     // 实心 + 非 24 视框:品牌 logo 的典型形状,两样都要走到渲染层。
                     Icon = PluginSdk.PluginIcon.Filled("M4 4h16v16H4Z", viewBoxSize: 1024)
                 },
@@ -324,7 +324,7 @@ public sealed class PluginPanelUiTests
         OnUi(() =>
         {
             var panel = new PluginPanel("acme.demo", new NullLog(),
-                new() { Title = "Demo", DisplayMode = PluginSdk.Ui.PanelDisplayMode.Window },
+                new() { Title = "Demo", DisplayMode = PanelDisplayMode.Window },
                 new Border(), owner: null);
             Dispatcher.UIThread.RunJobs();
             try

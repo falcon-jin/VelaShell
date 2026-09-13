@@ -93,7 +93,7 @@ public sealed class EditorEncodingDetectorTests
         string decoded = EditorEncodingDetector.Decode(bytes, result);
         Assert.AreEqual(original, decoded);
         Assert.DoesNotContain("�", decoded, StringComparison.Ordinal, "解出替换字符就意味着存回去会毁文件。");
-        CollectionAssert.AreEqual(bytes, result.Encoding.GetBytes(decoded), "解码再编码必须回到原字节。");
+        Assert.AreSequenceEqual(bytes, result.Encoding.GetBytes(decoded), "解码再编码必须回到原字节。");
     }
 
     [TestMethod]

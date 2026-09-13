@@ -139,8 +139,8 @@ public sealed class SessionTabIconUiTests
             Geometry expected = ConnectionIcon.ForSession(new() { ConnectionType = ConnectionType.SSH })!.Geometry;
 
             WithTab(TabFor(new() { ConnectionType = ConnectionType.SSH, Host = "10.0.0.1" }), tab =>
-                Assert.IsTrue(
-                    VisibleIcons(tab).Any(i => ReferenceEquals(i.Data, expected)),
+                Assert.Contains(
+                    i => ReferenceEquals(i.Data, expected), VisibleIcons(tab),
                     "SSH 标签上应当画出终端字形。"));
         });
     }
@@ -155,8 +155,8 @@ public sealed class SessionTabIconUiTests
             Geometry ssh = ConnectionIcon.ForSession(new() { ConnectionType = ConnectionType.SSH })!.Geometry;
 
             WithTab(TabFor(null), tab =>
-                Assert.IsFalse(
-                    VisibleIcons(tab).Any(i => ReferenceEquals(i.Data, ssh)),
+                Assert.DoesNotContain(
+                    i => ReferenceEquals(i.Data, ssh), VisibleIcons(tab),
                     "本地终端标签不该出现协议图标。"));
         });
     }

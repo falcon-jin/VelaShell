@@ -1203,7 +1203,7 @@ public sealed partial class ChatPanelViewUiTests
 
                 List<FakePanel> panels = context.FakeUi.Panels;
                 Assert.HasCount(2, panels, "设置与配置工具各开一个窗口");
-                Assert.IsTrue(panels.TrueForAll(p => p.Options.DisplayMode == VelaShell.PluginSdk.Ui.PanelDisplayMode.Window),
+                Assert.IsTrue(panels.TrueForAll(p => p.Options.DisplayMode == PluginSdk.Ui.PanelDisplayMode.Window),
                     "要的是宿主那套自绘卡片窗口,不是插件自己 new 的原生标题栏窗口");
                 Assert.Contains(p => p.CreateContent() is SettingsView, panels, "其中一个装着设置表单");
                 Assert.Contains(p => p.CreateContent() is ToolPickerView, panels, "另一个装着工具勾选列表");

@@ -562,7 +562,7 @@ public sealed class ProviderSetupView : UserControl
             Height = 22,
             Padding = new Thickness(8, 0)
         };
-        toggle[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("AiChipToggleTheme");
+        toggle[!ThemeProperty] = new DynamicResourceExtension("AiChipToggleTheme");
         toggle.IsCheckedChanged += (_, _) => body.IsVisible = toggle.IsChecked == true;
         return new StackPanel { Children = { toggle, body } };
     }
@@ -584,7 +584,7 @@ public sealed class ProviderSetupView : UserControl
         _deviceCodeText[!TextBlock.FontSizeProperty] = new DynamicResourceExtension("VelaFontSize13");
         _deviceCodeText[!FontFamilyProperty] = new DynamicResourceExtension("VelaUiMonoFont");
         var copy = new Button { Content = _loc["Copy"], Height = 24, Padding = new Thickness(10, 0) };
-        copy[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
+        copy[!ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
         copy.Click += (_, _) => _ = _context.Clipboard.SetTextAsync(_deviceCodeText.Text ?? "");
         _deviceCodePanel = new StackPanel
         {
@@ -596,14 +596,14 @@ public sealed class ProviderSetupView : UserControl
         };
 
         _primary = new Button { Name = "SetupPrimaryButton", Height = 26, Padding = new Thickness(14, 0) };
-        _primary[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaAccentPillButtonTheme");
+        _primary[!ThemeProperty] = new DynamicResourceExtension("VelaAccentPillButtonTheme");
         _primary.Content = PrimaryLabel(entry, existing, missing);
         _primary.Click += (_, _) => _ = PrimaryAsync(row);
 
         // 「拉取模型」:接上之后自动拉过一次,但那一次可能没网、可能缓存是旧的,
         // 各家也会不断出新型号 —— 没有这个按钮,用户就只能靠"退出登录再登一次"来重来一遍。
         _pull = new Button { Name = "SetupPullButton", Height = 26, Padding = new Thickness(12, 0) };
-        _pull[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
+        _pull[!ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
         _pull.Content = _loc["ModelsPull"];
         // 已经加进来,而且两条路至少通一条:端点自己的 /models(填了地址就能问),
         // 或 models.dev 收录了这一家
@@ -612,7 +612,7 @@ public sealed class ProviderSetupView : UserControl
         _pull.Click += (_, _) => _ = PullNowAsync(row);
 
         _secondary = new Button { Name = "SetupSecondaryButton", Height = 26, Padding = new Thickness(12, 0) };
-        _secondary[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
+        _secondary[!ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
         _secondary.Content = entry.IsSubscription ? _loc["SetupSignOut"] : _loc["SetupRemove"];
         _secondary.IsVisible = existing is not null;
         _secondary.Click += (_, _) => _ = SecondaryAsync(row);
@@ -1100,7 +1100,7 @@ public sealed class ProviderSetupView : UserControl
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 6, 0, 0)
         };
-        button[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
+        button[!ThemeProperty] = new DynamicResourceExtension("VelaOutlineButtonTheme");
         button.Click += (_, _) =>
         {
             if (Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
@@ -1115,7 +1115,7 @@ public sealed class ProviderSetupView : UserControl
     private static Grid KeyRow(TextBox box)
     {
         var reveal = new ToggleButton { Width = 30, Height = 30, Padding = new Thickness(0) };
-        reveal[!TemplatedControl.ThemeProperty] = new DynamicResourceExtension("AiChipToggleTheme");
+        reveal[!ThemeProperty] = new DynamicResourceExtension("AiChipToggleTheme");
         var eye = new Avalonia.Controls.Shapes.Path
         {
             Width = 24,

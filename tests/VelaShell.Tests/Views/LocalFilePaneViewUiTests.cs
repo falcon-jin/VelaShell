@@ -109,7 +109,7 @@ public sealed class LocalFilePaneViewUiTests
                 Pump(window);
 
                 Assert.AreSequenceEqual(
-                    [.. viewModel.Entries.Skip(firstRow).Take(lastRow - firstRow + 1).Select(entry => entry.Name)], [.. viewModel.SelectedEntries.Select(entry => entry.Name)], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+                    [.. viewModel.Entries.Skip(firstRow).Take(lastRow - firstRow + 1).Select(entry => entry.Name)], [.. viewModel.SelectedEntries.Select(entry => entry.Name)], SequenceOrder.InAnyOrder);
             }
             finally
             {

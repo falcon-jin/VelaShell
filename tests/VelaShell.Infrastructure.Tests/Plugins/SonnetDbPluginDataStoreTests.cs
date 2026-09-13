@@ -67,7 +67,7 @@ public class SonnetDbPluginDataStoreTests
         Assert.AreSequenceEqual(SnapshotValues, snapshot.Values);
         // await 不能写在 Assert.AreSequenceEqual 的实参位置,理由见 AreSequenceEqualAwaitTests.cs。
         string[] keys = [.. await storage.GetKeysAsync()];
-        Assert.AreSequenceEqual(CountAndSnapshotKeys, keys, Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(CountAndSnapshotKeys, keys, SequenceOrder.InAnyOrder);
         Assert.IsTrue(await storage.RemoveAsync("count"));
         Assert.IsFalse(await storage.RemoveAsync("count"));
         Assert.AreEqual(0, await storage.GetAsync<int>("count"));

@@ -2094,7 +2094,7 @@ public class FileBrowserViewModelTests
         );
 
         // nested 已经被 root 包住,再单列一次就会把同一个文件传两遍、写同一个远端路径。
-        Assert.AreSequenceEqual([root, sibling], [.. kept], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual([root, sibling], [.. kept], SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -2107,7 +2107,7 @@ public class FileBrowserViewModelTests
 
         IReadOnlyList<string> kept = FileBrowserViewModel.NormalizeUploadRoots([a, b]);
 
-        Assert.AreSequenceEqual([a, b], [.. kept], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual([a, b], [.. kept], SequenceOrder.InAnyOrder);
     }
 
     // ---- 手动输入路径(#226)-------------------------------------------------

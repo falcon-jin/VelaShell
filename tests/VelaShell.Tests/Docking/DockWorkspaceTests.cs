@@ -469,7 +469,7 @@ public class DockWorkspaceTests
         ws.AddDocument(b);
 
         Assert.AreSame(empty, ws.FindGroup(b));
-        Assert.AreEqual(2, ws.AllGroups().Count(), "填空而已,不该再添一格");
+        Assert.HasCount(2, ws.AllGroups(), "填空而已,不该再添一格");
     }
 
     [TestMethod]

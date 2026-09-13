@@ -301,7 +301,7 @@ public sealed class ConnectionProfileViewUiTests
         Visual panel = indicator.GetVisualParent()!;
         Point origin = tab.TranslatePoint(default, panel) ?? default;
         double actualX = indicator.GetBaseValue(Visual.RenderTransformProperty).GetValueOrDefault()?.Value.M31 ?? -1;
-        double actualWidth = indicator.GetBaseValue(Avalonia.Layout.Layoutable.WidthProperty).GetValueOrDefault(double.NaN);
+        double actualWidth = indicator.GetBaseValue(Layoutable.WidthProperty).GetValueOrDefault(double.NaN);
         Assert.AreEqual(Math.Round(origin.X), actualX, 0.6, "下划线应与选中协议标签左缘对齐。");
         Assert.AreEqual(Math.Round(tab.Bounds.Width), actualWidth, 0.6, "下划线宽度应等于选中协议标签宽度。");
     }
@@ -314,7 +314,7 @@ public sealed class ConnectionProfileViewUiTests
             Assert.HasCount(3, button.Transitions);
             Assert.Contains(transition =>
                 transition is BrushTransition { Property: var property, Duration: var duration }
-                && property == Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty
+                && property == TemplatedControl.BackgroundProperty
                 && duration == TimeSpan.FromMilliseconds(120), button.Transitions);
             Assert.Contains(transition =>
                 transition is BrushTransition { Property: var property, Duration: var duration }
@@ -322,7 +322,7 @@ public sealed class ConnectionProfileViewUiTests
                 && duration == TimeSpan.FromMilliseconds(120), button.Transitions);
             Assert.Contains(transition =>
                 transition is BrushTransition { Property: var property, Duration: var duration }
-                && property == Avalonia.Controls.Primitives.TemplatedControl.ForegroundProperty
+                && property == TemplatedControl.ForegroundProperty
                 && duration == TimeSpan.FromMilliseconds(120), button.Transitions);
         }
     }

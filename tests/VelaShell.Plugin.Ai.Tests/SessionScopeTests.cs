@@ -340,7 +340,7 @@ public sealed class SessionScopeTests
 
         config.NormalizeGrants();
 
-        Assert.AreSequenceEqual(["chat-1", "chat-2"], config.AllowedChats, Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(["chat-1", "chat-2"], config.AllowedChats, SequenceOrder.InAnyOrder);
         // 折算出来的那条不限范围,原来就有的那条保持它自己的范围
         Assert.IsTrue(config.GrantFor("chat-1")!.Scope.IsUnrestricted);
         Assert.IsFalse(config.GrantFor("chat-2")!.Scope.IsUnrestricted);
