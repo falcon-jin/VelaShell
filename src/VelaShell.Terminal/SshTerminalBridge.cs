@@ -731,6 +731,32 @@ public class SshTerminalBridge : IDisposable
         // 只入队不直写:击键与 SendRaw 都在 UI 线程触发,TryWrite 保序;真正的发送
         // 由唯一的写循环按序完成,杜绝对底层通道的并发 WriteAsync(见 _writeQueue 注释)。
         EnqueueOutbound(data);
+
+        // 用户刚提交了 sb/sx/rb/rx(跟踪器在同一次按键的 TypedInput 里已武装了会话):
+        // 等这次按键 —— 其中就有那个回车 —— 真正写到流上,再启动会话。
+        // 早一步启动,回车会被上面「会话期间丢弃击键」吞掉;不等写完就启动,
+        // 引擎直写流的握手 'C' 又可能抢在排队的回车前面,被 shell 当成命令行里的字符。
+        if (TransferRouter is { HasPendingManualSession: true } pending)
+        {
+            _ = StartPendingTransferAfterWritesAsync(pending);
+        }
+    }
+
+    /// <summary>排空出站队列(含触发命令的回车)后启动路由器里武装好的 X/YMODEM 会话。</summary>
+    private async Task StartPendingTransferAfterWritesAsync(FileTransfer.TerminalTransferRouter router)
+    {
+        try
+        {
+            await DrainWritesAsync().ConfigureAwait(false);
+            if (!_disposed)
+            {
+                router.StartPendingManualSession();
+            }
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(ex);
+        }
     }
 
     /// <summary>

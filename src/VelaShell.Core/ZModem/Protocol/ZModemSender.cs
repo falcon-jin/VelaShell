@@ -84,6 +84,7 @@ public sealed class ZModemSender(
         }
         catch (Exception ex)
         {
+            TransferTrace.Log($"SEND THREW: {ex}");
             session.Status = FileTransferState.Failed;
             _observer?.OnSessionFailed(session, ex);
             await TrySendCancelAsync().ConfigureAwait(false);
@@ -91,6 +92,7 @@ public sealed class ZModemSender(
         }
         finally
         {
+            TransferTrace.Log($"SEND END status={session.Status} crc32={_useCrc32} escctl={_escapeAllControl}");
             // 读取器缓冲里剩下的字节已经不属于本次传输了(多半是 rz 退出后的 shell 提示符),
             // 退回通道让路由器交还终端 —— 否则用户看到的是"传完了但提示符没了"。
             _duplex.Unread(_reader.DrainBuffered());
@@ -280,6 +282,11 @@ public sealed class ZModemSender(
     {
         int retries = 0;
         long offset = startOffset;
+        // 上一次被 ZRPOS 要求回退到的位置。只有「原地打转」(回退点没有前进)才算重试:
+        // 真实 rz 在 SSH/PTY 上偶发丢包时会隔一段就要一次 ZRPOS,只要每次都比上次靠后,
+        // 传输就是在前进的。旧实现把每次 ZRPOS 都计入 MaxRetries 且永不清零,
+        // 大文件上传攒满 10 次就判失败 —— 用户看到的就是「rz 上传失败」。lrzsz 的 sz 同样只数原地回退。
+        long lastRewind = -1;
 
         int payloadSize = Math.Max(64, _options.SubpacketSize);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(payloadSize);
@@ -371,7 +378,7 @@ public sealed class ZModemSender(
                     switch (interject.Header.Type)
                     {
                         case ZModemFrameType.ZRPOS:
-                            if (++retries > _options.MaxRetries)
+                            if (!NoteRewind(interject.Header.Position, ref lastRewind, ref retries))
                             {
                                 item.Status = FileTransferState.Failed;
                                 session.Status = FileTransferState.Failed;
@@ -450,7 +457,7 @@ public sealed class ZModemSender(
 
                     case ZModemFrameType.ZRPOS:
                         // 对端要求从指定偏移重发(校验失败 / 丢包)。
-                        if (++retries > _options.MaxRetries)
+                        if (!NoteRewind(frame.Header.Position, ref lastRewind, ref retries))
                         {
                             item.Status = FileTransferState.Failed;
                             session.Status = FileTransferState.Failed;
@@ -491,6 +498,20 @@ public sealed class ZModemSender(
             ArrayPool<byte>.Shared.Return(buffer);
             ArrayPool<byte>.Shared.Return(wire);
         }
+    }
+
+    /// <summary>
+    /// 记一次 ZRPOS 回退:回退点比上次靠后说明传输在前进,重试计数清零;原地打转才累加。
+    /// </summary>
+    /// <returns>仍在重试预算内返回 <c>true</c>;原地回退次数超过 <see cref="ZModemOptions.MaxRetries" /> 返回 <c>false</c>。</returns>
+    private bool NoteRewind(uint position, ref long lastRewind, ref int retries)
+    {
+        if (position > lastRewind)
+        {
+            retries = 0;
+        }
+        lastRewind = position;
+        return ++retries <= _options.MaxRetries;
     }
 
     /// <summary>
@@ -597,14 +618,25 @@ public sealed class ZModemSender(
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(budget ?? _options.FrameTimeout);
+        ZModemHeaderResult result;
         try
         {
-            return await _reader.ReadHeaderAsync(timeout.Token).ConfigureAwait(false);
+            result = await _reader.ReadHeaderAsync(timeout.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return new(ZModemReadStatus.Timeout);
+            result = new(ZModemReadStatus.Timeout);
         }
+        // 发送端的每一次判断都基于这里读到的帧:上传失败时只有看得到对端回了什么(ZRPOS 到哪、ZNAK、超时),
+        // 才分得清是链路吞字节、对端拒收还是我们自己的重试预算耗尽。
+        // 三元表达式会先拼成 string,走不到插值处理器的「关闭时不拼」—— 这里每读一帧都要过,显式判一次。
+        if (TransferTrace.IsEnabled)
+        {
+            TransferTrace.Log(result.Status == ZModemReadStatus.Header
+                ? $"SEND got {result.Header.Type} fmt={result.Format} pos={result.Header.Position}"
+                : $"SEND got status={result.Status}");
+        }
+        return result;
     }
 
     private async Task SendHeaderAsync(ZModemHeader header, CancellationToken ct, ZModemHeaderFormat? format = null)

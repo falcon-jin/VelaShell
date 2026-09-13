@@ -176,12 +176,34 @@ public class LazyActivationTests
             TimeSpan.FromSeconds(30), "空闲的可回收插件应被停用并回收进程");
 
         // 再次触发 → 重新拉起新进程。
-        await _commands.RunAsync("velashell.test-fixture.list-sessions");
+        await RunWhenRegisteredAsync("velashell.test-fixture.list-sessions", TimeSpan.FromSeconds(10));
         Assert.AreEqual(PluginState.Active, manager.Plugins.Single().State, manager.Plugins.Single().Error);
         int secondPid = manager.GetIsolatedProcessId("velashell.test-fixture")!.Value;
         Assert.AreNotEqual(firstPid, secondPid);
 
         await manager.DisposeAsync();
+    }
+
+    /// <summary>
+    /// 触发一条命令;它暂时未注册时在期限内重试。空闲回收收尾时先把状态置回 Discovered、
+    /// 再重挂占位命令,两步之间命令短暂不存在 —— 上面按状态等待的条件可能恰好落在这个空隙里,
+    /// 慢机器上(CI windows-latest)就会撞上 KeyNotFoundException。未注册在调用前就抛出,重试没有副作用。
+    /// </summary>
+    private async Task RunWhenRegisteredAsync(string commandId, TimeSpan timeout)
+    {
+        DateTime deadline = DateTime.UtcNow + timeout;
+        while (true)
+        {
+            try
+            {
+                await _commands.RunAsync(commandId);
+                return;
+            }
+            catch (KeyNotFoundException) when (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50);
+            }
+        }
     }
 
     private sealed class RecordingDataStore : IPluginDataStore

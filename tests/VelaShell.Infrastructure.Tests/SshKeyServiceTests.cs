@@ -141,8 +141,13 @@ public sealed class SshKeyServiceTests : IDisposable
     }
 
     /// <summary>导入的私钥要收成仅属主可读写,否则 OpenSSH 直接拒用。</summary>
+    /// <remarks>
+    /// OSCondition 只管运行时跳过,平台兼容性分析器(CA1416)不认它;CI 以 -warnaserror 构建时
+    /// Get/SetUnixFileMode 会报错。UnsupportedOSPlatform 把同一个限制声明给分析器。
+    /// </remarks>
     [TestMethod]
     [OSCondition(ConditionMode.Exclude, OperatingSystems.Windows)]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
     public async Task Import_TightensPermissionsOnThePrivateKey()
     {
         (string privatePath, _) = await CreateExternalKeyAsync("perm_key");

@@ -250,25 +250,32 @@ public sealed class XYModemSender(
     }
 
     /// <summary>
-    /// 把一段(可能不足 128 字节的)内容补齐成 128 字节块发出并等待 ACK。
+    /// 把一段内容补齐成定长块发出并等待 ACK:放得进 128 字节就用 SOH 小块,否则用 1K 的 STX 块。
     /// 0 号块按规范用 NUL 补齐(<paramref name="padding" /> 传 0),数据块用 SUB。
     /// </summary>
+    /// <remarks>
+    /// 旧实现写死 128 字节并静默截断:文件名一长(UTF-8 中文名 30 来个字就超了),0 号块就丢掉
+    /// 末尾的 NUL 与大小字段,rb 收到的是被截断的文件名、不知道文件多大。lrzsz 的 sb 同样按需改发 1K 块。
+    /// </remarks>
     private async Task<bool> SendPaddedBlockAsync(
         ReadOnlyMemory<byte> content,
         int blockNumber,
         byte padding,
         CancellationToken ct)
     {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(XYModemConstants.SmallPayload);
+        int blockSize = content.Length <= XYModemConstants.SmallPayload
+            ? XYModemConstants.SmallPayload
+            : XYModemConstants.LargePayload;
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(blockSize);
         try
         {
-            Span<byte> span = buffer.AsSpan(0, XYModemConstants.SmallPayload);
+            Span<byte> span = buffer.AsSpan(0, blockSize);
             span.Fill(padding);
             int take = Math.Min(content.Length, span.Length);
             content.Span[..take].CopyTo(span);
             // 0 号块(以及批结束块)即使在 YMODEM-G 下也必须逐块应答 —— 流式只免掉数据块的 ACK。
             return await SendBlockWithRetryAsync(
-                    buffer.AsMemory(0, XYModemConstants.SmallPayload),
+                    buffer.AsMemory(0, blockSize),
                     blockNumber,
                     ct,
                     alwaysAwaitAck: true)
