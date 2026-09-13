@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rust。颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Rust" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"      foreground="#6272A4" />
+  <Color name="String"       foreground="#F1FA8C" />
+  <Color name="Keyword"      foreground="#FF79C6" />
+  <Color name="Type"         foreground="#8BE9FD" />
+  <Color name="Function"     foreground="#50FA7B" />
+  <Color name="Variable"     foreground="#FFB86C" />
+  <Color name="Preprocessor" foreground="#50FA7B" />
+  <Color name="Constant"     foreground="#BD93F9" />
+  <Color name="Number"       foreground="#BD93F9" />
+  <Color name="Punctuation"  foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="//" />
+
+    <Span color="Comment" multiline="true">
+      <Begin>/\*</Begin>
+      <End>\*/</End>
+    </Span>
+
+    <!-- 原始字符串 r#"..."# 排在普通字符串之前(否则 r 之后的 # 与引号会被拆开)。 -->
+    <Span color="String" multiline="true">
+      <Begin>r\#"</Begin>
+      <End>"\#</End>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>b?"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <!-- 字符字面量必须闭合,这样 'a 生命周期不会被误当成字符。 -->
+    <Rule color="String">
+      b?'(\\.|[^'\\])'
+    </Rule>
+
+    <!-- 生命周期 'a / 'static。 -->
+    <Rule color="Variable">
+      '[A-Za-z_][A-Za-z0-9_]*\b
+    </Rule>
+
+    <!-- 属性 #[derive(...)] / #![allow(...)]。 -->
+    <Rule color="Preprocessor">
+      \#!?\[[^\]]*\]
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>as</Word>
+      <Word>async</Word>
+      <Word>await</Word>
+      <Word>break</Word>
+      <Word>const</Word>
+      <Word>continue</Word>
+      <Word>crate</Word>
+      <Word>dyn</Word>
+      <Word>else</Word>
+      <Word>enum</Word>
+      <Word>extern</Word>
+      <Word>fn</Word>
+      <Word>for</Word>
+      <Word>if</Word>
+      <Word>impl</Word>
+      <Word>in</Word>
+      <Word>let</Word>
+      <Word>loop</Word>
+      <Word>match</Word>
+      <Word>mod</Word>
+      <Word>move</Word>
+      <Word>mut</Word>
+      <Word>pub</Word>
+      <Word>ref</Word>
+      <Word>return</Word>
+      <Word>self</Word>
+      <Word>Self</Word>
+      <Word>static</Word>
+      <Word>struct</Word>
+      <Word>super</Word>
+      <Word>trait</Word>
+      <Word>type</Word>
+      <Word>unsafe</Word>
+      <Word>use</Word>
+      <Word>where</Word>
+      <Word>while</Word>
+      <Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="Constant">
+      <Word>true</Word>
+      <Word>false</Word>
+      <Word>None</Word>
+      <Word>Some</Word>
+      <Word>Ok</Word>
+      <Word>Err</Word>
+    </Keywords>
+
+    <Keywords color="Type">
+      <Word>i8</Word>
+      <Word>i16</Word>
+      <Word>i32</Word>
+      <Word>i64</Word>
+      <Word>i128</Word>
+      <Word>isize</Word>
+      <Word>u8</Word>
+      <Word>u16</Word>
+      <Word>u32</Word>
+      <Word>u64</Word>
+      <Word>u128</Word>
+      <Word>usize</Word>
+      <Word>f32</Word>
+      <Word>f64</Word>
+      <Word>bool</Word>
+      <Word>char</Word>
+      <Word>str</Word>
+      <Word>String</Word>
+      <Word>Vec</Word>
+      <Word>Option</Word>
+      <Word>Result</Word>
+      <Word>Box</Word>
+    </Keywords>
+
+    <!-- 宏调用 println! / vec!。 -->
+    <Rule color="Function">
+      \b[A-Za-z_][A-Za-z0-9_]*!
+    </Rule>
+
+    <Rule color="Function">
+      \b[a-z_][A-Za-z0-9_]*(?=\s*\()
+    </Rule>
+
+    <Rule color="Number">
+      \b(0x[0-9a-fA-F_]+|0b[01_]+|0o[0-7_]+|\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?)([iu](8|16|32|64|128|size)|f32|f64)?\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{}()\[\];,.:=&lt;&gt;!&amp;|+\-*/%^?]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>
