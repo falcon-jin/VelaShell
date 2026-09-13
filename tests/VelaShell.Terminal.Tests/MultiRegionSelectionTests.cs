@@ -149,10 +149,18 @@ public sealed class MultiRegionSelectionTests
                         Content = control,
                     };
                     window.Show();
-                    Dispatcher.UIThread.RunJobs();
-                    window.CaptureRenderedFrame(); // 填充屏幕行映射与单元格度量
+                    try
+                    {
+                        Dispatcher.UIThread.RunJobs();
+                        window.CaptureRenderedFrame(); // 填充屏幕行映射与单元格度量
 
-                    body(window, control);
+                        body(window, control);
+                    }
+                    finally
+                    {
+                        // 窗口必须关:留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+                        window.Close();
+                    }
                     return Task.CompletedTask;
                 },
                 CancellationToken.None
