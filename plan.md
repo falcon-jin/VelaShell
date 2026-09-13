@@ -4331,3 +4331,84 @@ AI 插件把聊天标签、协作窗口、模型配置/MCP 那一组对话框统
   新用例写死 `127.0.0.1`;旧用例本次**未改**(不在范围内),但「全绿」里那几条从来没跑过这件事值得知道。
 - FTP 的 `SITE SYMLINK` 与链接目录探测**没有真实服务端验证**:测试容器里没有 ProFTPD。
 
+## ✅ 73. 2026-09-12 内置编辑器:链接看得清、配色跟着具名主题走、语言补一轮、窗口加大(用户反馈)
+
+> 「网址邮箱这类链接在深色模式下的蓝色就看不清,浅色模式下还未验证,是否可以换个颜色,
+> 同时支持更多类型的语法高亮,同时可以适当的加大一些内置编辑器的默认大小。」
+
+### 一、那个蓝不是语法定义给的
+
+编辑器里的网址/邮箱是 AvaloniaEdit 的 `LinkElementGenerator` 画的,颜色取 `TextView.LinkTextForegroundBrush`,
+缺省纯蓝 `#0000FF`。它**不经过**任何 xshd,所以 `SyntaxHighlightingService` 的重着色从来管不到它。
+量了一下:纯蓝压在 Dracula 底 `#282A36` 上约 **1.7:1**,确实读不出来。
+
+修法是在 `RemoteFileEditorView.axaml` 里给 `aer|TextView` 设样式,值取 `{DynamicResource VelaInfo}`:
+Dracula 青 `#8BE9FD`、Alucard 深青蓝 `#036A96`,其余主题取各自的 Info。走 DynamicResource,主题切换实时生效。
+「浅色下未验证」这件事改成了**逐主题量**:`LinkToken_IsReadableOnTheEditorBackground_InEveryTheme`
+对十二套主题的 Info 与 BgTerminal 算 WCAG 对比度,全部 ≥ 3:1,并用纯蓝做对照组证明它本来过不了线。
+**肉眼没在真窗口里看过**,这是数字上的验证。
+
+### 二、顺着查出来的:配色只认明暗,不认具名主题
+
+`SyntaxPalette.For(ThemeVariant)` 只有 Dracula / Alucard 两套写死的色值,而应用早已有十二套主题 ——
+Nord、Gruvbox、GitHub Light 下编辑器底色跟着主题走,代码却还是 Dracula 那一套。
+DESIGN.md 本来就规定颜色只活在主题目录与令牌派生里,这两套字面量属于漏网之鱼。
+
+改为 `SyntaxPalette.From(UiTheme)` 从种子色派生:字符串 Yellow、关键字 Magenta、数字 Accent、函数 Success、
+类型/链接 Info、注释 TextTertiary、错误 Error、变量 Warning。这套取法对 VelaDark **逐色还原** Dracula
+(注释 `#6272A4` 恰好压线 3.02:1,用例钉住它没被提亮改掉);VelaLight 除变量色外逐色还原 Alucard ——
+亮色主题的 Warning 与 Yellow 是同一个值,照搬会让字符串与变量撞色,于是变量取橙与红的中点。
+任一角色对底色不足 3:1 时向正文色混合到够为止。
+
+编辑器通过 `IThemeService` 解析当前主题,订阅 `EffectiveThemeChanged` 实时重着色
+(原先的已知限制「打开后切主题不更新」随之消失)。重着色后必须**先置空再赋值**
+`SyntaxHighlighting`:定义是全局单例,同一实例重复赋值是空操作,已缓存的着色行不会重画。
+
+### 三、内置定义的颜色名:以前一半没归类
+
+把 AvaloniaEdit 12 的 21 份内置 xshd 的命名颜色全部导出来对了一遍,`ForRole` 只收录了约一半。
+没收录的走"太接近背景才改"的兜底,于是 CSS 选择器 `DarkBlue`、HTML 标签 `#8B008B`、Markdown 链接 `Blue`、
+Patch 的增删行在暗色下顶着浅色配色 —— 用户说的"蓝色看不清"在 Markdown/HTML 文件里也有这一份。
+现已全部归类(顺带让 Log 的 Warning 取橙、Info 取青,原先分别是红和绿)。
+`EveryNamedColour_InEveryDefinition_HasAPaletteRole` 逐个核对,第一次跑就抓出三个漏掉的
+(`Patch.UnchangedText`、`XmlDoc.KnownDocTags`、`XmlDoc.XmlPunctuation`)。
+
+### 四、语言补一轮
+
+新增自带 xshd:nginx、TOML、Makefile、Go、Rust、Lua、Ruby、Perl、通用 SQL、HCL/Terraform。
+- `.sql` 原先走内置 TSQL(只认 SQL Server 方言),服务器上的 dump 与迁移脚本绝大多数是 MySQL/PostgreSQL。
+- nginx.conf、Makefile、`.toml` 原先分别借 Ini / Shell / Ini 着色,块、目标、多行字符串都认不出来。
+- **nginx 按目录认**:判定改用远端完整路径,`/etc/nginx/conf.d/*.conf` 与 `sites-available/` 下按 nginx,
+  别处的 `.conf` 仍按 Ini。
+- 另补一批扩展名(`.tsx`/`.jsx`、`.scss`/`.less`、`.axaml`/`.resx`、`.jsonl`、systemd `.timer`/`.socket`……)
+  与 shebang(ruby / perl / lua5.4 / `make -f`)。
+
+测试不止"能加载、产生了区段"——一条过宽的正则能把整行染成一个颜色也照样满足。
+`BundledDefinitions_ColourTheRightTokens` 对每种新语言断言**具体的词染成具体的类别**(26 组)。
+
+### 五、两个坑
+
+- **XML 注释里不能有 `--`**:Lua.xshd 的注释里照写了 Lua 的注释符,整份定义解析失败;服务把异常吞了,
+  编辑器静默退化成纯文本。是 `BundledDefinitions_Load` 那条"静默失败守门人"抓出来的,
+  定位时临时加了一条不吞异常的诊断用例,查清后删掉。
+- **AvaloniaEdit 12 内置的 TeX 定义自身是坏的**(延迟加载即抛 "Could not find main RuleSet")。
+  `.tex` 原先映射过去,一直在静默退化。现在不再映射;新增 `EveryDetectedType_ResolvesToALoadableDefinition`,
+  判定器能返回的每个定义名都必须真能加载。写这条用例时自己又踩一脚:`KnownDefinitionNames` 写成静态初始化器、
+  排在两张表之前,按源码顺序初始化时表还是 null,整个类型初始化器抛出 —— 改成按需计算的 getter。
+
+### 六、窗口
+
+默认 928×648 → 1160×820。小屏(1366×768、150% 缩放)放不下,`OnOpened` 按屏幕工作区收缩并摆回中央,
+写法与设置窗口的 `FitIntoWorkArea` 一致。
+
+### 七、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3449 通过 / 47 跳过 / 0 失败**(`SyntaxHighlightingTests` + `RemoteFileEditorDirtyStateTests` 共 112 条全过)。
+
+- 链接色、语法色的「浅色下是否看得清」是**按对比度逐主题量**的,不是在真窗口里肉眼看过的。
+- 窗口加大与工作区收缩没有自动化用例(依赖真实屏幕),未在小屏上实机验证。
+
+文档:`velashell-docs` 的 `{zh,en}/host/SFTP双栏与WinSCP差距分析.md` 附录已补 2026-09-12 一节,
+见 [velashell-docs#34](https://github.com/VelaShellLabs/velashell-docs/pull/34)。
+

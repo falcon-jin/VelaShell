@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Perl。老系统里大量运维脚本(监控插件、日志切割、CGI)仍是它。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Perl" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Function"    foreground="#50FA7B" />
+  <Color name="Variable"    foreground="#FFB86C" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <!-- POD 文档块:行首 =head1 / =pod …… 直到 =cut。 -->
+    <Span color="Comment" multiline="true">
+      <Begin>^=[A-Za-z]</Begin>
+      <End>^=cut</End>
+    </Span>
+
+    <Span color="Comment" begin="#" />
+
+    <Span color="String" multiline="true">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Rule color="Variable">[$@][A-Za-z_][A-Za-z0-9_]*|\$\{[^}]*\}</Rule>
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>'</Begin>
+      <End>'</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <!-- 标量 $x / 数组 @x / 哈希 %x / ${name} / 特殊变量 $_ $0 $! $@。 -->
+    <Rule color="Variable">
+      [$@%][A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*|\$\{[^}]*\}|\$[0-9_!@&amp;/\\]
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>my</Word>
+      <Word>our</Word>
+      <Word>local</Word>
+      <Word>sub</Word>
+      <Word>package</Word>
+      <Word>use</Word>
+      <Word>no</Word>
+      <Word>require</Word>
+      <Word>return</Word>
+      <Word>if</Word>
+      <Word>elsif</Word>
+      <Word>else</Word>
+      <Word>unless</Word>
+      <Word>while</Word>
+      <Word>until</Word>
+      <Word>for</Word>
+      <Word>foreach</Word>
+      <Word>last</Word>
+      <Word>next</Word>
+      <Word>redo</Word>
+      <Word>do</Word>
+      <Word>eval</Word>
+      <Word>and</Word>
+      <Word>or</Word>
+      <Word>not</Word>
+      <Word>xor</Word>
+      <Word>BEGIN</Word>
+      <Word>END</Word>
+      <Word>qw</Word>
+    </Keywords>
+
+    <Keywords color="Function">
+      <Word>print</Word>
+      <Word>printf</Word>
+      <Word>say</Word>
+      <Word>open</Word>
+      <Word>close</Word>
+      <Word>chomp</Word>
+      <Word>chop</Word>
+      <Word>split</Word>
+      <Word>join</Word>
+      <Word>push</Word>
+      <Word>pop</Word>
+      <Word>shift</Word>
+      <Word>unshift</Word>
+      <Word>keys</Word>
+      <Word>values</Word>
+      <Word>exists</Word>
+      <Word>delete</Word>
+      <Word>defined</Word>
+      <Word>die</Word>
+      <Word>warn</Word>
+      <Word>sprintf</Word>
+      <Word>length</Word>
+      <Word>substr</Word>
+      <Word>index</Word>
+      <Word>lc</Word>
+      <Word>uc</Word>
+      <Word>sort</Word>
+      <Word>map</Word>
+      <Word>grep</Word>
+      <Word>ref</Word>
+      <Word>bless</Word>
+    </Keywords>
+
+    <Rule color="Number">
+      \b(0[xX][0-9a-fA-F_]+|\d[\d_]*(\.\d+)?([eE][+-]?\d+)?)\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{}()\[\];,=&lt;&gt;!~&amp;|+\-*/.]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

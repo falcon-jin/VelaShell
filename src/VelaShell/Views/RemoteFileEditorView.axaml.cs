@@ -1,9 +1,15 @@
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
+using Avalonia.Threading;
 using AvaloniaEdit.Search;
+using Microsoft.Extensions.DependencyInjection;
+using VelaShell.Core.Models;
 using VelaShell.Core.Resources;
+using VelaShell.Core.Services;
 using VelaShell.Services;
 using VelaShell.Services.Syntax;
 
@@ -20,6 +26,9 @@ public partial class RemoteFileEditorView : Window
 
     private readonly string _localPath = string.Empty;
     private readonly Func<Task>? _uploadAsync;
+
+    /// <summary>主题服务:语法配色取当前界面主题,主题切换时重新着色。无服务(设计器/单测)时按明暗兜底。</summary>
+    private readonly IThemeService? _themeService;
 
     /// <summary>编辑修订号:每次内容变化 +1。</summary>
     /// <remarks>
@@ -39,6 +48,9 @@ public partial class RemoteFileEditorView : Window
     private readonly Encoding? _sessionEncoding;
     private bool _forceClose;
     private bool _saving;
+
+    /// <summary>内容是否已载入(主题切换时只对已载入的内容重新着色)。</summary>
+    private bool _loaded;
 
     /// <summary>保存进行中又按了一次保存:等这一轮结束再补一轮,而不是把这次请求丢掉。</summary>
     private bool _resaveRequested;
@@ -91,6 +103,15 @@ public partial class RemoteFileEditorView : Window
         // AvaloniaEdit 自带查找/替换面板(Ctrl+F / Ctrl+H),只是默认没装。
         // 编辑远端配置时"找一处改一处"是最常做的事,没有它只能靠肉眼翻。
         SearchPanel.Install(Editor);
+
+        // EffectiveThemeChanged 在新令牌贴到应用资源之后才触发(见 IThemeService),
+        // 此时解析出来的主题与界面上的底色是同一套。
+        _themeService = (Application.Current as App)?.Services?.GetService<IThemeService>();
+        if (_themeService is not null)
+        {
+            _themeService.EffectiveThemeChanged += OnEffectiveThemeChanged;
+        }
+
         _ = LoadFileAsync();
         Editor.TextChanged += (_, _) =>
         {
@@ -138,6 +159,7 @@ public partial class RemoteFileEditorView : Window
         // 赋值本身会触发 TextChanged 把修订号推上去,所以基线在赋值之后才能取。
         _savedRevision = _revision;
         Editor.IsReadOnly = false;
+        _loaded = true;
         ApplySyntaxHighlighting();
         StatusText.Text = detected.FellBackToSessionEncoding
             // 明说回落到了哪个编码:猜错时用户得看得见,才知道该怎么办
@@ -147,16 +169,21 @@ public partial class RemoteFileEditorView : Window
     }
 
     /// <summary>
-    /// 按文件类型着色。类型判定要用**远端文件名**而不是本地临时副本的名字 ——
-    /// 临时副本可能没有扩展名。首行同时交给判定器,以便识别没有扩展名的脚本
-    /// (服务器上 /usr/local/bin 下大量如此),那种情况只有 shebang 能说明它是什么。
+    /// 按文件类型着色。类型判定要用**远端路径**而不是本地临时副本的名字 ——
+    /// 临时副本可能没有扩展名,而 /etc/nginx/conf.d/ 这类只有目录才说明类型的配置也要靠路径。
+    /// 首行同时交给判定器,以便识别没有扩展名的脚本(那种情况只有 shebang 能说明它是什么)。
     /// </summary>
     private void ApplySyntaxHighlighting()
     {
         try
         {
-            Editor.SyntaxHighlighting = SyntaxHighlightingService.Resolve(
-                Title, FirstLineOf(Editor.Text), ActualThemeVariant);
+            string? path = string.IsNullOrEmpty(PathText.Text) ? Title : PathText.Text;
+            AvaloniaEdit.Highlighting.IHighlightingDefinition? definition =
+                SyntaxHighlightingService.Resolve(path, FirstLineOf(Editor.Text), ActiveUiTheme());
+            // 先置空再赋值:定义是全局单例,主题切换后它本身已被重着色,但同一个实例
+            // 重复赋值是空操作,编辑器不会丢弃已缓存的着色行,屏幕上还是旧主题的颜色。
+            Editor.SyntaxHighlighting = null;
+            Editor.SyntaxHighlighting = definition;
         }
         catch (Exception)
         {
@@ -164,6 +191,19 @@ public partial class RemoteFileEditorView : Window
             Editor.SyntaxHighlighting = null;
         }
     }
+
+    /// <summary>当前生效的界面主题:「跟随系统」按实际明暗落到 VelaDark / VelaLight。</summary>
+    private UiTheme ActiveUiTheme() =>
+        UiThemeCatalog.Resolve(_themeService?.CurrentTheme, ActualThemeVariant != ThemeVariant.Light);
+
+    private void OnEffectiveThemeChanged() =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_loaded)
+            {
+                ApplySyntaxHighlighting();
+            }
+        });
 
     private static string? FirstLineOf(string? text)
     {
@@ -249,6 +289,41 @@ public partial class RemoteFileEditorView : Window
     }
 
     /// <summary>
+    /// 默认尺寸加大到 1160×820(编辑远端配置时一屏能看到的行数与列宽都更舒服);
+    /// 但小屏(1366×768 的笔记本、150% 缩放)放不下,打开时按工作区夹一次,并摆回中央。
+    /// </summary>
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        FitIntoWorkArea();
+    }
+
+    private void FitIntoWorkArea()
+    {
+        if ((Screens.ScreenFromWindow(this) ?? Screens.Primary) is not { } screen)
+        {
+            return;
+        }
+        // WorkingArea 是物理像素,窗口尺寸按 DIP 计 —— 高 DPI 下不换算会算出"放得下"的假结论。
+        double scaling = screen.Scaling > 0 ? screen.Scaling : 1.0;
+        double availableWidth = screen.WorkingArea.Width / scaling;
+        double availableHeight = screen.WorkingArea.Height / scaling;
+        const double margin = 16;
+        double width = Math.Clamp(Width, MinWidth, Math.Max(MinWidth, availableWidth - margin));
+        double height = Math.Clamp(Height, MinHeight, Math.Max(MinHeight, availableHeight - margin));
+        if (Math.Abs(width - Width) < 0.5 && Math.Abs(height - Height) < 0.5)
+        {
+            return; // 放得下,保持 CenterOwner 定好的位置。
+        }
+        Width = width;
+        Height = height;
+        // 尺寸变了,CenterOwner 算出来的位置就不再居中(还可能把标题栏顶出屏幕外)。
+        Position = new PixelPoint(
+            screen.WorkingArea.X + (int)Math.Max(0, (screen.WorkingArea.Width - (width * scaling)) / 2),
+            screen.WorkingArea.Y + (int)Math.Max(0, (screen.WorkingArea.Height - (height * scaling)) / 2));
+    }
+
+    /// <summary>
     /// 窗口关闭时若存在未保存改动,取消关闭并弹出确认丢弃对话框。
     /// </summary>
     protected override void OnClosing(WindowClosingEventArgs e)
@@ -310,6 +385,12 @@ public partial class RemoteFileEditorView : Window
     /// </summary>
     protected override void OnClosed(EventArgs e)
     {
+        // 先退订:主题服务活得比窗口久,悬着的委托会把已关闭的窗口一直吊在内存里。
+        if (_themeService is not null)
+        {
+            _themeService.EffectiveThemeChanged -= OnEffectiveThemeChanged;
+        }
+
         // 清理本地临时副本(整个独占子目录)。
         try
         {

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Makefile。以前借 Shell 着色:目标、变量赋值与 $(函数) 都认不出来,
+     而这三样恰恰是读 Makefile 时最想一眼看清的。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Makefile" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Function"    foreground="#50FA7B" />
+  <Color name="Key"         foreground="#8BE9FD" />
+  <Color name="Variable"    foreground="#FFB86C" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="#" />
+
+    <Span color="String" multiline="false">
+      <Begin>"</Begin>
+      <End>"</End>
+    </Span>
+
+    <Span color="String" multiline="false">
+      <Begin>'</Begin>
+      <End>'</End>
+    </Span>
+
+    <!-- 内置函数 $(wildcard ...) / $(patsubst ...):排在通用变量引用之前。 -->
+    <Rule color="Function">
+      \$\((subst|patsubst|strip|findstring|filter|filter-out|sort|word|words|wordlist|firstword|lastword|dir|notdir|suffix|basename|addsuffix|addprefix|join|wildcard|realpath|abspath|if|or|and|foreach|call|value|eval|origin|flavor|shell|error|warning|info)\b
+    </Rule>
+
+    <Rule color="Variable">
+      \$\([^)\s]*\)|\$\{[^}\s]*\}|\$[@&lt;^+?*%]
+    </Rule>
+
+    <!-- 变量赋值:VAR = / := / ?= / += / ::= / != —— 排在"目标"之前,免得 VAR := x 被当成目标。 -->
+    <Rule color="Key">
+      ^\s*(export\s+|override\s+)?[A-Za-z_][A-Za-z0-9_.\-]*(?=\s*(\?|\+|::?|!)?=)
+    </Rule>
+
+    <!-- 目标:行首到单个/双冒号(后面不能紧跟 =)。 -->
+    <Rule color="Function">
+      ^[A-Za-z0-9_.%/\-$(){} ]+(?=\s*::?(?!=))
+    </Rule>
+
+    <Rule color="Keyword">
+      ^\s*(ifeq|ifneq|ifdef|ifndef|else|endif|include|sinclude|define|endef|export|unexport|override|vpath)\b
+    </Rule>
+
+    <Rule color="Keyword">
+      ^\.(PHONY|DEFAULT|SUFFIXES|PRECIOUS|INTERMEDIATE|SECONDARY|DELETE_ON_ERROR|SILENT|ONESHELL|NOTPARALLEL|EXPORT_ALL_VARIABLES)\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [:=|;]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

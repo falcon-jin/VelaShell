@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Go。云原生运维工具链(kubectl 插件、operator、exporter)的主力语言。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Go" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Type"        foreground="#8BE9FD" />
+  <Color name="Function"    foreground="#50FA7B" />
+  <Color name="Constant"    foreground="#BD93F9" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="//" />
+
+    <Span color="Comment" multiline="true">
+      <Begin>/\*</Begin>
+      <End>\*/</End>
+    </Span>
+
+    <Span color="String" multiline="false">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <!-- 反引号原始字符串:可跨行、不转义。 -->
+    <Span color="String" multiline="true">
+      <Begin>`</Begin>
+      <End>`</End>
+    </Span>
+
+    <Rule color="String">
+      '(\\.|[^'\\])+'
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>break</Word>
+      <Word>case</Word>
+      <Word>chan</Word>
+      <Word>const</Word>
+      <Word>continue</Word>
+      <Word>default</Word>
+      <Word>defer</Word>
+      <Word>else</Word>
+      <Word>fallthrough</Word>
+      <Word>for</Word>
+      <Word>func</Word>
+      <Word>go</Word>
+      <Word>goto</Word>
+      <Word>if</Word>
+      <Word>import</Word>
+      <Word>interface</Word>
+      <Word>map</Word>
+      <Word>package</Word>
+      <Word>range</Word>
+      <Word>return</Word>
+      <Word>select</Word>
+      <Word>struct</Word>
+      <Word>switch</Word>
+      <Word>type</Word>
+      <Word>var</Word>
+    </Keywords>
+
+    <Keywords color="Constant">
+      <Word>true</Word>
+      <Word>false</Word>
+      <Word>nil</Word>
+      <Word>iota</Word>
+    </Keywords>
+
+    <Keywords color="Type">
+      <Word>any</Word>
+      <Word>bool</Word>
+      <Word>byte</Word>
+      <Word>comparable</Word>
+      <Word>complex64</Word>
+      <Word>complex128</Word>
+      <Word>error</Word>
+      <Word>float32</Word>
+      <Word>float64</Word>
+      <Word>int</Word>
+      <Word>int8</Word>
+      <Word>int16</Word>
+      <Word>int32</Word>
+      <Word>int64</Word>
+      <Word>rune</Word>
+      <Word>string</Word>
+      <Word>uint</Word>
+      <Word>uint8</Word>
+      <Word>uint16</Word>
+      <Word>uint32</Word>
+      <Word>uint64</Word>
+      <Word>uintptr</Word>
+    </Keywords>
+
+    <!-- 函数调用 / 声明:标识符后紧跟 (。排在关键字之后,func( 由关键字先认领。 -->
+    <Rule color="Function">
+      \b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()
+    </Rule>
+
+    <Rule color="Number">
+      \b(0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?i?)\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{}()\[\];,.:=&lt;&gt;!&amp;|+\-*/%^]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

@@ -309,7 +309,7 @@ pie showData
 | ⏳ | `en/` 树 | `zh/` 有 **7 篇** `en/` 里没有的文档：Redis 调研、S3 两篇、系统密钥链调研，以及三份 `release-process.md`。缺口已在 [`en/host/README.md`](https://github.com/VelaShellLabs/velashell-docs/blob/main/en/host/README.md) 与根 README 逐篇列出（不再是**静默**漂移），但翻译本身仍欠着 |
 | ⏳ | `plan.md` §63 | **SSH 证书认证已落地，中英两棵树里各有两处口径还停在「密码 / 私钥」**：`zh/host/架构设计.md:37`（能力表那一行）、`zh/host/交互与界面规格.md:451` 的「认证方式（密码 / 密钥 / 跳板机）」，以及英文镜像 `en/host/architecture-design.md:37` 与 `en/host/interaction-and-ui-specs.md:463`。要补的语义：证书 + 私钥是**两件套**（签名始终由私钥出，证书只是 CA 的背书）、选完证书按 `-cert.pub` 自动补私钥、**证书路径留空是硬错**（私钥还能退回默认密钥，证书没有默认位置可退） |
 | ⏳ | `plan.md` §68 | 标签页协议图标：`zh/host/交互与界面规格.md` 与英文镜像补一句标签条上图标的口径（SSH / 文件协议 / 插件协议三种字形，本地终端不画）。⚠️ SDK 那三个图标字段**等发版后再写进** `{zh,en}/sdk/sdk-reference.md` —— 现在写等于告诉插件作者一个还调不到的 API |
-| 🚧 | `plan.md` §72 | **远端符号链接**（文档 PR 已提：[velashell-docs#33](https://github.com/VelaShellLabs/velashell-docs/pull/33)，合入后划掉本行）：`zh/host/交互与界面规格.md` 文件浏览器一节与英文镜像补：链接行的两种图标与悬停「→ 目标」、类型列「符号链接」、属性弹窗「链接目标」行、右键「新建符号链接」（先问目标再问名称）。行为口径要写明四条：**删链接只删链接**、**复制链接得到链接**（cp -P）、**文件夹下载不跟进嵌套的目录链接**（rsync -r 口径，显式选中的那一个照常跟随）、FTP 只在支持 `SITE SYMLINK` 的服务器上能建链接，插件协议一律不支持。`SFTP双栏与WinSCP差距分析.md` 里符号链接那一格改为已完成 |
+| ✅ | `plan.md` §72 | ~~**远端符号链接**~~ —— **2026-09-13 已同步**（[velashell-docs#33](https://github.com/VelaShellLabs/velashell-docs/pull/33) 已合入）。原登记内容：`zh/host/交互与界面规格.md` 文件浏览器一节与英文镜像补：链接行的两种图标与悬停「→ 目标」、类型列「符号链接」、属性弹窗「链接目标」行、右键「新建符号链接」（先问目标再问名称）。行为口径要写明四条：**删链接只删链接**、**复制链接得到链接**（cp -P）、**文件夹下载不跟进嵌套的目录链接**（rsync -r 口径，显式选中的那一个照常跟随）、FTP 只在支持 `SITE SYMLINK` 的服务器上能建链接，插件协议一律不支持。`SFTP双栏与WinSCP差距分析.md` 里符号链接那一格改为已完成 |
 | ⏳ | `plan.md` §61 | 回滚行数（`设置 → 终端`）的行为补一句：**调小当场生效**，超出上限的历史立刻裁掉、不可恢复；以及它作用于主屏，全屏程序（vim / htop / less）的备用屏恒无回滚，与这个值无关 |
 
 ---

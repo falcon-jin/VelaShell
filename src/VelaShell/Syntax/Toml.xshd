@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TOML(Cargo.toml、pyproject.toml、netlify.toml……)。比 Ini 多出多行字符串、
+     日期时间与内联表,按 Ini 着色时三引号字符串会从第二行起整段失色。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="TOML" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Key"         foreground="#50FA7B" />
+  <Color name="Section"     foreground="#8BE9FD" fontWeight="bold" />
+  <Color name="Constant"    foreground="#BD93F9" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#FF79C6" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="#" />
+
+    <!-- 三引号必须排在单引号之前,否则 """ 会被拆成一个空串加一个开头。 -->
+    <Span color="String" multiline="true">
+      <Begin>"""</Begin>
+      <End>"""</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>'''</Begin>
+      <End>'''</End>
+    </Span>
+
+    <Span color="String" multiline="false">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="false">
+      <Begin>'</Begin>
+      <End>'</End>
+    </Span>
+
+    <!-- 表头 [table] / [[array.of.tables]];排在标点规则之前,行首的 [ 由它认领。 -->
+    <Rule color="Section">
+      ^\s*\[\[?[^\]]*\]\]?
+    </Rule>
+
+    <!-- 键:行首到 = 之前,允许点分与引号键。 -->
+    <Rule color="Key">
+      ^\s*[A-Za-z0-9_.\-"']+(?=\s*=)
+    </Rule>
+
+    <Keywords color="Constant">
+      <Word>true</Word>
+      <Word>false</Word>
+      <Word>inf</Word>
+      <Word>nan</Word>
+    </Keywords>
+
+    <!-- 日期时间(RFC 3339)排在普通数字之前,整段一个颜色。 -->
+    <Rule color="Number">
+      \b\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?\b
+    </Rule>
+
+    <Rule color="Number">
+      \b(0x[0-9A-Fa-f_]+|0o[0-7_]+|0b[01_]+|\d[\d_]*(\.[\d_]+)?([eE][+-]?\d+)?)\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [=,{}\[\]]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HCL / Terraform(.tf / .tfvars / .hcl,也覆盖 Nomad、Consul、Vault 的配置)。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="HCL" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Type"        foreground="#8BE9FD" />
+  <Color name="Function"    foreground="#50FA7B" />
+  <Color name="Key"         foreground="#8BE9FD" />
+  <Color name="Variable"    foreground="#FFB86C" />
+  <Color name="Constant"    foreground="#BD93F9" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="#" />
+    <Span color="Comment" begin="//" />
+
+    <Span color="Comment" multiline="true">
+      <Begin>/\*</Begin>
+      <End>\*/</End>
+    </Span>
+
+    <!-- 字符串内插值 ${...} / 指令 %{...}。 -->
+    <Span color="String" multiline="false">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Rule color="Variable">[$%]\{[^}]*\}</Rule>
+      </RuleSet>
+    </Span>
+
+    <!-- 引用:var.x / local.x / module.x / data.x.y / each.value / count.index。
+         排在块关键字之前:行内的 data.aws_ami.id 不能被当成 data 块。 -->
+    <Rule color="Variable">
+      \b(var|local|module|data|each|count|path|self|terraform)\.[A-Za-z0-9_.\-*]+
+    </Rule>
+
+    <!-- 块类型:只在行首有效。 -->
+    <Rule color="Keyword">
+      ^\s*(resource|data|variable|output|module|provider|terraform|locals|backend|required_providers|dynamic|lifecycle|provisioner|connection|moved|import|check|job|group|task|service)\b
+    </Rule>
+
+    <!-- 属性名:行首到 = 之前。 -->
+    <Rule color="Key">
+      ^\s*[A-Za-z_][A-Za-z0-9_\-]*(?=\s*=(?!=))
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>for</Word>
+      <Word>in</Word>
+      <Word>if</Word>
+      <Word>else</Word>
+      <Word>endif</Word>
+      <Word>endfor</Word>
+    </Keywords>
+
+    <Keywords color="Constant">
+      <Word>true</Word>
+      <Word>false</Word>
+      <Word>null</Word>
+    </Keywords>
+
+    <Keywords color="Type">
+      <Word>string</Word>
+      <Word>number</Word>
+      <Word>bool</Word>
+      <Word>list</Word>
+      <Word>map</Word>
+      <Word>set</Word>
+      <Word>object</Word>
+      <Word>tuple</Word>
+      <Word>any</Word>
+    </Keywords>
+
+    <Rule color="Function">
+      \b[a-z_][a-z0-9_]*(?=\()
+    </Rule>
+
+    <Rule color="Number">
+      \b\d+(\.\d+)?([eE][+-]?\d+)?\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{}()\[\],.:=&lt;&gt;!?&amp;|+\-*/%]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>
