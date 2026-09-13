@@ -37,31 +37,39 @@ public class GutterFoldUiTests
 
             var window = new Window { Width = 480, Height = 320, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame(); // 强制一帧渲染 → 填充屏幕行映射
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame(); // 强制一帧渲染 → 填充屏幕行映射
 
-            Assert.IsGreaterThan(0, control.CellHeightForTest, "渲染后应有有效的单元格高度。");
-            Assert.AreEqual(0, control.FoldCountForTest);
+                Assert.IsGreaterThan(0, control.CellHeightForTest, "渲染后应有有效的单元格高度。");
+                Assert.AreEqual(0, control.FoldCountForTest);
 
-            // 只开折叠标记时折叠列从 x=0 开始;点击第 3 屏幕行(L0..L5 占屏幕行 0..5)。
-            GutterLayout gutter = control.GutterForTest;
-            var point = new Point(gutter.FoldLeft + 2, 3 * control.CellHeightForTest + 2);
-            Assert.IsTrue(gutter.IsFoldColumnHit(point.X));
+                // 只开折叠标记时折叠列从 x=0 开始;点击第 3 屏幕行(L0..L5 占屏幕行 0..5)。
+                GutterLayout gutter = control.GutterForTest;
+                var point = new Point(gutter.FoldLeft + 2, 3 * control.CellHeightForTest + 2);
+                Assert.IsTrue(gutter.IsFoldColumnHit(point.X));
 
-            window.MouseDown(point, MouseButton.Left);
-            window.MouseUp(point, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
+                window.MouseDown(point, MouseButton.Left);
+                window.MouseUp(point, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
 
-            Assert.AreEqual(1, control.FoldCountForTest, "在折叠列点击应产生一个折叠区域。");
+                Assert.AreEqual(1, control.FoldCountForTest, "在折叠列点击应产生一个折叠区域。");
 
-            // 折叠后 L3 成为折叠头,位于屏幕顶行;点它展开。
-            window.CaptureRenderedFrame();
-            var expandPoint = new Point(gutter.FoldLeft + 2, 0 * control.CellHeightForTest + 2);
-            window.MouseDown(expandPoint, MouseButton.Left);
-            window.MouseUp(expandPoint, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
+                // 折叠后 L3 成为折叠头,位于屏幕顶行;点它展开。
+                window.CaptureRenderedFrame();
+                var expandPoint = new Point(gutter.FoldLeft + 2, 0 * control.CellHeightForTest + 2);
+                window.MouseDown(expandPoint, MouseButton.Left);
+                window.MouseUp(expandPoint, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
 
-            Assert.AreEqual(0, control.FoldCountForTest, "点击折叠头应展开(折叠数归零)。");
+                Assert.AreEqual(0, control.FoldCountForTest, "点击折叠头应展开(折叠数归零)。");
+            }
+            finally
+            {
+                // 窗口必须关:留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+                window.Close();
+            }
         });
     }
 
@@ -77,23 +85,30 @@ public class GutterFoldUiTests
 
             var window = new Window { Width = 480, Height = 320, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            GutterLayout gutter = control.GutterForTest;
+                GutterLayout gutter = control.GutterForTest;
 
-            // 内容行可折叠,空白行不可(直接断言守卫谓词)。
-            Assert.IsTrue(control.IsFoldTargetRow(3), "有内容的行应可作为折叠目标。");
-            Assert.IsFalse(control.IsFoldTargetRow(10), "输出之下的空白行不得作为折叠目标。");
+                // 内容行可折叠,空白行不可(直接断言守卫谓词)。
+                Assert.IsTrue(control.IsFoldTargetRow(3), "有内容的行应可作为折叠目标。");
+                Assert.IsFalse(control.IsFoldTargetRow(10), "输出之下的空白行不得作为折叠目标。");
 
-            // 真实点击空白区域的折叠列:必须毫无反应。
-            var blankPoint = new Point(gutter.FoldLeft + 2, 10 * control.CellHeightForTest + 2);
-            Assert.IsTrue(gutter.IsFoldColumnHit(blankPoint.X));
-            window.MouseDown(blankPoint, MouseButton.Left);
-            window.MouseUp(blankPoint, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
+                // 真实点击空白区域的折叠列:必须毫无反应。
+                var blankPoint = new Point(gutter.FoldLeft + 2, 10 * control.CellHeightForTest + 2);
+                Assert.IsTrue(gutter.IsFoldColumnHit(blankPoint.X));
+                window.MouseDown(blankPoint, MouseButton.Left);
+                window.MouseUp(blankPoint, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
 
-            Assert.AreEqual(0, control.FoldCountForTest, "点击空白行的折叠列不得产生折叠。");
+                Assert.AreEqual(0, control.FoldCountForTest, "点击空白行的折叠列不得产生折叠。");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 
@@ -119,11 +134,18 @@ public class GutterFoldUiTests
     {
         OnUi(() =>
         {
-            (VelaTerminalControl control, ContextMenu menu) = ShowGutterMenu(new() { ShowLineNumber = true });
+            (VelaTerminalControl control, ContextMenu menu, Window window) = ShowGutterMenu(new() { ShowLineNumber = true });
+            try
+            {
+                ClickMenuItem((MenuItem)menu.Items[0]!);
 
-            ClickMenuItem((MenuItem)menu.Items[0]!);
-
-            Assert.IsFalse(control.ShowLineNumber, "点击「行号」菜单项应关闭行号。");
+                Assert.IsFalse(control.ShowLineNumber, "点击「行号」菜单项应关闭行号。");
+            }
+            finally
+            {
+                menu.Close();
+                window.Close();
+            }
         });
     }
 
@@ -160,19 +182,30 @@ public class GutterFoldUiTests
     {
         OnUi(() =>
         {
-            (VelaTerminalControl control, ContextMenu menu) = ShowGutterMenu(new() { ShowLineNumber = true });
-            var item = (MenuItem)menu.Items[0]!;
+            (VelaTerminalControl control, ContextMenu menu, Window window) = ShowGutterMenu(new() { ShowLineNumber = true });
+            try
+            {
+                var item = (MenuItem)menu.Items[0]!;
 
-            ClickMenuItem(item);
-            Assert.IsFalse(control.ShowLineNumber, "第一次点击应关闭行号。");
+                ClickMenuItem(item);
+                Assert.IsFalse(control.ShowLineNumber, "第一次点击应关闭行号。");
 
-            ClickMenuItem(item);
-            Assert.IsTrue(control.ShowLineNumber, "菜单不关闭,再点同一项应重新打开行号。");
+                ClickMenuItem(item);
+                Assert.IsTrue(control.ShowLineNumber, "菜单不关闭,再点同一项应重新打开行号。");
+            }
+            finally
+            {
+                menu.Close();
+                window.Close();
+            }
         });
     }
 
-    /// <summary>把终端挂进窗口并弹出侧栏右键菜单,返回控件与已打开的菜单(菜单项此时才有模板与命中区)。</summary>
-    private static (VelaTerminalControl Control, ContextMenu Menu) ShowGutterMenu(VelaTerminalControl control)
+    /// <summary>
+    /// 把终端挂进窗口并弹出侧栏右键菜单,返回控件、已打开的菜单(菜单项此时才有模板与命中区)与宿主窗口 ——
+    /// 调用方用完必须关掉菜单与窗口。
+    /// </summary>
+    private static (VelaTerminalControl Control, ContextMenu Menu, Window Window) ShowGutterMenu(VelaTerminalControl control)
     {
         var window = new Window { Width = 480, Height = 320, Content = control };
         window.Show();
@@ -183,7 +216,7 @@ public class GutterFoldUiTests
         menu.Open(control);
         Dispatcher.UIThread.RunJobs();
         TopLevel.GetTopLevel((Control)menu.Items[0]!)?.UpdateLayout();
-        return (control, menu);
+        return (control, menu, window);
     }
 
     /// <summary>
@@ -211,17 +244,24 @@ public class GutterFoldUiTests
             control.Feed(Encoding.UTF8.GetBytes("L0\r\nL1\r\nL2\r\nL3"));
             var window = new Window { Width = 480, Height = 320, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            GutterLayout gutter = control.GutterForTest;
-            // 点正文区域(侧栏右侧),不应折叠。
-            var point = new Point(gutter.TotalWidth + 40, 2 * control.CellHeightForTest + 2);
-            window.MouseDown(point, MouseButton.Left);
-            window.MouseUp(point, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
+                GutterLayout gutter = control.GutterForTest;
+                // 点正文区域(侧栏右侧),不应折叠。
+                var point = new Point(gutter.TotalWidth + 40, 2 * control.CellHeightForTest + 2);
+                window.MouseDown(point, MouseButton.Left);
+                window.MouseUp(point, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
 
-            Assert.AreEqual(0, control.FoldCountForTest, "正文区域点击不应折叠。");
+                Assert.AreEqual(0, control.FoldCountForTest, "正文区域点击不应折叠。");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 }

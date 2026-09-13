@@ -36,17 +36,25 @@ public sealed class HostGridReconcileUiTests
         {
             // 控件够宽,布局给出的列数必然远超 DECCOLM 的 80 —— 否则这条测试证明不了什么。
             (VelaTerminalControl control, Window window) = NewTerminal(1400, 400);
-            int cols = control.Columns;
-            Assert.IsGreaterThan(80, cols, "测试前提:布局列数必须多于 80,才谈得上被压缩。");
+            try
+            {
+                int cols = control.Columns;
+                Assert.IsGreaterThan(80, cols, "测试前提:布局列数必须多于 80,才谈得上被压缩。");
 
-            string row = new('x', cols);
-            control.Feed(Encoding.ASCII.GetBytes(row));
-            control.Feed(Encoding.ASCII.GetBytes(XtermInitString));
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+                string row = new('x', cols);
+                control.Feed(Encoding.ASCII.GetBytes(row));
+                control.Feed(Encoding.ASCII.GetBytes(XtermInitString));
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            Assert.AreEqual(cols, control.Columns, "初始化串不得改变网格列数。");
-            Assert.AreEqual(row, DragRow0(control, window), "整行必须仍然可选中,而不是只剩前 80 列。");
+                Assert.AreEqual(cols, control.Columns, "初始化串不得改变网格列数。");
+                Assert.AreEqual(row, DragRow0(control, window), "整行必须仍然可选中,而不是只剩前 80 列。");
+            }
+            finally
+            {
+                // 窗口必须关:留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+                window.Close();
+            }
         });
     }
 
@@ -56,24 +64,31 @@ public sealed class HostGridReconcileUiTests
         OnUi(() =>
         {
             (VelaTerminalControl control, Window window) = NewTerminal(1400, 400);
-            int cols = control.Columns;
-            int rows = control.Rows;
+            try
+            {
+                int cols = control.Columns;
+                int rows = control.Rows;
 
-            (int Cols, int Rows)? pty = null;
-            control.PtySizeChanged += (c, r) => pty = (c, r);
+                (int Cols, int Rows)? pty = null;
+                control.PtySizeChanged += (c, r) => pty = (c, r);
 
-            // 模拟"有东西改了几何却没通知任何人"——#253 里的 DECCOLM 当初就是这样。
-            control.DesyncGridForTest(80, rows);
-            Assert.AreEqual(80, control.Columns);
+                // 模拟"有东西改了几何却没通知任何人"——#253 里的 DECCOLM 当初就是这样。
+                control.DesyncGridForTest(80, rows);
+                Assert.AreEqual(80, control.Columns);
 
-            // 下一批输出到来时,自愈闸按当前布局把网格拉回去,并补发 PTY 尺寸。
-            control.Feed(Encoding.ASCII.GetBytes("hello"));
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+                // 下一批输出到来时,自愈闸按当前布局把网格拉回去,并补发 PTY 尺寸。
+                control.Feed(Encoding.ASCII.GetBytes("hello"));
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            Assert.AreEqual(cols, control.Columns, "网格应自愈回布局尺寸。");
-            Assert.AreEqual(rows, control.Rows);
-            Assert.AreEqual((cols, rows), pty, "远端 PTY 必须收到纠正后的尺寸,否则它的换行数学继续按错宽度算。");
+                Assert.AreEqual(cols, control.Columns, "网格应自愈回布局尺寸。");
+                Assert.AreEqual(rows, control.Rows);
+                Assert.AreEqual((cols, rows), pty, "远端 PTY 必须收到纠正后的尺寸,否则它的换行数学继续按错宽度算。");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 

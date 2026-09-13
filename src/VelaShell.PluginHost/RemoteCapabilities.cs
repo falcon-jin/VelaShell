@@ -392,7 +392,7 @@ internal sealed class RpcStorage(RpcConnection rpc) : PluginSdk.Storage.IPluginS
         ArgumentException.ThrowIfNullOrEmpty(key);
         JsonElement? value = await rpc.RequestAsync<JsonElement?>(
             PluginRpc.StorageGet, new StorageKeyRef(key), Timeout, cancellationToken).ConfigureAwait(false);
-        return value is { ValueKind: not System.Text.Json.JsonValueKind.Null and not System.Text.Json.JsonValueKind.Undefined } element
+        return value is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined } element
             ? element.Deserialize<T>()
             : default;
     }
@@ -401,7 +401,7 @@ internal sealed class RpcStorage(RpcConnection rpc) : PluginSdk.Storage.IPluginS
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         return rpc.RequestAsync<object>(PluginRpc.StorageSet,
-            new StorageSetRequest(key, System.Text.Json.JsonSerializer.SerializeToElement(value)), Timeout, cancellationToken);
+            new StorageSetRequest(key, JsonSerializer.SerializeToElement(value)), Timeout, cancellationToken);
     }
 
     public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
@@ -427,7 +427,7 @@ internal sealed class RpcTimeSeries(RpcConnection rpc) : PluginSdk.TimeSeries.IT
     public async Task<PluginSdk.TimeSeries.ITimeSeries> OpenAsync(
         PluginSdk.TimeSeries.TimeSeriesDefinition definition, CancellationToken cancellationToken = default)
     {
-        VelaShell.PluginSdk.TimeSeries.TimeSeriesValidation.RequireDefinition(definition);
+        PluginSdk.TimeSeries.TimeSeriesValidation.RequireDefinition(definition);
         TimeSeriesNameRef? response = await rpc.RequestAsync<TimeSeriesNameRef>(PluginRpc.TimeSeriesOpen,
             new TimeSeriesOpenRequest(definition), Timeout, cancellationToken).ConfigureAwait(false);
         return new RpcSeries(rpc, response?.Name ?? definition.Name);

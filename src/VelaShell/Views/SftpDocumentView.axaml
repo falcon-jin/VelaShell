@@ -5,14 +5,70 @@
              xmlns:vm="using:VelaShell.ViewModels"
              xmlns:views="using:VelaShell.Views"
              xmlns:pc="using:VelaShell.Controls.Controls"
+             xmlns:loc="using:VelaShell.Localization"
              xmlns:res="clr-namespace:VelaShell.Core.Resources;assembly=VelaShell.Core"
              mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
              x:Class="VelaShell.Views.SftpDocumentView"
              x:DataType="vm:SftpDocumentViewModel">
+  <UserControl.Styles>
+    <!-- 文档级工具条上的「图标 + 文字」按钮:比两栏各自的 24px 图标按钮多一段文字,
+         因为「比较目录」「同步」光看图标认不出来。 -->
+    <Style Selector="Button.doc-tool">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Foreground" Value="{DynamicResource VelaTextSecondary}" />
+      <Setter Property="FontSize" Value="{DynamicResource VelaFontSize11}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.doc-tool:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource VelaBgHover}" />
+    </Style>
+  </UserControl.Styles>
   <!-- 外层包裹用 VelaBgDockDocument(有背景图时置透明),避免与内部 LocalFilePaneView/FileBrowserView
        的 VelaBgSftpPanel 底叠加成双层(双列 SFTP 曾因此完全不透明)。tint 由内部各面板单层承担。 -->
   <Border Background="{DynamicResource VelaBgDockDocument}">
     <DockPanel>
+      <!-- 文档级工具条:两栏共用的操作(比较、同步)放这里,不塞进任一栏的头部。
+           不画下边框:两栏自己带 1px 上边框,再画一条就是双线。 -->
+      <Border DockPanel.Dock="Top" Height="32" Padding="10,0"
+              Background="{DynamicResource VelaBgSftpPanel}">
+        <Grid ColumnDefinitions="Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Button x:Name="CompareDirectoriesButton" Classes="doc-tool"
+                    Command="{Binding CompareDirectoriesCommand}"
+                    ToolTip.Tip="{loc:Localize Sync_CompareDirectoriesTip}"
+                    AutomationProperties.Name="{loc:Localize Sync_CompareDirectories}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <pc:LucideIcon Width="13" Height="13" Data="{StaticResource Icon.git-compare}"
+                               Foreground="{DynamicResource VelaAccent}" VerticalAlignment="Center" />
+                <TextBlock Text="{loc:Localize Sync_CompareDirectories}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button x:Name="OpenSyncButton" Classes="doc-tool"
+                    Command="{Binding OpenSyncCommand}"
+                    ToolTip.Tip="{loc:Localize Sync_SynchronizeTip}"
+                    AutomationProperties.Name="{loc:Localize Sync_SynchronizeEllipsis}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <pc:LucideIcon Width="13" Height="13" Data="{StaticResource Icon.folder-sync}"
+                               Foreground="{DynamicResource VelaAccent}" VerticalAlignment="Center" />
+                <TextBlock Text="{loc:Localize Sync_SynchronizeEllipsis}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Margin="16,0,0,0"
+                     Text="{Binding CompareSummary}"
+                     IsVisible="{Binding CompareSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     Foreground="{DynamicResource VelaTextTertiary}"
+                     FontSize="{DynamicResource VelaFontSize11}"
+                     HorizontalAlignment="Right" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+        </Grid>
+      </Border>
       <Grid MinWidth="564">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" MinWidth="280" />

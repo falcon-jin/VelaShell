@@ -112,7 +112,7 @@ public class SftpSymlinkIntegrationTests
     {
         try
         {
-            using Process? process = Process.Start(new ProcessStartInfo("docker", "version")
+            using var process = Process.Start(new ProcessStartInfo("docker", "version")
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

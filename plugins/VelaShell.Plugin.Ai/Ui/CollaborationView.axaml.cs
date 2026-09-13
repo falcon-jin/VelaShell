@@ -352,7 +352,7 @@ public partial class CollaborationView : UserControl
             endpoint.Children.Add(portPanel);
             Grid.SetColumn(pathPanel, 2);
             endpoint.Children.Add(pathPanel);
-            var callbackHint = new TextBlock { Text = _loc["ChannelWeComCallbackHint"], TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+            var callbackHint = new TextBlock { Text = _loc["ChannelWeComCallbackHint"], TextWrapping = TextWrapping.Wrap };
             callbackHint.Classes.Add("hint");
             endpointPanel.Children.Add(endpoint);
             endpointPanel.Children.Add(callbackHint);
@@ -609,7 +609,7 @@ public partial class CollaborationView : UserControl
         {
             box.AcceptsReturn = true;
             box.MinHeight = 56;
-            box.TextWrapping = Avalonia.Media.TextWrapping.NoWrap;
+            box.TextWrapping = TextWrapping.NoWrap;
         }
         panel = new StackPanel();
         panel.Children.Add(caption);

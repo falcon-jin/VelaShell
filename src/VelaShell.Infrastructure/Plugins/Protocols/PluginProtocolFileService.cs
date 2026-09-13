@@ -260,6 +260,23 @@ public sealed class PluginProtocolFileService(PluginProtocolRegistry registry)
     }
 
     /// <inheritdoc />
+    /// <remarks>SDK 的 <see cref="IProtocolFileSystem" /> 没有改修改时间这一面(对象存储的时间戳也不可写),如实报不支持。</remarks>
+    public Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default)
+    {
+        Session session = Require(sessionId);
+        return Task.FromException(new NotSupportedException($"Protocol '{session.Descriptor.Id}' does not support setting modification times."));
+    }
+
+    /// <inheritdoc />
+    /// <remarks>SDK 的 <see cref="IProtocolFileSystem" /> 没有服务器端摘要这一面,如实报不支持,由同步回退到大小与修改时间。</remarks>
+    public Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default)
+    {
+        Session session = Require(sessionId);
+        return Task.FromException<IReadOnlyDictionary<string, string?>>(
+            new NotSupportedException($"Protocol '{session.Descriptor.Id}' does not support server-side checksums."));
+    }
+
+    /// <inheritdoc />
     public async Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default)
     {
         Session session = Require(sessionId);

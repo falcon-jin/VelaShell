@@ -4570,4 +4570,259 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   <data name="SetTransfer_AutoUploadOnEditDesc" xml:space="preserve">
     <value>オフの場合はローカルコピーを監視せず、変更を送り返しません</value>
   </data>
+  <data name="Sync_Title" xml:space="preserve">
+    <value>ディレクトリ同期</value>
+  </data>
+  <data name="Sync_TitleFormat" xml:space="preserve">
+    <value>ディレクトリ同期 · {0}</value>
+  </data>
+  <data name="Sync_CompareDirectories" xml:space="preserve">
+    <value>ディレクトリ比較</value>
+  </data>
+  <data name="Sync_CompareDirectoriesTip" xml:space="preserve">
+    <value>両ペインの現在のフォルダーで異なる項目を選択します(現在の階層のみ)</value>
+  </data>
+  <data name="Sync_SynchronizeEllipsis" xml:space="preserve">
+    <value>同期…</value>
+  </data>
+  <data name="Sync_SynchronizeTip" xml:space="preserve">
+    <value>2 つのディレクトリツリーを比較して同期するか、リモートディレクトリを最新に保ちます</value>
+  </data>
+  <data name="Sync_CompareSummary" xml:space="preserve">
+    <value>ローカル {0} 件が異なる · リモート {1} 件が異なる · {2} 件が同一</value>
+  </data>
+  <data name="Sync_CompareIdentical" xml:space="preserve">
+    <value>両フォルダーは同一です({0} 件)</value>
+  </data>
+  <data name="Sync_LocalDirectory" xml:space="preserve">
+    <value>ローカルディレクトリ</value>
+  </data>
+  <data name="Sync_RemoteDirectory" xml:space="preserve">
+    <value>リモートディレクトリ</value>
+  </data>
+  <data name="Sync_Browse" xml:space="preserve">
+    <value>参照…</value>
+  </data>
+  <data name="Sync_Direction" xml:space="preserve">
+    <value>方向</value>
+  </data>
+  <data name="Sync_DirectionBoth" xml:space="preserve">
+    <value>双方向</value>
+  </data>
+  <data name="Sync_DirectionToRemote" xml:space="preserve">
+    <value>ローカル → リモート</value>
+  </data>
+  <data name="Sync_DirectionToLocal" xml:space="preserve">
+    <value>リモート → ローカル</value>
+  </data>
+  <data name="Sync_Mode" xml:space="preserve">
+    <value>モード</value>
+  </data>
+  <data name="Sync_ModeSynchronize" xml:space="preserve">
+    <value>ファイルを同期</value>
+  </data>
+  <data name="Sync_ModeSynchronizeTip" xml:space="preserve">
+    <value>新規・より新しい・サイズの異なるファイルを転送します。より新しいターゲットは上書きしません</value>
+  </data>
+  <data name="Sync_ModeMirror" xml:space="preserve">
+    <value>ファイルをミラー</value>
+  </data>
+  <data name="Sync_ModeMirrorTip" xml:space="preserve">
+    <value>ターゲットをソースと同一にします。ターゲットの方が新しくても、異なれば上書きします</value>
+  </data>
+  <data name="Sync_ModeTimestamps" xml:space="preserve">
+    <value>タイムスタンプのみ同期</value>
+  </data>
+  <data name="Sync_ModeTimestampsTip" xml:space="preserve">
+    <value>内容は転送しません。両側にありサイズが同じファイルについて、ターゲットの更新日時をソースに合わせます</value>
+  </data>
+  <data name="Sync_Criteria" xml:space="preserve">
+    <value>比較基準</value>
+  </data>
+  <data name="Sync_CriteriaTime" xml:space="preserve">
+    <value>更新日時</value>
+  </data>
+  <data name="Sync_CriteriaSize" xml:space="preserve">
+    <value>ファイルサイズ</value>
+  </data>
+  <data name="Sync_Options" xml:space="preserve">
+    <value>オプション</value>
+  </data>
+  <data name="Sync_DeleteExtraneous" xml:space="preserve">
+    <value>余分なファイルを削除</value>
+  </data>
+  <data name="Sync_DeleteExtraneousTip" xml:space="preserve">
+    <value>ターゲット側にのみ存在する項目を削除します(一方向のみ)</value>
+  </data>
+  <data name="Sync_ExistingOnly" xml:space="preserve">
+    <value>既存ファイルのみ</value>
+  </data>
+  <data name="Sync_ExistingOnlyTip" xml:space="preserve">
+    <value>両側に既に存在するファイルだけを更新し、新規作成はしません</value>
+  </data>
+  <data name="Sync_FileMask" xml:space="preserve">
+    <value>ファイルマスク</value>
+  </data>
+  <data name="Sync_FileMaskPlaceholder" xml:space="preserve">
+    <value>例: *.php; *.js | .git/; *.tmp</value>
+  </data>
+  <data name="Sync_FileMaskTip" xml:space="preserve">
+    <value>マスクは ; で区切り、| の後ろは除外です。末尾が / のマスクはフォルダーに、/ を含むマスクは相対パスに一致します。除外したフォルダーはスキャンしません。</value>
+  </data>
+  <data name="Sync_Compare" xml:space="preserve">
+    <value>比較</value>
+  </data>
+  <data name="Sync_Start" xml:space="preserve">
+    <value>同期</value>
+  </data>
+  <data name="Sync_CheckAll" xml:space="preserve">
+    <value>すべて選択</value>
+  </data>
+  <data name="Sync_CheckNone" xml:space="preserve">
+    <value>選択解除</value>
+  </data>
+  <data name="Sync_ColAction" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="Sync_ColPath" xml:space="preserve">
+    <value>パス</value>
+  </data>
+  <data name="Sync_ColLocal" xml:space="preserve">
+    <value>ローカル</value>
+  </data>
+  <data name="Sync_ColRemote" xml:space="preserve">
+    <value>リモート</value>
+  </data>
+  <data name="Sync_WatchLogHeader" xml:space="preserve">
+    <value>アクティビティ</value>
+  </data>
+  <data name="Sync_EmptyHint" xml:space="preserve">
+    <value>ディレクトリとオプションを選んで「比較」を押すと、変更内容をプレビューします。「同期」を押すまで何も転送されません。</value>
+  </data>
+  <data name="Sync_KeepUpToDate" xml:space="preserve">
+    <value>リモートを最新に保つ</value>
+  </data>
+  <data name="Sync_KeepUpToDateTip" xml:space="preserve">
+    <value>ローカルディレクトリを監視し、変更があるたびにアップロードします(常にローカル → リモート。上のマスク・比較基準・「余分なファイルを削除」を使用)</value>
+  </data>
+  <data name="Sync_StopWatching" xml:space="preserve">
+    <value>監視を停止</value>
+  </data>
+  <data name="Sync_KindUpload" xml:space="preserve">
+    <value>アップロード</value>
+  </data>
+  <data name="Sync_KindDownload" xml:space="preserve">
+    <value>ダウンロード</value>
+  </data>
+  <data name="Sync_KindCreateRemoteDirectory" xml:space="preserve">
+    <value>リモートフォルダー作成</value>
+  </data>
+  <data name="Sync_KindCreateLocalDirectory" xml:space="preserve">
+    <value>ローカルフォルダー作成</value>
+  </data>
+  <data name="Sync_KindSetRemoteTime" xml:space="preserve">
+    <value>リモート日時を設定</value>
+  </data>
+  <data name="Sync_KindSetLocalTime" xml:space="preserve">
+    <value>ローカル日時を設定</value>
+  </data>
+  <data name="Sync_KindDeleteRemote" xml:space="preserve">
+    <value>リモートを削除</value>
+  </data>
+  <data name="Sync_KindDeleteLocal" xml:space="preserve">
+    <value>ローカルを削除</value>
+  </data>
+  <data name="Sync_Summary" xml:space="preserve">
+    <value>アップロード {0} 件({1})· ダウンロード {2} 件({3})· 削除 {4} 件 · その他 {5} 件</value>
+  </data>
+  <data name="Sync_ScanningProgress" xml:space="preserve">
+    <value>スキャン中… ローカル {0} フォルダー、リモート {1} フォルダー</value>
+  </data>
+  <data name="Sync_NothingToDo" xml:space="preserve">
+    <value>差異はありません。同期は不要です</value>
+  </data>
+  <data name="Sync_PreviewReady" xml:space="preserve">
+    <value>{0} 件の操作 — 不要なもののチェックを外してから「同期」を押してください</value>
+  </data>
+  <data name="Sync_Cancelled" xml:space="preserve">
+    <value>キャンセルしました</value>
+  </data>
+  <data name="Sync_LocalMissing" xml:space="preserve">
+    <value>ローカルディレクトリが存在しません: {0}</value>
+  </data>
+  <data name="Sync_LocalRequired" xml:space="preserve">
+    <value>ローカルディレクトリを入力してください</value>
+  </data>
+  <data name="Sync_RemoteRequired" xml:space="preserve">
+    <value>リモートディレクトリを入力してください</value>
+  </data>
+  <data name="Sync_InvalidMask" xml:space="preserve">
+    <value>ファイルマスクが無効です。| は 1 つまでで、/ 単独はマスクになりません</value>
+  </data>
+  <data name="Sync_ConfirmDelete" xml:space="preserve">
+    <value>この同期で {0} 件(フォルダーは中身ごと)を削除します。元に戻せません。続行しますか?</value>
+  </data>
+  <data name="Sync_ConfirmWatchDelete" xml:space="preserve">
+    <value>「余分なファイルを削除」がオンです。監視中にローカルで削除したものはリモートからも削除されます。続行しますか?</value>
+  </data>
+  <data name="Sync_Running" xml:space="preserve">
+    <value>同期中 {0}/{1} · {2}</value>
+  </data>
+  <data name="Sync_DoneVerified" xml:space="preserve">
+    <value>完了: 成功 {0} 件、失敗 {1} 件。再比較の結果、差異は残っていません</value>
+  </data>
+  <data name="Sync_DoneRemaining" xml:space="preserve">
+    <value>完了: 成功 {0} 件、失敗 {1} 件。再比較の結果、まだ {2} 件の操作が残っています</value>
+  </data>
+  <data name="Sync_NoteConflicts" xml:space="preserve">
+    <value>{0} 件の競合は処理していません(片側がファイルで反対側がフォルダー、または大文字小文字だけが異なるリモート名)</value>
+  </data>
+  <data name="Sync_NoteSkippedLinks" xml:space="preserve">
+    <value>フォルダーへのリンク {0} 件はたどっていません</value>
+  </data>
+  <data name="Sync_TimestampsUnsupported" xml:space="preserve">
+    <value>このサーバーは更新日時を設定できません。アップロードしたファイルは次回の比較でリモートの方が新しく見えます(双方向同期ではダウンロードし直されます)</value>
+  </data>
+  <data name="Sync_MoreErrors" xml:space="preserve">
+    <value>…ほか {0} 件</value>
+  </data>
+  <data name="Sync_TransferFailed" xml:space="preserve">
+    <value>転送に失敗しました(転送パネルを参照)</value>
+  </data>
+  <data name="Sync_UnsafeLocalName" xml:space="preserve">
+    <value>「{0}」はローカルに書き込めません。このシステムでは無効な名前です</value>
+  </data>
+  <data name="Sync_WatchStarted" xml:space="preserve">
+    <value>監視中 {0} → {1}</value>
+  </data>
+  <data name="Sync_WatchStopped" xml:space="preserve">
+    <value>監視を停止しました</value>
+  </data>
+  <data name="Sync_WatchUnavailable" xml:space="preserve">
+    <value>このローカルディレクトリは監視できません(ネットワークドライブ、またはシステムの監視数上限)</value>
+  </data>
+  <data name="Sync_WatchError" xml:space="preserve">
+    <value>エラー: {0}</value>
+  </data>
+  <data name="Sync_CriteriaChecksum" xml:space="preserve">
+    <value>SHA-256 チェックサム</value>
+  </data>
+  <data name="Sync_CriteriaChecksumTip" xml:space="preserve">
+    <value>両側にありサイズが同じファイルは、まず SHA-256 で比較します(SFTP はサーバー上で sha256sum、FTP は HASH / XSHA256)。内容が同じなら日時が違っても転送しません。チェックサムを取得できないファイルはサイズと更新日時で比較します。該当ファイルは両側で全体を読み込みます。</value>
+  </data>
+  <data name="Sync_HashingProgress" xml:space="preserve">
+    <value>SHA-256 を検証中… {0}/{1}</value>
+  </data>
+  <data name="Sync_NoteChecksumUnsupported" xml:space="preserve">
+    <value>SHA-256 を使用できません({0})。サイズと更新日時で比較しました</value>
+  </data>
+  <data name="Sync_NoteChecksumPartial" xml:space="preserve">
+    <value>{1} 件中 {0} 件は SHA-256 を取得できず、サイズと更新日時で比較しました</value>
+  </data>
+  <data name="Sync_CompareHashing" xml:space="preserve">
+    <value>比較中… SHA-256 を検証しています</value>
+  </data>
+  <data name="Sync_CompareFellBack" xml:space="preserve">
+    <value>(SHA-256 使用不可、サイズと日時で比較)</value>
+  </data>
 </root>

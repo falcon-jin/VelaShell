@@ -68,7 +68,7 @@ public class PluginMarketClientTests : IDisposable
         IReadOnlyDictionary<string, PluginMarketVersion> latest =
             await client.GetLatestAsync(["acme.foo", "acme.bar"]);
 
-        Assert.AreEqual(2, latest.Count);
+        Assert.HasCount(2, latest);
         PluginMarketVersion foo = latest["acme.foo"];
         Assert.AreEqual("1.3.0", foo.Version);
         Assert.AreEqual(2, foo.ApiLevel);

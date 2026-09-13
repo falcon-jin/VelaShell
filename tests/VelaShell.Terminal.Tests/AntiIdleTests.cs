@@ -43,7 +43,7 @@ public sealed class AntiIdleTests
         h.Advance(TimeSpan.FromHours(1));
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(0, h.Sent.Count);
+        Assert.IsEmpty(h.Sent);
     }
 
     [TestMethod]
@@ -55,10 +55,10 @@ public sealed class AntiIdleTests
         h.Advance(Interval);
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(1, h.Sent.Count);
+        Assert.HasCount(1, h.Sent);
         // 送空格会被 shell 当成用户输入留在命令行上,也会被 vim / less 当成按键吃掉;
         // NUL 在行规范里被丢弃,却照样刷新 tty 的读活动 —— 有输入,但什么也没发生。
-        CollectionAssert.AreEqual(new byte[] { 0x00 }, h.Sent[0]);
+        Assert.AreSequenceEqual(new byte[] { 0x00 }, h.Sent[0]);
     }
 
     [TestMethod]
@@ -74,12 +74,12 @@ public sealed class AntiIdleTests
         h.Advance(TimeSpan.FromSeconds(40)); // 距开表 70 秒,距上次击键只有 40 秒。
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(0, h.Sent.Count, "计时该从最后一次出站写算起,而不是从上一次注入算起。");
+        Assert.IsEmpty(h.Sent, "计时该从最后一次出站写算起,而不是从上一次注入算起。");
 
         h.Advance(TimeSpan.FromSeconds(25)); // 距上次击键 65 秒,过线了。
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(1, h.Sent.Count);
+        Assert.HasCount(1, h.Sent);
     }
 
     [TestMethod]
@@ -92,12 +92,12 @@ public sealed class AntiIdleTests
         h.Keeper.TickForTest();
         h.Keeper.TickForTest(); // 紧接着再醒一次(定时器抖动、宿主重排都可能)。
 
-        Assert.AreEqual(1, h.Sent.Count, "刚发过就再发一发,等于把间隔缩成了零。");
+        Assert.HasCount(1, h.Sent, "刚发过就再发一发,等于把间隔缩成了零。");
 
         h.Advance(Interval);
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(2, h.Sent.Count);
+        Assert.HasCount(2, h.Sent);
     }
 
     [TestMethod]
@@ -110,11 +110,11 @@ public sealed class AntiIdleTests
 
         h.Advance(Interval);
         h.Keeper.TickForTest();
-        Assert.AreEqual(0, h.Sent.Count);
+        Assert.IsEmpty(h.Sent);
 
         h.CanSend = true;
         h.Keeper.TickForTest();
-        Assert.AreEqual(1, h.Sent.Count, "拦下的那一发不能就此作废:窗口已经过去了,补发才不迟到。");
+        Assert.HasCount(1, h.Sent, "拦下的那一发不能就此作废:窗口已经过去了,补发才不迟到。");
     }
 
     [TestMethod]
@@ -127,7 +127,7 @@ public sealed class AntiIdleTests
         h.Keeper.Interval = TimeSpan.Zero;
         h.Keeper.TickForTest();
 
-        Assert.AreEqual(0, h.Sent.Count);
+        Assert.IsEmpty(h.Sent);
     }
 
     [TestMethod]
@@ -142,7 +142,7 @@ public sealed class AntiIdleTests
         h.Keeper.TickForTest();
         h.Keeper.Dispose(); // 可重复释放。
 
-        Assert.AreEqual(0, h.Sent.Count);
+        Assert.IsEmpty(h.Sent);
     }
 
     [TestMethod]

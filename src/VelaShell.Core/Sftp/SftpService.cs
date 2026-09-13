@@ -459,6 +459,45 @@ public class SftpService : ISftpService
         await client.ChangePermissionsAsync(remotePath, octalMode, CancellationToken.None).ConfigureAwait(false);
     }
 
+    /// <summary>设置远端条目的修改时间(SFTP setstat,与上传收尾的「保留时间戳」同一条路)。</summary>
+    public async Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
+        ISftpClientWrapper client = await GetOrCreateSftpClientAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        DateTime utc = lastWriteTimeUtc.Kind == DateTimeKind.Utc ? lastWriteTimeUtc : lastWriteTimeUtc.ToUniversalTime();
+        await client.SetLastWriteTimeAsync(remotePath, new DateTimeOffset(utc), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 经 SSH exec 通道在服务器上跑 <c>sha256sum</c>(或 <c>shasum -a 256</c>)批量算摘要。
+    /// exec 被禁(<c>ForceCommand internal-sftp</c> 的纯 SFTP 账号)、主机不是 POSIX、两个工具都没有时抛
+    /// <see cref="NotSupportedException" />;命令与输出的细节见 <see cref="RemoteSha256" />。
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(remotePaths);
+        if (remotePaths.Count == 0)
+        {
+            return new Dictionary<string, string?>();
+        }
+        ISshClientWrapper client = _connectionService.GetClient(sessionId)
+                                   ?? throw new NotSupportedException("This session has no SSH exec channel.");
+        RemoteCommandResult result;
+        try
+        {
+            result = await client.RunCommandDetailedAsync(RemoteSha256.BuildCommand(remotePaths), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new NotSupportedException($"Remote SHA-256 is unavailable: {ex.Message}", ex);
+        }
+        return RemoteSha256.Parse(result.StandardOutput, result.StandardError, result.ExitCode, remotePaths);
+    }
+
     /// <summary>在远端创建符号链接;目标文本原样写入(ln -s 语义)。</summary>
     public async Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default)
     {

@@ -73,6 +73,14 @@ public sealed class RoutingRemoteFileService(
         Resolve(sessionId).SetPermissionsAsync(sessionId, remotePath, octalMode, cancellationToken);
 
     /// <inheritdoc />
+    public Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default) =>
+        Resolve(sessionId).SetLastWriteTimeAsync(sessionId, remotePath, lastWriteTimeUtc, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default) =>
+        Resolve(sessionId).ComputeSha256Async(sessionId, remotePaths, cancellationToken);
+
+    /// <inheritdoc />
     public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) =>
         Resolve(sessionId).CreateSymbolicLinkAsync(sessionId, linkPath, targetPath, cancellationToken);
 

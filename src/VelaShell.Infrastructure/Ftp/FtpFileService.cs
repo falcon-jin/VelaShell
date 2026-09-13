@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using FluentFTP;
+using FluentFTP.Exceptions;
 using FluentFTP.Proxy.AsyncProxy;
 using VelaShell.Core.Ftp;
 using VelaShell.Core.Models;
@@ -287,6 +289,91 @@ public sealed class FtpFileService(IProxyResolver? proxyResolver = null) : ISftp
         catch (Exception ex)
         {
             throw Fault(sessionId, ex, "chmod");
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 走 FluentFTP 的 <c>GetChecksum</c>:服务器通告了 <c>HASH</c>(draft-bryan-ftpext-hash)且支持 SHA-256 时用它,
+    /// 否则试 <c>XSHA256</c>。指定了 SHA-256 就不会退而求其次去用 MD5 / CRC —— 服务器只有那些时库抛
+    /// <see cref="FtpHashUnsupportedException" />,这里翻译成 <see cref="NotSupportedException" />。
+    /// 单个文件失败(不存在、没权限)只让它回退;连接断了照常上抛,不能把掉线当成「这个文件算不出来」。
+    /// </remarks>
+    public async Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(remotePaths);
+        var result = new Dictionary<string, string?>(StringComparer.Ordinal);
+        if (remotePaths.Count == 0)
+        {
+            return result;
+        }
+        using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        foreach (string path in remotePaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                FtpHash hash = await lease.Client
+                    .GetChecksum(NormalizePath(path), FtpHashAlgorithm.SHA256, cancellationToken)
+                    .ConfigureAwait(false);
+                result[path] = hash.IsValid && hash.Algorithm == FtpHashAlgorithm.SHA256 && hash.Value is { Length: 64 } value
+                    ? value.ToLowerInvariant()
+                    : null;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (FtpHashUnsupportedException ex)
+            {
+                throw new NotSupportedException($"This FTP server does not offer SHA-256 (HASH / XSHA256): {ex.Message}", ex);
+            }
+            catch (FtpCommandException ex) when (ex.CompletionCode is "500" or "501" or "502" or "504")
+            {
+                throw new NotSupportedException($"This FTP server rejected the SHA-256 command: {ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                Exception translated = Fault(sessionId, ex, "hash");
+                if (FluentFtpInterop.IsConnectionLost(translated))
+                {
+                    throw translated;
+                }
+                result[path] = null;
+            }
+        }
+        return result;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 走 <c>MFMT</c>(draft-somers-ftp-mfxx,时间按 UTC 发送)。它不在 RFC 959 里,服务器没通告或回
+    /// 「不认识 / 未实现」时抛 <see cref="NotSupportedException" /> —— 目录同步据此如实提示
+    /// 「这台服务器记不住上传文件的修改时间」,而不是假装对齐了。
+    /// </remarks>
+    public async Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
+        DateTime utc = lastWriteTimeUtc.Kind == DateTimeKind.Utc ? lastWriteTimeUtc : lastWriteTimeUtc.ToUniversalTime();
+        using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        FtpReply reply;
+        try
+        {
+            // 不用 AsyncFtpClient.SetModifiedTime:它按 TimeConversion 配置换算时区,而 MFMT 的时间
+            // 规定就是 UTC;自己拼命令,发出去的值才不会因为某个配置项被悄悄挪几个小时。
+            reply = await lease.Client
+                .Execute($"MFMT {utc.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)} {NormalizePath(remotePath)}", cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            throw Fault(sessionId, ex, "mfmt");
+        }
+        if (!reply.Success)
+        {
+            throw reply.Code is "500" or "501" or "502" or "504"
+                ? new NotSupportedException($"This FTP server does not support MFMT: {reply.Message}")
+                : new VelaFtpOperationException($"FTP MFMT failed: {reply.Message}");
         }
     }
 

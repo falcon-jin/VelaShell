@@ -4570,4 +4570,259 @@ Windows는 exe 전체 경로 또는 명령 이름(예: notepad), Linux는 명령
   <data name="SetTransfer_AutoUploadOnEditDesc" xml:space="preserve">
     <value>끄면 로컬 사본을 감시하지 않으며 변경을 보내지 않습니다</value>
   </data>
+  <data name="Sync_Title" xml:space="preserve">
+    <value>디렉터리 동기화</value>
+  </data>
+  <data name="Sync_TitleFormat" xml:space="preserve">
+    <value>디렉터리 동기화 · {0}</value>
+  </data>
+  <data name="Sync_CompareDirectories" xml:space="preserve">
+    <value>디렉터리 비교</value>
+  </data>
+  <data name="Sync_CompareDirectoriesTip" xml:space="preserve">
+    <value>두 창의 현재 폴더에서 서로 다른 항목을 선택합니다(현재 수준만)</value>
+  </data>
+  <data name="Sync_SynchronizeEllipsis" xml:space="preserve">
+    <value>동기화…</value>
+  </data>
+  <data name="Sync_SynchronizeTip" xml:space="preserve">
+    <value>두 디렉터리 트리를 비교해 동기화하거나 원격 디렉터리를 최신으로 유지합니다</value>
+  </data>
+  <data name="Sync_CompareSummary" xml:space="preserve">
+    <value>로컬 {0}개 다름 · 원격 {1}개 다름 · {2}개 동일</value>
+  </data>
+  <data name="Sync_CompareIdentical" xml:space="preserve">
+    <value>두 폴더가 동일합니다({0}개)</value>
+  </data>
+  <data name="Sync_LocalDirectory" xml:space="preserve">
+    <value>로컬 디렉터리</value>
+  </data>
+  <data name="Sync_RemoteDirectory" xml:space="preserve">
+    <value>원격 디렉터리</value>
+  </data>
+  <data name="Sync_Browse" xml:space="preserve">
+    <value>찾아보기…</value>
+  </data>
+  <data name="Sync_Direction" xml:space="preserve">
+    <value>방향</value>
+  </data>
+  <data name="Sync_DirectionBoth" xml:space="preserve">
+    <value>양방향</value>
+  </data>
+  <data name="Sync_DirectionToRemote" xml:space="preserve">
+    <value>로컬 → 원격</value>
+  </data>
+  <data name="Sync_DirectionToLocal" xml:space="preserve">
+    <value>원격 → 로컬</value>
+  </data>
+  <data name="Sync_Mode" xml:space="preserve">
+    <value>모드</value>
+  </data>
+  <data name="Sync_ModeSynchronize" xml:space="preserve">
+    <value>파일 동기화</value>
+  </data>
+  <data name="Sync_ModeSynchronizeTip" xml:space="preserve">
+    <value>새 파일, 더 최신이거나 크기가 다른 파일을 전송합니다. 더 최신인 대상은 덮어쓰지 않습니다</value>
+  </data>
+  <data name="Sync_ModeMirror" xml:space="preserve">
+    <value>파일 미러</value>
+  </data>
+  <data name="Sync_ModeMirrorTip" xml:space="preserve">
+    <value>대상을 원본과 동일하게 만듭니다. 대상이 더 최신이어도 다르면 덮어씁니다</value>
+  </data>
+  <data name="Sync_ModeTimestamps" xml:space="preserve">
+    <value>타임스탬프만 동기화</value>
+  </data>
+  <data name="Sync_ModeTimestampsTip" xml:space="preserve">
+    <value>내용은 전송하지 않습니다. 양쪽에 있고 크기가 같은 파일의 대상 수정 시간을 원본과 맞춥니다</value>
+  </data>
+  <data name="Sync_Criteria" xml:space="preserve">
+    <value>비교 기준</value>
+  </data>
+  <data name="Sync_CriteriaTime" xml:space="preserve">
+    <value>수정 시간</value>
+  </data>
+  <data name="Sync_CriteriaSize" xml:space="preserve">
+    <value>파일 크기</value>
+  </data>
+  <data name="Sync_Options" xml:space="preserve">
+    <value>옵션</value>
+  </data>
+  <data name="Sync_DeleteExtraneous" xml:space="preserve">
+    <value>불필요한 파일 삭제</value>
+  </data>
+  <data name="Sync_DeleteExtraneousTip" xml:space="preserve">
+    <value>대상 쪽에만 있는 항목을 삭제합니다(단방향만)</value>
+  </data>
+  <data name="Sync_ExistingOnly" xml:space="preserve">
+    <value>기존 파일만</value>
+  </data>
+  <data name="Sync_ExistingOnlyTip" xml:space="preserve">
+    <value>양쪽에 이미 있는 파일만 업데이트하고 새로 만들지 않습니다</value>
+  </data>
+  <data name="Sync_FileMask" xml:space="preserve">
+    <value>파일 마스크</value>
+  </data>
+  <data name="Sync_FileMaskPlaceholder" xml:space="preserve">
+    <value>예: *.php; *.js | .git/; *.tmp</value>
+  </data>
+  <data name="Sync_FileMaskTip" xml:space="preserve">
+    <value>마스크는 ; 로 구분하며 | 뒤는 제외 항목입니다. / 로 끝나면 폴더에, / 가 포함되면 상대 경로에 일치합니다. 제외된 폴더는 검사하지 않습니다.</value>
+  </data>
+  <data name="Sync_Compare" xml:space="preserve">
+    <value>비교</value>
+  </data>
+  <data name="Sync_Start" xml:space="preserve">
+    <value>동기화</value>
+  </data>
+  <data name="Sync_CheckAll" xml:space="preserve">
+    <value>모두 선택</value>
+  </data>
+  <data name="Sync_CheckNone" xml:space="preserve">
+    <value>선택 해제</value>
+  </data>
+  <data name="Sync_ColAction" xml:space="preserve">
+    <value>작업</value>
+  </data>
+  <data name="Sync_ColPath" xml:space="preserve">
+    <value>경로</value>
+  </data>
+  <data name="Sync_ColLocal" xml:space="preserve">
+    <value>로컬</value>
+  </data>
+  <data name="Sync_ColRemote" xml:space="preserve">
+    <value>원격</value>
+  </data>
+  <data name="Sync_WatchLogHeader" xml:space="preserve">
+    <value>활동</value>
+  </data>
+  <data name="Sync_EmptyHint" xml:space="preserve">
+    <value>디렉터리와 옵션을 고른 뒤 [비교]를 눌러 변경 내용을 미리 봅니다. [동기화]를 누르기 전에는 아무것도 전송되지 않습니다.</value>
+  </data>
+  <data name="Sync_KeepUpToDate" xml:space="preserve">
+    <value>원격을 최신으로 유지</value>
+  </data>
+  <data name="Sync_KeepUpToDateTip" xml:space="preserve">
+    <value>로컬 디렉터리를 감시해 변경될 때마다 업로드합니다(항상 로컬 → 원격, 위의 마스크·비교 기준·[불필요한 파일 삭제] 사용)</value>
+  </data>
+  <data name="Sync_StopWatching" xml:space="preserve">
+    <value>감시 중지</value>
+  </data>
+  <data name="Sync_KindUpload" xml:space="preserve">
+    <value>업로드</value>
+  </data>
+  <data name="Sync_KindDownload" xml:space="preserve">
+    <value>다운로드</value>
+  </data>
+  <data name="Sync_KindCreateRemoteDirectory" xml:space="preserve">
+    <value>원격 폴더 만들기</value>
+  </data>
+  <data name="Sync_KindCreateLocalDirectory" xml:space="preserve">
+    <value>로컬 폴더 만들기</value>
+  </data>
+  <data name="Sync_KindSetRemoteTime" xml:space="preserve">
+    <value>원격 시간 설정</value>
+  </data>
+  <data name="Sync_KindSetLocalTime" xml:space="preserve">
+    <value>로컬 시간 설정</value>
+  </data>
+  <data name="Sync_KindDeleteRemote" xml:space="preserve">
+    <value>원격 삭제</value>
+  </data>
+  <data name="Sync_KindDeleteLocal" xml:space="preserve">
+    <value>로컬 삭제</value>
+  </data>
+  <data name="Sync_Summary" xml:space="preserve">
+    <value>업로드 {0}개({1}) · 다운로드 {2}개({3}) · 삭제 {4}개 · 기타 {5}개</value>
+  </data>
+  <data name="Sync_ScanningProgress" xml:space="preserve">
+    <value>검사 중… 로컬 폴더 {0}개, 원격 폴더 {1}개</value>
+  </data>
+  <data name="Sync_NothingToDo" xml:space="preserve">
+    <value>차이가 없어 동기화할 필요가 없습니다</value>
+  </data>
+  <data name="Sync_PreviewReady" xml:space="preserve">
+    <value>작업 {0}개 — 원하지 않는 항목의 선택을 해제한 뒤 [동기화]를 누르세요</value>
+  </data>
+  <data name="Sync_Cancelled" xml:space="preserve">
+    <value>취소됨</value>
+  </data>
+  <data name="Sync_LocalMissing" xml:space="preserve">
+    <value>로컬 디렉터리가 없습니다: {0}</value>
+  </data>
+  <data name="Sync_LocalRequired" xml:space="preserve">
+    <value>로컬 디렉터리를 입력하세요</value>
+  </data>
+  <data name="Sync_RemoteRequired" xml:space="preserve">
+    <value>원격 디렉터리를 입력하세요</value>
+  </data>
+  <data name="Sync_InvalidMask" xml:space="preserve">
+    <value>파일 마스크가 잘못되었습니다. | 는 하나까지만 쓸 수 있고 / 단독은 마스크가 아닙니다</value>
+  </data>
+  <data name="Sync_ConfirmDelete" xml:space="preserve">
+    <value>이번 동기화로 {0}개 항목(폴더는 내용 포함)이 삭제되며 되돌릴 수 없습니다. 계속하시겠습니까?</value>
+  </data>
+  <data name="Sync_ConfirmWatchDelete" xml:space="preserve">
+    <value>[불필요한 파일 삭제]가 켜져 있습니다. 감시 중 로컬에서 삭제한 항목은 원격에서도 삭제됩니다. 계속하시겠습니까?</value>
+  </data>
+  <data name="Sync_Running" xml:space="preserve">
+    <value>동기화 중 {0}/{1} · {2}</value>
+  </data>
+  <data name="Sync_DoneVerified" xml:space="preserve">
+    <value>완료: 성공 {0}개, 실패 {1}개. 다시 비교한 결과 남은 차이가 없습니다</value>
+  </data>
+  <data name="Sync_DoneRemaining" xml:space="preserve">
+    <value>완료: 성공 {0}개, 실패 {1}개. 다시 비교한 결과 아직 {2}개 작업이 남아 있습니다</value>
+  </data>
+  <data name="Sync_NoteConflicts" xml:space="preserve">
+    <value>충돌 {0}개는 건드리지 않았습니다(한쪽은 파일·다른 쪽은 폴더이거나, 대소문자만 다른 원격 이름)</value>
+  </data>
+  <data name="Sync_NoteSkippedLinks" xml:space="preserve">
+    <value>폴더 링크 {0}개는 따라가지 않았습니다</value>
+  </data>
+  <data name="Sync_TimestampsUnsupported" xml:space="preserve">
+    <value>이 서버는 수정 시간을 설정할 수 없어 업로드한 파일이 다음 비교 때 원격이 더 최신으로 보입니다(양방향 동기화는 다시 다운로드합니다)</value>
+  </data>
+  <data name="Sync_MoreErrors" xml:space="preserve">
+    <value>…외 {0}개</value>
+  </data>
+  <data name="Sync_TransferFailed" xml:space="preserve">
+    <value>전송 실패(전송 패널 참조)</value>
+  </data>
+  <data name="Sync_UnsafeLocalName" xml:space="preserve">
+    <value>"{0}"은(는) 로컬에 쓸 수 없습니다. 이 시스템에서 유효하지 않은 이름입니다</value>
+  </data>
+  <data name="Sync_WatchStarted" xml:space="preserve">
+    <value>감시 중 {0} → {1}</value>
+  </data>
+  <data name="Sync_WatchStopped" xml:space="preserve">
+    <value>감시를 중지했습니다</value>
+  </data>
+  <data name="Sync_WatchUnavailable" xml:space="preserve">
+    <value>이 로컬 디렉터리는 감시할 수 없습니다(네트워크 드라이브이거나 시스템 감시 한도 도달)</value>
+  </data>
+  <data name="Sync_WatchError" xml:space="preserve">
+    <value>오류: {0}</value>
+  </data>
+  <data name="Sync_CriteriaChecksum" xml:space="preserve">
+    <value>SHA-256 체크섬</value>
+  </data>
+  <data name="Sync_CriteriaChecksumTip" xml:space="preserve">
+    <value>양쪽에 있고 크기가 같은 파일은 먼저 SHA-256으로 비교합니다(SFTP는 서버에서 sha256sum, FTP는 HASH / XSHA256). 내용이 같으면 시간이 달라도 전송하지 않습니다. 체크섬을 얻을 수 없는 파일은 크기와 수정 시간으로 비교합니다. 해당 파일은 양쪽에서 전체를 읽습니다.</value>
+  </data>
+  <data name="Sync_HashingProgress" xml:space="preserve">
+    <value>SHA-256 확인 중… {0}/{1}</value>
+  </data>
+  <data name="Sync_NoteChecksumUnsupported" xml:space="preserve">
+    <value>SHA-256을 사용할 수 없어({0}) 크기와 수정 시간으로 비교했습니다</value>
+  </data>
+  <data name="Sync_NoteChecksumPartial" xml:space="preserve">
+    <value>{1}개 중 {0}개는 SHA-256을 얻지 못해 크기와 수정 시간으로 비교했습니다</value>
+  </data>
+  <data name="Sync_CompareHashing" xml:space="preserve">
+    <value>비교 중… SHA-256 확인 중</value>
+  </data>
+  <data name="Sync_CompareFellBack" xml:space="preserve">
+    <value>(SHA-256 사용 불가, 크기/시간으로 비교)</value>
+  </data>
 </root>

@@ -67,7 +67,7 @@ public partial class TraceRouteWindow : Window
 
     private async Task OpenUrlAsync(string url)
     {
-        if (TopLevel.GetTopLevel(this)?.Launcher is { } launcher)
+        if (GetTopLevel(this)?.Launcher is { } launcher)
         {
             await launcher.LaunchUriAsync(new(url));
         }

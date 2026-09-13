@@ -58,7 +58,7 @@ public sealed class UniqueNamesTests
     {
         string[] first = [.. UniqueNames.Candidates("file.txt").Take(3)];
 
-        Assert.AreSequenceEqual(new[] { "file (1).txt", "file (2).txt", "file (3).txt" }, first);
+        Assert.AreSequenceEqual(["file (1).txt", "file (2).txt", "file (3).txt"], first);
     }
 
     [TestMethod]

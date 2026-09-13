@@ -4412,3 +4412,139 @@ Patch 的增删行在暗色下顶着浅色配色 —— 用户说的"蓝色看�
 文档:`velashell-docs` 的 `{zh,en}/host/SFTP双栏与WinSCP差距分析.md` 附录已补 2026-09-12 一节,
 见 [velashell-docs#34](https://github.com/VelaShellLabs/velashell-docs/pull/34)。
 
+## ✅ 74. 2026-09-12 目录比较与同步:对标 WinSCP 的三件套,难的不是比较,是时间(用户需求)
+
+> 「为我实现(SFTP,FTP,FTPS)目录比较同步的功能」「让其能对标 WinSCP 等软件的功能。」
+
+`SFTP双栏与WinSCP差距分析.md` 把它记作 C1「与 WinSCP 最本质的差距」,WinSCP 那边是三样东西:
+**比较目录**、**同步**(单向 / 双向 / 镜像,预览后执行)、**保持远程目录最新**。三样都做了,SFTP / FTP / FTPS 共用一套
+—— 双栏文档只认 `ISftpService` + 会话标识,插件协议的文件文档顺带也能用。
+
+### 一、入口与交互
+
+双栏文档顶部加一条 32px 工具条(`SftpDocumentView`),两个「图标 + 文字」按钮:
+
+- **比较目录**:两栏当前目录这一层(不递归,与 WinSCP 同名命令同口径),在各自一栏里**选中**不同的条目 ——
+  本地栏选本地独有 / 本地较新,远端栏选远端独有 / 远端较新,大小不同与冲突两边都选。工具条右侧一句结论,任一栏换目录即清。
+  远端栏隐藏点文件时本地点文件也不参与,否则每个 `.git` 都是「只有本地有」。
+- **同步…**:独立窗口 `DirectorySyncWindow`(窗体规格照链路追踪),同一文档只开一个。选项:方向(本地→远端 / 远端→本地 / 双向)、
+  模式(同步 / 镜像 / 仅时间戳)、比较依据(时间、大小)、删除多余文件、仅已存在的文件、文件掩码(WinSCP 写法 `包含 | 排除`)。
+  比较 → 预览(每步一行,可逐项取消)→ 同步 → **自动复查**。改任何选项都作废预览;有删除先二次确认。
+- **保持远端最新**:同一窗口的按钮。开始时完整对齐一次,之后监视本地目录树,防抖 1 秒只重对变化的那一层;
+  新目录整棵对,监视缓冲溢出整棵重对。列表区换成活动记录。关窗 / 关文档即停。
+
+### 二、分层
+
+| 层 | 内容 | 为什么在这 |
+| --- | --- | --- |
+| `Core/DirectorySync` | `SyncFileMask`、`DirectoryComparer`、`SyncPlanner`、`DirectoryTreeScanner`、模型与 `SyncTime` | 纯逻辑,同一份比较结果 + 选项永远得到同一份计划;单测不碰 UI |
+| `ISftpService.SetLastWriteTimeAsync` | SFTP 走 setstat,FTP 走 `MFMT`,插件协议如实抛 `NotSupportedException` | 见第三节 |
+| `ViewModels/DirectorySyncRunner` | 建目录 → 改时间 → 传文件 → 删除 | 传输复用 `FileBrowserViewModel` 的管道 |
+| `ViewModels/DirectorySyncViewModel` | 窗口状态、预览、保持最新 | — |
+
+传输管道只抽了一刀:`RunTransferBatchAsync` 拆出 `ExecuteResolvedBatchAsync`(登记批次、并发上限、收尾通知),
+`RunTransferAsync` 改为返回最终状态;新增 `RunSyncTransfersAsync` 直接进执行段。**跳过冲突策略**(预览就是确认,
+「文件已存在时:询问」会对每个要覆盖的文件再弹一次)与**续传探测**(目标比源小正是「内容不同」的常态,当成半截文件续传会拼出错文件)。
+进度浮窗、全窗口并发名额、取消、传输日志与普通传输完全共用。
+
+### 三、时间:这件事真正的难点
+
+同步靠修改时间判新旧,于是三处必须同时对:
+
+1. **传完回写时间,不看「保留时间戳」设置**。不回写,刚上传的文件在远端的时间是「现在」,下一次比较就是「远端较新」,
+   双向同步还会把它下载回来。SFTP 上传原本就按设置 setstat,但 FTP 上传从来不写时间 —— 于是给 `ISftpService` 加了
+   `SetLastWriteTimeAsync`,执行器每传完一个就调一次(SFTP 在开着「保留时间戳」时会多一次 setstat,可以接受)。
+2. **FTP 的 `MFMT` 必须按 UTC 发**,而且**不能用 FluentFTP 的 `SetModifiedTime`**:它按 `TimeConversion` 配置换算时区,
+   发出去的值会被一个配置项悄悄挪几个小时。自己拼 `MFMT yyyyMMddHHmmss path`,回 500/501/502/504 视为不支持。
+3. **精度**:FTP 的 Unix LIST 只到分钟,半年前的文件只到日期。拿秒级本地时间去比,几乎每个文件都「不同」。
+   `SyncItem` 带精度,比较时两边截到较粗的一级(在本地时区里截,LIST 的日期是按服务器日历给的),容差 1 秒。
+   精度只对 FTP / 插件协议按原始值推断;SFTP 恒为秒,不能被一个恰好落在整分的时间降级。
+
+`FtpFileServiceIntegrationTests` 对环回 FTP 服务器(新增 `MFMT` 支持,可关)实跑整条链:上传 → MFMT → LIST 读回 →
+比较器判「相同」,再把本地改晚一分钟必须判「本地较新」;另一条验不支持 MFMT 的服务器报 `NotSupportedException`。
+
+### 四、几条安全口径
+
+- **删除放在最后,取消后不删**。计划里删目录时其下条目不再单列(目录整棵删)。
+- **冲突不动**:一边文件一边目录,或远端有只差大小写的两个名字而本地(Windows / macOS)区分不了 —— 谁覆盖谁都是替用户做决定。
+  冲突目录下的子项不再比较,否则勾上删除会去删一棵没打算动的树。
+- **不跟随指向目录的链接**(两边都是,与文件夹下载同口径);本地只认真正的符号链接 / 目录联接 —— OneDrive 占位文件也带
+  `ReparsePoint` 属性,按属性一刀切会让同步盘里的文件整片「消失」。
+- **远端名字拼本地路径逐段过 `LocalPathSafety`**:`a:b`、`CON` 报错跳过,不写到别处。
+- 被掩码排除的目录不扫描,也就不会被「删除多余文件」删到;保持最新时变化落在被排除目录里同样不同步。
+
+### 五、一个自己埋的坑:进度回调覆盖结论
+
+VM 用例单跑全绿、混跑偶发红:状态栏最后应是「同步完成…」,实际是「正在同步 2/2…」。`Progress<T>` 的回调是异步投递的,
+执行结束后才到的那几条把结论覆盖了 —— 真窗口里 UI 线程排队顺序通常救得回来,但不是保证。
+修法:状态文字带代次(`_statusEpoch`),写结论时进一代,旧代的进度回调一律作废。
+
+### 六、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3513 通过 / 21 跳过 / 0 失败**。第一次全量跑红了一条 `WindowMoveDragUsageTests`:新窗口标题栏直接调了 `BeginMoveDrag`,
+改走 `BeginWindowMoveDrag`(#264 的幽灵弹起纠正)后转绿 —— 约定测试拦住的正是它该拦的东西。
+
+- 新增用例:`Core.Tests/DirectorySync` 四个类(掩码、比较器、计划器、扫描器),`VelaShell.Tests/ViewModels/DirectorySyncViewModelTests`
+  (比较 → 同步 → 复查无剩余、未勾选不执行、下载进新目录并对齐时间、Windows 非法名字拒写、改选项作废预览、双向收紧选项、
+  保持最新的启动对齐与新目录上传、取消后不删),`FtpFileServiceIntegrationTests` 两条 MFMT 真协议用例。
+- **没有自动化覆盖、也没有实机看过的**:窗口布局与主题下的观感;真实 FileSystemWatcher 的事件节奏(用例替换了监视工厂);
+  FTPS 与真实 FTP 服务器(vsftpd / ProFTPD / IIS)对 `MFMT` 的实际支持;服务器与本机不同时区时的时间偏移(已知限制,见差距分析 7.5)。
+
+文档:`velashell-docs` 的 `{zh,en}/host/SFTP双栏与WinSCP差距分析.md`(C1 改为已实现,新增第七节)与
+`{zh,en}/host/交互与界面规格.md` §6 已同步(含 §75 的 SHA-256 口径),见
+[velashell-docs#35](https://github.com/VelaShellLabs/velashell-docs/pull/35)(待合入)。
+
+## ✅ 75. 2026-09-13 同步比较:先比 SHA-256,不支持或出错再回退到大小与修改时间(用户需求)
+
+> 「是否可以先按照 SHA256 校验做比较,若是不支持或者出错再回退到按照文件大小和修改时间作比较。」
+
+§74 的比较只看大小与时间,两类情况处理不好:`git checkout` / 解压 / `touch` 之后时间全变、内容没变,整片重传;
+大小与时间都没变、内容却变了,永远看不出来。现在默认先比内容。
+
+### 一、口径
+
+- **只算两边都有、大小相同的文件**:大小不同已经证明内容不同,读两边整份文件只为再证明一次是纯浪费。
+- 摘要相同 → `Same`,**时间不同也不传**;摘要不同 → 内容确实变了,由时间判断哪边较新,时间也相同时为 `Differs`
+  (原 `SizeDiffers` 改名,含义扩成「内容不同而看不出哪边新」)。
+- **回退分两级**:远端整体不支持或出错 → 余下全部回退、附注写明原因,不再一批批撞同一堵墙;单个文件读不了 → 只有它回退,
+  附注写「N 个中有 M 个」。只勾了 SHA-256 而没勾时间与大小时,回退按两样都比 —— 回退不能退成「什么都不比」。
+- **先远端、后本地**:服务器不支持时本地一个字节都不读。
+- 时间戳模式也用上:算出摘要而不同的文件不改时间,免得把差异掩盖掉。
+- 「比较目录」(一层)同样先比摘要;算摘要期间任一栏换了目录,结论作废,不把选中落到错的行上。
+
+### 二、远端怎么算
+
+| 后端 | 做法 | 判为「不支持」的情形 |
+| --- | --- | --- |
+| SFTP | SSH exec 通道跑 `sh -c '…' vela-sha256 路径…`:有 `sha256sum` 用它,否则 `shasum -a 256`,都没有打印标记;每批 ≤200 个路径、≤16 000 字符 | 会话没有 SSH 客户端、exec 被拒(`ForceCommand internal-sftp`)、打印了标记、一行摘要都认不出且标准错误不是工具自己的逐文件报错 |
+| FTP / FTPS | FluentFTP `GetChecksum(path, SHA256)`:服务器通告 `HASH` 且含 SHA-256 用它,否则 `XSHA256`;指定了 SHA-256 就不会退去用 MD5 / CRC | `FtpHashUnsupportedException`、命令回 500/501/502/504;连接断开照常上抛,不当成「这个文件算不出来」 |
+| 插件协议 | — | SDK 没有这一面,恒为不支持 |
+
+命令与解析拆成纯函数 `Core/Sftp/RemoteSha256`:
+
+- 用 `sh -c`,是因为登录 shell 可能是 fish / csh,直接写 `if … fi` 会语法错。
+- 路径逐个单引号转义,再经 `"$@"` 原样传给工具。
+- GNU `sha256sum` 遇到名字里有反斜杠或换行时,会在行首加 `\` 并转义名字,解析时反转义。
+- `sha256sum` 有文件失败时退出码为 1,但其余文件照常输出。所以用 `RunCommandDetailedAsync` 同时拿标准错误与退出码,才分得清「有个文件读不了」和「这台主机跑不了」。
+
+### 三、缓存
+
+`SyncChecksumCache` 以「哪一边 + 完整路径 + 大小 + 修改时间」为键,挂在双栏文档上,与同步窗口共用,关文档即丢。
+同步后的自动复查只重算刚传过去的文件(它们的远端时间被改过,键对不上)——**顺带就是一次传输后校验**。
+代价是同一窗口内「内容变了而大小与时间都没变」(刻意 `touch -r`)会用到旧摘要,已写进差距分析 7.5。
+
+### 四、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3541 通过 / 21 跳过 / 0 失败**。途中红过一条自己写的 `NoSshClientForTheSession_IsNotSupported`:NSubstitute 对接口返回值
+默认给自动替身而不是 null,用例根本没走到「没有 SSH 客户端」那条路,显式返回 null 后转绿。
+
+- 新增用例:`RemoteSha256Tests`(引号、两种输出格式、转义名字、逐文件失败、整体不支持)、`SftpServiceSha256Tests`、
+  `SyncChecksumsTests`(只算同大小、远端不支持只问一次、单文件回退、缓存命中、分批)、`ChecksumComparisonTests`、
+  VM 用例三条(内容相同时间不同不传并以关掉校验作对照、大小时间相同内容不同照传、不支持时回退且附注写明)、
+  FTP 环回服务器新增 `XSHA256`(可关)的两条真协议用例。
+- `RemoteSha256IntegrationTests`(`DockerIntegration`)对真实 OpenSSH 验证空格、单引号、反斜杠、`$`、换行文件名的摘要与本地一致。
+- **没有验证的**:真实 FTP 服务器(FileZilla Server、ProFTPD `mod_digest`、IIS)对 `HASH` / `XSHA256` 的实际应答格式;
+  大目录首次比较的耗时(没有做基准)。
+

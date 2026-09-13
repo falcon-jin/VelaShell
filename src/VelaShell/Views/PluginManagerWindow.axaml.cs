@@ -309,7 +309,7 @@ public partial class PluginManagerWindow : Window
     {
         if (sender is not Control { Tag: string url }
             || !Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
-            || TopLevel.GetTopLevel(this) is not { } top)
+            || GetTopLevel(this) is not { } top)
         {
             return;
         }

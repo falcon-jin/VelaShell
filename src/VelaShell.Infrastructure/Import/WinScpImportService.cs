@@ -82,8 +82,8 @@ public sealed class WinScpImportService(ISessionRepository repository) : ISessio
                 : ftpSettings is null
                     ? 22
                     : ftpSettings.EncryptionMode == FtpEncryptionMode.Implicit
-                        ? Core.Models.FtpSettings.DefaultImplicitPort
-                        : Core.Models.FtpSettings.DefaultPort;
+                        ? FtpSettings.DefaultImplicitPort
+                        : FtpSettings.DefaultPort;
             int port = raw.Port is int p and > 0 ? p : defaultPort;
 
             items.Add(new ImportedSession

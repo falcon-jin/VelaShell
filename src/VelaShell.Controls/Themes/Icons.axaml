@@ -55,6 +55,9 @@
   <StreamGeometry x:Key="Icon.square">M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z</StreamGeometry>
   <StreamGeometry x:Key="Icon.hard-drive">M22 12H2 M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z M6 16h.01 M10 16h.01</StreamGeometry>
   <StreamGeometry x:Key="Icon.arrow-right-left">M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4</StreamGeometry>
+  <!-- 目录比较与同步(SFTP 文档工具条、同步窗口标题)。 -->
+  <StreamGeometry x:Key="Icon.git-compare">M21 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z M9 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z M13 6h3a2 2 0 0 1 2 2v7 M11 18H8a2 2 0 0 1-2-2V9</StreamGeometry>
+  <StreamGeometry x:Key="Icon.folder-sync">M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v.5 M12 10v4h4 M12 14l1.535-1.605a5 5 0 0 1 8 1.5 M22 22v-4h-4 M22 18l-1.535 1.605a5 5 0 0 1-8-1.5</StreamGeometry>
   <StreamGeometry x:Key="Icon.eye">M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z</StreamGeometry>
   <!-- 右键菜单图标(design frame e6klM 会话右键菜单)以及消息对话框状态图标集。 -->
   <StreamGeometry x:Key="Icon.plug">M12 22v-5 M9 8V2 M15 8V2 M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z</StreamGeometry>

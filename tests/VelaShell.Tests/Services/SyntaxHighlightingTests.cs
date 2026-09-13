@@ -243,7 +243,7 @@ public class SyntaxHighlightingTests
     [TestMethod]
     public void EveryNamedColour_InEveryDefinition_HasAPaletteRole()
     {
-        SyntaxPalette palette = SyntaxPalette.From(UiThemeCatalog.DefaultDark);
+        var palette = SyntaxPalette.From(UiThemeCatalog.DefaultDark);
         var missing = new SortedSet<string>(StringComparer.Ordinal);
         foreach (IHighlightingDefinition definition in SyntaxHighlightingService.AllDefinitions)
         {
@@ -279,7 +279,7 @@ public class SyntaxHighlightingTests
         var failures = new List<string>();
         foreach (UiTheme theme in UiThemeCatalog.All)
         {
-            SyntaxPalette p = SyntaxPalette.From(theme);
+            var p = SyntaxPalette.From(theme);
             (string Role, Color Value)[] roles =
             [
                 ("Comment", p.Comment), ("String", p.String), ("Keyword", p.Keyword), ("Number", p.Number),
@@ -326,7 +326,7 @@ public class SyntaxHighlightingTests
     [TestMethod]
     public void DefaultThemes_KeepTheirCanonicalSyntaxColours()
     {
-        SyntaxPalette dark = SyntaxPalette.From(UiThemeCatalog.DefaultDark);
+        var dark = SyntaxPalette.From(UiThemeCatalog.DefaultDark);
         Assert.AreEqual(Color.Parse("#F1FA8C"), dark.String);
         Assert.AreEqual(Color.Parse("#FF79C6"), dark.Keyword);
         Assert.AreEqual(Color.Parse("#BD93F9"), dark.Number);
@@ -338,7 +338,7 @@ public class SyntaxHighlightingTests
         Assert.AreEqual(Color.Parse("#8BE9FD"), dark.Link, "暗色链接是 Dracula 青,而不是纯蓝");
 
         // Alucard:除变量色(橙红中点,见下)外逐一与原先的正典值一致。
-        SyntaxPalette light = SyntaxPalette.From(UiThemeCatalog.DefaultLight);
+        var light = SyntaxPalette.From(UiThemeCatalog.DefaultLight);
         Assert.AreEqual(Color.Parse("#6C664B"), light.Comment);
         Assert.AreEqual(Color.Parse("#846E15"), light.String);
         Assert.AreEqual(Color.Parse("#A3144D"), light.Keyword);

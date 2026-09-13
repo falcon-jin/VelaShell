@@ -299,7 +299,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
             // 「跟随系统」下系统明暗翻转:主题服务不动,只有实际变体变了,同样要重下发。
             // 只在有主题服务时才挂:没有它的那些单测会造出成百个视图模型,
             // 每个都往共用的 Application 上挂一个再也不会摘掉的处理器。
-            if (Avalonia.Application.Current is { } themeHost)
+            if (Application.Current is { } themeHost)
             {
                 themeHost.ActualThemeVariantChanged += (_, _) =>
                 {
@@ -4842,7 +4842,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     private static UiTheme ActiveUiThemeFor(IThemeService? themeService) =>
         UiThemeCatalog.Resolve(
             themeService?.CurrentTheme,
-            Avalonia.Application.Current?.ActualThemeVariant != Avalonia.Styling.ThemeVariant.Light
+            Application.Current?.ActualThemeVariant != Avalonia.Styling.ThemeVariant.Light
         );
 
     private UiTheme ActiveUiTheme => ActiveUiThemeFor(_themeService);

@@ -62,6 +62,21 @@ public interface ISftpService : IAsyncDisposable
     Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 把远端文件的修改时间设为 <paramref name="lastWriteTimeUtc" />(UTC)。目录同步靠它在上传后
+    /// 把远端 mtime 对齐本地源文件,否则下一次比较会把刚传上去的文件判成「远端较新」。
+    /// 后端没有这种能力(插件协议、不支持 <c>MFMT</c> 的 FTP 服务器)时抛 <see cref="NotSupportedException" />。
+    /// </summary>
+    Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 在服务器端批量算文件的 SHA-256(小写十六进制),不经网络传内容。返回 请求的路径 → 摘要;
+    /// 单个文件算不出来(不存在、没权限)时值为 null。整个后端做不到(没有 exec 通道 / 没有 <c>sha256sum</c>、
+    /// FTP 服务器不提供 <c>HASH</c> / <c>XSHA256</c>、插件协议)时抛 <see cref="NotSupportedException" />,
+    /// 调用方据此回退到大小与修改时间比较。
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 在 <paramref name="linkPath" /> 创建指向 <paramref name="targetPath" /> 的符号链接。
     /// <paramref name="targetPath" /> 原样写入(相对路径按链接所在目录解析,与 <c>ln -s</c> 一致)。
     /// 后端没有这种能力(插件协议、不支持 <c>SITE SYMLINK</c> 的 FTP 服务器)时抛

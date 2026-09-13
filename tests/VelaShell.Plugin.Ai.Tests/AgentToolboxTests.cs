@@ -39,7 +39,7 @@ public sealed class AgentToolboxTests
 
         string[] names = [.. toolbox.CreateTools(ChatMode.Agent).OfType<AIFunction>().Select(f => f.Name)];
 
-        Assert.AreSequenceEqual(ExpectedToolNames, names, Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(ExpectedToolNames, names, SequenceOrder.InAnyOrder);
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public sealed class AgentToolboxTests
         Assert.AreSequenceEqual(
             AgentToolbox.Catalog.Where(t => t.ReadOnly).Select(t => t.Name),
             names,
-            Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            SequenceOrder.InAnyOrder);
         Assert.DoesNotContain("run_command", names, "计划模式不该能执行命令");
         Assert.DoesNotContain("write_remote_file", names, "计划模式不该能写文件");
     }

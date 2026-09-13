@@ -108,23 +108,31 @@ public sealed class BlockSelectionTests
                         Content = control,
                     };
                     window.Show();
-                    Dispatcher.UIThread.RunJobs();
-                    window.CaptureRenderedFrame(); // 填充屏幕行映射与单元格度量
+                    try
+                    {
+                        Dispatcher.UIThread.RunJobs();
+                        window.CaptureRenderedFrame(); // 填充屏幕行映射与单元格度量
 
-                    RawInputModifiers modifiers = withAlt
-                        ? RawInputModifiers.Alt
-                        : RawInputModifiers.None;
-                    window.MouseDown(CellPoint(control, 0, 2), MouseButton.Left, modifiers);
-                    window.MouseMove(CellPoint(control, 2, 5), modifiers);
-                    window.MouseUp(CellPoint(control, 2, 5), MouseButton.Left, modifiers);
-                    Dispatcher.UIThread.RunJobs();
+                        RawInputModifiers modifiers = withAlt
+                            ? RawInputModifiers.Alt
+                            : RawInputModifiers.None;
+                        window.MouseDown(CellPoint(control, 0, 2), MouseButton.Left, modifiers);
+                        window.MouseMove(CellPoint(control, 2, 5), modifiers);
+                        window.MouseUp(CellPoint(control, 2, 5), MouseButton.Left, modifiers);
+                        Dispatcher.UIThread.RunJobs();
 
-                    Assert.AreEqual(
-                        withAlt,
-                        control.IsBlockSelection,
-                        "块选模式应由按下鼠标时的 Alt 决定。"
-                    );
-                    text = control.GetSelectedText();
+                        Assert.AreEqual(
+                            withAlt,
+                            control.IsBlockSelection,
+                            "块选模式应由按下鼠标时的 Alt 决定。"
+                        );
+                        text = control.GetSelectedText();
+                    }
+                    finally
+                    {
+                        // 窗口必须关:留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+                        window.Close();
+                    }
                     return Task.CompletedTask;
                 },
                 CancellationToken.None

@@ -137,7 +137,7 @@ public sealed class FileBrowserMarqueeUiTests
             Pump(window);
 
             Assert.AreSequenceEqual(
-                ["f2.txt", "f3.txt", "f4.txt"], [.. vm.SelectedFiles.Select(file => file.Name)], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+                ["f2.txt", "f3.txt", "f4.txt"], [.. vm.SelectedFiles.Select(file => file.Name)], SequenceOrder.InAnyOrder);
         });
     }
 
@@ -160,7 +160,7 @@ public sealed class FileBrowserMarqueeUiTests
                 Assert.AreSequenceEqual(
                     [.. batch.Select(file => file.Name)],
                     [.. vm.SelectedFiles.Select(file => file.Name)],
-                    Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder,
+                    SequenceOrder.InAnyOrder,
                     "批量拖拽期间应持续高亮全部待传输项目。"));
         });
     }

@@ -62,8 +62,7 @@ public sealed class CommandPaletteRowsTests
             vm.MoveDown();
         }
 
-        CollectionAssert.AreEqual(rowTitles, navigationTitles,
-            "方向键走过的顺序与列表里看到的顺序对不上 —— 按下箭头会在列表里跳着走。");
+        Assert.AreSequenceEqual(rowTitles, navigationTitles, "方向键走过的顺序与列表里看到的顺序对不上 —— 按下箭头会在列表里跳着走。");
     }
 
     [TestMethod]

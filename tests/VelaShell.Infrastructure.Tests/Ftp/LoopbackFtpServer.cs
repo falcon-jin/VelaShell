@@ -71,6 +71,18 @@ internal sealed class LoopbackFtpServer : IDisposable
     /// <summary>被 <see cref="MaxConcurrentTransfers" /> 顶回去的传输数。</summary>
     public int RejectedTransfers;
 
+    /// <summary>
+    /// 是否实现 <c>MFMT</c>(设置修改时间)。默认 true;置 false 复刻只会 RFC 959 那一套的老服务器
+    /// —— 命令落进 default 分支回 <c>500</c>,客户端应当据此报「不支持」。
+    /// </summary>
+    public bool SupportsMfmt { get; set; } = true;
+
+    /// <summary>
+    /// 是否实现 <c>XSHA256</c>(服务器端算 SHA-256,FileZilla Server / Serv-U 一类的扩展)。默认 true;
+    /// 置 false 时 FEAT 不通告、命令回 <c>500</c>,客户端应当回退到大小与修改时间。
+    /// </summary>
+    public bool SupportsSha256 { get; set; } = true;
+
     private int _liveSessions;
     private int _liveTransfers;
 
@@ -183,8 +195,53 @@ internal sealed class LoopbackFtpServer : IDisposable
                 await writer.WriteLineAsync(" SIZE").ConfigureAwait(false);
                 await writer.WriteLineAsync(" REST STREAM").ConfigureAwait(false);
                 await writer.WriteLineAsync(" UTF8").ConfigureAwait(false);
+                if (SupportsMfmt)
+                {
+                    await writer.WriteLineAsync(" MFMT").ConfigureAwait(false);
+                }
+                if (SupportsSha256)
+                {
+                    await writer.WriteLineAsync(" XSHA256").ConfigureAwait(false);
+                }
                 await writer.WriteLineAsync("211 End").ConfigureAwait(false);
                 return true;
+            case "XSHA256" when SupportsSha256:
+                {
+                    string path = Local(Normalize(state, argument));
+                    if (!File.Exists(path))
+                    {
+                        await writer.WriteLineAsync("550 Not found").ConfigureAwait(false);
+                        return true;
+                    }
+                    byte[] digest;
+                    await using (FileStream source = File.OpenRead(path))
+                    {
+                        digest = await System.Security.Cryptography.SHA256.HashDataAsync(source).ConfigureAwait(false);
+                    }
+                    await writer.WriteLineAsync($"213 {Convert.ToHexString(digest)}").ConfigureAwait(false);
+                    return true;
+                }
+            case "MFMT" when SupportsMfmt:
+                {
+                    // MFMT <yyyyMMddHHmmss(UTC)> <path>:时间与路径之间只隔一个空格,路径本身可以含空格。
+                    int gap = argument.IndexOf(' ');
+                    string path = gap < 0 ? string.Empty : Local(Normalize(state, argument[(gap + 1)..]));
+                    if (gap < 0
+                        || !DateTime.TryParseExact(argument[..gap], "yyyyMMddHHmmss", CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime utc))
+                    {
+                        await writer.WriteLineAsync("501 Syntax error").ConfigureAwait(false);
+                        return true;
+                    }
+                    if (!File.Exists(path))
+                    {
+                        await writer.WriteLineAsync("550 Not found").ConfigureAwait(false);
+                        return true;
+                    }
+                    File.SetLastWriteTimeUtc(path, utc);
+                    await writer.WriteLineAsync($"213 Modify={argument[..gap]}; {argument[(gap + 1)..]}").ConfigureAwait(false);
+                    return true;
+                }
             case "OPTS":
             case "TYPE":
             case "NOOP":
