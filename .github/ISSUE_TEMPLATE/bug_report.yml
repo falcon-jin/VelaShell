@@ -76,7 +76,6 @@ body:
         - 终端显示与渲染(乱码、错位、颜色、光标、字体)
         - SSH 连接与身份验证(含跳板机 ProxyJump)
         - SFTP / FTP 文件浏览与传输
-        - ZMODEM(rz / sz)
         - 端口转发隧道
         - 本地终端标签(PowerShell / CMD / WSL / Git Bash)
         - 停靠、分屏与标签页(VelaDock)
@@ -134,7 +133,7 @@ body:
     id: remote
     attributes:
       label: 远端环境
-      description: 终端、SSH、SFTP、ZMODEM 类问题请填。本地终端标签的问题填本地 shell 即可。
+      description: 终端、SSH、SFTP 类问题请填。本地终端标签的问题填本地 shell 即可。
       placeholder: |
         远端系统:Ubuntu 24.04
         Shell:zsh 5.9(带 oh-my-zsh)
@@ -159,7 +158,6 @@ body:
       label: 日志
       description: |
         日志目录:`~/.velashell/logs/`(Windows 即 `C:\Users\<你>\.velashell\logs\`)。
-        ZMODEM 问题可设 `VELASHELL_ZMODEM_TRACE=1` 重跑一次,会记录协议帧。
 
         ⚠️ **贴之前请把主机地址、用户名、密码、私钥内容打码。**
       render: text

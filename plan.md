@@ -140,7 +140,7 @@ src/
 ├── VelaShell/                桌面入口、DI 组合根、视图(axaml)、App 层 ViewModel、停靠、行为
 ├── VelaShell.Presentation/   跨层 ViewModel、连接/隧道工作流服务
 ├── VelaShell.Controls/       自定义控件(LucideIcon)、设计 token、内置 Cascadia Mono 字体
-├── VelaShell.Terminal/       ★ 自研 VT 终端引擎 + 自绘渲染控件 + X/Y/ZMODEM 路由
+├── VelaShell.Terminal/       ★ 自研 VT 终端引擎 + 自绘渲染控件
 ├── VelaShell.Core/           领域模型、抽象契约、数据存储、SSH/SFTP/FTP 封装接口、协议引擎、本地化
 ├── VelaShell.Infrastructure/ Tmds.Ssh/SFTP/FTP/隧道实现、SonnetDB 持久化、插件管理与能力实现、DI 扩展
 └── VelaShell.PluginHost/     隔离插件的宿主进程(命名管道 RPC,只依赖 SDK 契约)
@@ -227,8 +227,8 @@ graph RL
 
 | 测试项目 | 覆盖 |
 | --- | --- |
-| `VelaShell.Core.Tests` | 领域模型、SFTP 与传输队列、隧道与计量转发、云同步加密、ZMODEM / XMODEM / YMODEM 协议(期望值按 lrzsz 与 ymodem.txt 手工构造的互操作回归) |
-| `VelaShell.Terminal.Tests` | VT 解析、终端仿真、编码、字符宽度、侧栏折叠,以及 ZMODEM 自动接管与 X / YMODEM 手动接管的路由 |
+| `VelaShell.Core.Tests` | 领域模型、SFTP 与传输队列、隧道与计量转发、云同步加密 |
+| `VelaShell.Terminal.Tests` | VT 解析、终端仿真、编码、字符宽度、侧栏折叠 |
 | `VelaShell.Terminal.RenderTests` | 字形绘制的**像素级**回归(挂 Skia 软件后端做真实光栅化) |
 | `VelaShell.Presentation.Tests` | ViewModel 工作流与命令 |
 | `VelaShell.Infrastructure.Tests` | SonnetDB 持久化、凭据加密、ConPTY、SSH 密钥管理、插件管理与跨进程 RPC |
@@ -457,7 +457,7 @@ RemoteInitialPath `"/home/user"` → `""`（空 = 家目录）。
 | # | 状态 | 项 | 落点 |
 | :---: | :---: | --- | --- |
 | 7 | ✅ | **多会话同步输入** | `Services/SyncInputCoordinator.cs` 对等频道模型（标签右键 A/B/C/D 频道菜单）。挂钩 `TypedInput`（**仅用户产生的输入**，不含协议自动应答），直写同频道其他标签的 PTY —— 走桥的 `SendRaw`，不经接收端输入事件，因此既不回环也不驱动接收端的补全弹层 |
-| 8 | ✅ | **ZMODEM（rz/sz）** | **自研协议引擎**（未走 trzsz）：`Core/ZModem/` 传输无关引擎 + `Terminal/ZModem/` 自动接管路由。后续补齐 XMODEM / YMODEM（`Core/XYModem/`）。⚠️ **测试教训**：互操作期望值必须按 lrzsz `zm.c`/`zmodem.h` **手工构造**（见 `LrzszInteropTests`）—— 用自家编码器生成期望值时，编解码同时错也照样全绿，CRC 双重增广的 bug 当初正是这么溜进来的 |
+| 8 | ✅ | **ZMODEM（rz/sz）** | **自研协议引擎**（未走 trzsz）：`Core/ZModem/` 传输无关引擎 + `Terminal/ZModem/` 自动接管路由。后续补齐 XMODEM / YMODEM（`Core/XYModem/`）。**2026-09-14 加上配置面**（`modem-plan.md`）：三种协议各自可启停（全局 `TransferOptions` + 每条连接 `TransferOverrides`，null = 跟随全局，合成入口唯一 —— `SessionTransferSettings.Resolve`），并新增「默认传输方式」`Sftp/ZModem/YModem/XModem`，由命令面板的「发送 / 接收文件」一对命令消费；SSH 默认走 SFTP，没有 SFTP 通道的连接按启用情况退回终端内协议。关掉 ZMODEM = 路由器**不再嗅探输出流**。⚠️ **测试教训**：互操作期望值必须按 lrzsz `zm.c`/`zmodem.h` **手工构造**（见 `LrzszInteropTests`）—— 用自家编码器生成期望值时，编解码同时错也照样全绿，CRC 双重增广的 bug 当初正是这么溜进来的 |
 | 9 | ✅ | **SSH config 导入** | 2026-09-09 落地（§58）：`Infrastructure/Import/SshConfigParser.cs` 按 OpenSSH 语义解析 `~/.ssh/config`（块结构 + `Include` 就地展开 + 「先出现者胜」取值 + 通配/取反匹配），`SshConfigImportService` 作为第三个来源接进同一扇导入对话框。`IdentityFile` → 私钥认证，`ProxyJump` → 跳板引用（取离目标最近的最后一跳，批内解析、成环即断） |
 | 10 | ✅ | **连接代理** | 2026-08-14 落地为**应用级全局代理**（非按会话）。统一抽象 `Core/Net/IProxyResolver`（唯一代理出口，新功能接网络一律消费它）+ `Infrastructure/Net/`（自研 HTTP CONNECT / SOCKS5 握手、环回中继、进程级 `HttpClient.DefaultProxy`）。三条通道：SSH 走环回中继、FTP 走 FluentFTP 代理子类（代理下强制被动模式）、全部 HttpClient 由 `VelaWebProxy.Install` 接管。**代理配置不完整时抛错拒连，绝不静默直连**。ICMP 与连接诊断的裸 TCP **有意不走代理** |
 | 11 | ⏳ | 防空闲断开（Anti-idle） | 见 [`feature-plan.md`](feature-plan.md#-终端与协议) |

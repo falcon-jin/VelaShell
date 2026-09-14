@@ -13,15 +13,11 @@ public class SshTerminalBridge : IDisposable
 {
     private readonly CancellationTokenSource _cts;
     /// <summary>
-    /// 一块待喂入终端的输出。
+    /// 一块待喂入终端的输出。数组租自 <see cref="ArrayPool{T}" />,排空后必须归还。
     /// </summary>
     /// <param name="Buffer">承载字节的数组。<b>可能比实际数据长</b>(池租的数组只保证 ≥ 请求长度)。</param>
     /// <param name="Length">有效字节数 —— 一律以它为准,绝不能用 <c>Buffer.Length</c>。</param>
-    /// <param name="Pooled">
-    /// 该数组是否租自 <see cref="ArrayPool{T}" />。为 true 时排空后必须归还;
-    /// 转交路由(ZMODEM)产出的数组不是池的,归还就会污染池。
-    /// </param>
-    private readonly record struct PendingChunk(byte[] Buffer, int Length, bool Pooled);
+    private readonly record struct PendingChunk(byte[] Buffer, int Length);
 
     private readonly List<PendingChunk> _pending = [];
 
@@ -97,7 +93,6 @@ public class SshTerminalBridge : IDisposable
         }
         _disposed = true;
         _terminal.UserInput -= OnUserInput;
-        TransferRouter?.SessionEnded -= OnFileTransferSessionEnded;
 
         // 防空闲的闹钟第一个停:它在线程池上跑,晚一步就可能往正在拆的流上再送一发。
         _antiIdle.Dispose();
@@ -169,67 +164,6 @@ public class SshTerminalBridge : IDisposable
     public event Action<ShellCloseReason>? Closed;
 
     /// <summary>
-    /// 可选的 ZMODEM 路由器。非 null 时,读循环会先经它路由每一段输出字节
-    /// (检测并接管 ZMODEM 会话),其余字节才嗂入终端。由宿主在启动前装配。
-    /// 赋值时自动订阅其会话结束事件,以便在会话收尾后把终端复位到干净状态。
-    /// </summary>
-    public FileTransfer.TerminalTransferRouter? TransferRouter
-    {
-        get;
-        set
-        {
-            if (ReferenceEquals(field, value))
-            {
-                return;
-            }
-            field?.SessionEnded -= OnFileTransferSessionEnded;
-            field = value;
-            field?.SessionEnded += OnFileTransferSessionEnded;
-        }
-    }
-
-    // 退出备用屏幕缓冲区的控制序列(DECRST 1049)。ZMODEM 传输对 VT 终端本应完全透明,
-    // 任何会话都不该把终端切到备用屏;每次会话收尾补发一次以自愈,防止杂散协议字节把主屏内容
-    // 挡在空白的备用屏后面(表现为"整屏内容消失、只能重开会话")。
-    private static readonly byte[] AltScreenExit = "\x1b[?1049l"u8.ToArray();
-
-    /// <summary>
-    /// 传输会话结束(成功 / 失败 / 取消)后的终端复位:在 UI 线程补发一次 DECRST 1049,
-    /// 再把路由器回收的残余字节(协议帧之后紧跟的 shell 输出,典型就是提示符)喂回终端。
-    /// 若终端确实被杂散字节卡在备用屏,DECRST 会切回主屏、恢复可见内容;若本就在主屏(正常情况),
-    /// 模拟器会短路返回,是无副作用的空操作。事件在后台线程触发,故必须编组到 UI 线程再喂入。
-    /// </summary>
-    private void OnFileTransferSessionEnded(Core.FileTransfer.Model.FileTransferSession session)
-    {
-        _ = session;
-        if (_disposed)
-        {
-            return;
-        }
-        // 必须在这里(而非 UI 线程闭包里)取:路由器已经复位,下一次会话会覆盖这份缓存。
-        byte[] tail = TransferRouter?.TakeRecoveredBytes() ?? [];
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_disposed)
-            {
-                return;
-            }
-            try
-            {
-                _terminal.Feed(AltScreenExit);
-                if (tail.Length > 0)
-                {
-                    _terminal.Feed(tail);
-                }
-            }
-            catch (Exception ex)
-            {
-                Error?.Invoke(ex);
-            }
-        });
-    }
-
-    /// <summary>
     /// 在输出流上剥除即将注入的命令回显(见 <see cref="EchoSuppressor" />)。
     /// 回显最多出现两次(内核规范模式 + readline 预输入重绘),窗口过后自动失效。
     /// 显示路径与旁路记录路径(<see cref="DataReceived" />)各装一份实例,理由见字段注释。
@@ -270,12 +204,7 @@ public class SshTerminalBridge : IDisposable
     }
 
     /// <summary>此刻能不能注入防空闲字节。</summary>
-    /// <remarks>
-    /// ZMODEM 会话进行中一律不发:那条流上跑的是协议帧,插一个字节进去轻则 CRC 错重传,
-    /// 重则整笔传输失败 —— 与击键在传输期间被拦下是同一个理由。
-    /// </remarks>
-    private bool CanInjectAntiIdle() =>
-        !_disposed && _shellStream.CanWrite && TransferRouter is not { IsInSession: true };
+    private bool CanInjectAntiIdle() => !_disposed && _shellStream.CanWrite;
 
     /// <summary>测试探针:同步跑一次防空闲的定时器回调。</summary>
     internal void AntiIdleTickForTest() => _antiIdle.TickForTest();
@@ -359,26 +288,8 @@ public class SshTerminalBridge : IDisposable
                 }
 
                 // 不要为每次读取都 await 一次 UI 跳转。把分块入队并合并;读线程
-                // 跟得上网络节奏,而 UI 以帧率排空。
-                // ZMODEM 路由优先:会话期间返回空终端字节(全部转交引擎),
-                // 命中时仅把引导前的字节嗂终端;未启用时原样嗂入。
-                FileTransfer.TerminalTransferRouter? router = TransferRouter;
-                if (router is null || router.CanPassThrough(data.AsSpan(0, bytesRead)))
-                {
-                    // 常态直通:无 ZMODEM 引导迹象时原始块零拷贝进合批队列(所有权移交队列)。
-                    EnqueueForFeed(new(data, bytesRead, Pooled: true));
-                }
-                else
-                {
-                    FileTransfer.TransferRouteResult route = router.ProcessIncoming(data.AsMemory(0, bytesRead));
-
-                    // 路由产出的是它自己的数组,不属于池;本块的池数组到此为止,当场归还。
-                    ArrayPool<byte>.Shared.Return(data);
-                    if (route.TerminalBytes.Length > 0)
-                    {
-                        EnqueueForFeed(new(route.TerminalBytes, route.TerminalBytes.Length, Pooled: false));
-                    }
-                }
+                // 跟得上网络节奏,而 UI 以帧率排空。原始块零拷贝进合批队列(所有权移交队列)。
+                EnqueueForFeed(new(data, bytesRead));
 
                 // 入队之后再看积压:UI 排不过来就在这里等一等,让 SSH 流控把压力回传给远端。
                 // 放在循环末尾而不是开头,是为了让本轮读到的数据先落进队列 —— 否则
@@ -440,7 +351,7 @@ public class SshTerminalBridge : IDisposable
 
     /// <summary>
     /// 弃用抑制器前把它扣住的块尾交还输出流。扣住的字节本该在下一次 Process 里放出来,
-    /// 实例一弃用就没有下一次了——不接回来就是永久吞字节(与 #291 的 ZMODEM 扣留同源)。
+    /// 实例一弃用就没有下一次了——不接回来就是永久吞字节。
     /// 扣住的必然是本块的尾巴,故追加在后面。
     /// </summary>
     private static byte[] AppendHeldTail(byte[] head, EchoSuppressor suppressor)
@@ -624,7 +535,7 @@ public class SshTerminalBridge : IDisposable
             int length;
             if (_draining.Count == 1)
             {
-                (buffer, length, _) = _draining[0];
+                (buffer, length) = _draining[0];
             }
             else
             {
@@ -682,11 +593,7 @@ public class SshTerminalBridge : IDisposable
             // 提前 return(已 Dispose、抑制器把整块吃光)同样得还,否则就是池泄漏。
             for (int i = 0; i < _draining.Count; i++)
             {
-                PendingChunk chunk = _draining[i];
-                if (chunk.Pooled)
-                {
-                    ArrayPool<byte>.Shared.Return(chunk.Buffer);
-                }
+                ArrayPool<byte>.Shared.Return(_draining[i].Buffer);
             }
             _draining.Clear();
         }
@@ -716,47 +623,9 @@ public class SshTerminalBridge : IDisposable
             return;
         }
 
-        // ZMODEM 会话期间击键不得混进协议流:字节会被对端当帧内容解析,轻则 CRC 错重传,
-        // 重则整笔传输失败。只识别用户的中止意图 —— Ctrl+X(CAN,ZMODEM 规范取消键)与
-        // Ctrl+C(用户本能)都转成会话取消,由引擎发出规范的取消序列;其余击键丢弃。
-        if (TransferRouter is { IsInSession: true } router)
-        {
-            if (Array.IndexOf(data, (byte)0x18) >= 0 || Array.IndexOf(data, (byte)0x03) >= 0)
-            {
-                router.CancelActiveSession();
-            }
-            return;
-        }
-
         // 只入队不直写:击键与 SendRaw 都在 UI 线程触发,TryWrite 保序;真正的发送
         // 由唯一的写循环按序完成,杜绝对底层通道的并发 WriteAsync(见 _writeQueue 注释)。
         EnqueueOutbound(data);
-
-        // 用户刚提交了 sb/sx/rb/rx(跟踪器在同一次按键的 TypedInput 里已武装了会话):
-        // 等这次按键 —— 其中就有那个回车 —— 真正写到流上,再启动会话。
-        // 早一步启动,回车会被上面「会话期间丢弃击键」吞掉;不等写完就启动,
-        // 引擎直写流的握手 'C' 又可能抢在排队的回车前面,被 shell 当成命令行里的字符。
-        if (TransferRouter is { HasPendingManualSession: true } pending)
-        {
-            _ = StartPendingTransferAfterWritesAsync(pending);
-        }
-    }
-
-    /// <summary>排空出站队列(含触发命令的回车)后启动路由器里武装好的 X/YMODEM 会话。</summary>
-    private async Task StartPendingTransferAfterWritesAsync(FileTransfer.TerminalTransferRouter router)
-    {
-        try
-        {
-            await DrainWritesAsync().ConfigureAwait(false);
-            if (!_disposed)
-            {
-                router.StartPendingManualSession();
-            }
-        }
-        catch (Exception ex)
-        {
-            Error?.Invoke(ex);
-        }
     }
 
     /// <summary>

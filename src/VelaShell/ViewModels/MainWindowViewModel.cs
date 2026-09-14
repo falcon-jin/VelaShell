@@ -12,7 +12,6 @@ using ReactiveUI.Primitives.Concurrency;
 using ReactiveUI.Primitives.Signals;
 using VelaShell.Core.Data;
 using VelaShell.Core.Diagnostics;
-using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Ftp;
 using VelaShell.Core.Models;
 using VelaShell.Core.Notifications;
@@ -37,7 +36,6 @@ using VelaShell.Presentation.Commands;
 using VelaShell.Presentation.Services;
 using VelaShell.Presentation.ViewModels;
 using VelaShell.Services;
-using VelaShell.Services.FileTransfer;
 using VelaShell.Terminal;
 using VelaShell.Terminal.Emulation;
 using VelaShell.Terminal.Rendering;
@@ -626,33 +624,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     /// <summary>窗口注入的多行粘贴确认弹窗(设置 → 终端 → 粘贴时确认多行内容)。</summary>
     public Func<string, Task<bool>>? MultilinePasteConfirmer { get; set; }
 
-    /// <summary>
-    /// 窗口注入的 ZMODEM 下载目录选择委托(视图层实现,独占 StorageProvider)。
-    /// 分发给每个新建的终端标签,供其 ZMODEM 接收时弹出保存目录选择框。
-    /// </summary>
-    public Func<TransferFolderPromptRequest, CancellationToken, Task<string?>>? TransferDownloadFolderPicker { get; set; }
-
-    /// <summary>
-    /// 窗口注入的 ZMODEM 上传文件选择委托(视图层实现,独占 StorageProvider)。
-    /// 分发给每个新建的终端标签,供远端 <c>rz</c> 时弹出多选文件框。
-    /// </summary>
-    public Func<bool, CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
-
-    /// <summary>
-    /// 为新建的终端标签注入 ZMODEM 传输所需的依赖:下载目录选择委托、上传文件选择委托、
-    /// 共享传输面板与设置读取委托。前者 + 面板 + 设置就绪时 AttachTransport 才会启用 ZMODEM 路由器。
-    /// </summary>
-    private void WireZModemDownload(TerminalTabViewModel terminalTab)
-    {
-        terminalTab.TransferDownloadFolderPicker = TransferDownloadFolderPicker;
-        terminalTab.TransferUploadFilePicker = TransferUploadFilePicker;
-        terminalTab.FileTransfer = _fileTransfer;
-        if (_settingsService is { } settings)
-        {
-            terminalTab.GetSettingsAsync = () => settings.GetSnapshotAsync().AsTask();
-        }
-    }
-
     /// <summary>左侧边栏视图模型:资源管理器会话树与最近连接。</summary>
     public SidebarViewModel Sidebar
     {
@@ -1235,28 +1206,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                 Icon: "Icon.layout-grid"
             )
         );
-        // XMODEM / YMODEM 手动入口。ZMODEM 会自动接管(远端 sz/rz 的引导序列可识别),
-        // 而这一族协议在链路上没有可识别的引导 —— sb/sx 静默等接收方发 'C',rb/rx 只吐裸 'C',
-        // 在终端输出里与普通字符无异,自动检测必然误触发。所以只能由用户在远端敲好命令后手动发起。
-        RegisterManualTransferCommand(
-            "transfer.ymodem.receive", "Cmd_YModemReceive",
-            TerminalTransferProtocol.YModem, FileTransferDirection.Receive, "Icon.download");
-        RegisterManualTransferCommand(
-            "transfer.ymodem.send", "Cmd_YModemSend",
-            TerminalTransferProtocol.YModem, FileTransferDirection.Send, "Icon.upload");
-        RegisterManualTransferCommand(
-            "transfer.ymodemg.receive", "Cmd_YModemGReceive",
-            TerminalTransferProtocol.YModemG, FileTransferDirection.Receive, "Icon.download");
-        RegisterManualTransferCommand(
-            "transfer.xmodem.receive", "Cmd_XModemReceive",
-            TerminalTransferProtocol.XModem, FileTransferDirection.Receive, "Icon.download");
-        RegisterManualTransferCommand(
-            "transfer.xmodem.send", "Cmd_XModemSend",
-            TerminalTransferProtocol.XModem, FileTransferDirection.Send, "Icon.upload");
-        RegisterManualTransferCommand(
-            "transfer.xmodem1k.send", "Cmd_XModem1KSend",
-            TerminalTransferProtocol.XModem1K, FileTransferDirection.Send, "Icon.upload");
-
         // 本地终端(§12 P1-1):按本机安装情况动态注册 PowerShell/CMD/WSL/Git Bash 入口。
         foreach (LocalShellInfo shell in LocalShellCatalog.DetectShells())
         {
@@ -1271,30 +1220,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                 )
             );
         }
-    }
-
-    /// <summary>
-    /// 注册一条「手动发起 XMODEM / YMODEM 传输」的命令。可用性由当前活动标签决定:
-    /// 要有活着的传输路由器、没有正在跑的会话,上传方向还要求已接线文件选择能力 ——
-    /// 条件不满足时命令在面板里就是灰的,不需要再弹一层失败提示。
-    /// </summary>
-    private void RegisterManualTransferCommand(
-        string id,
-        string titleKey,
-        TerminalTransferProtocol protocol,
-        FileTransferDirection direction,
-        string icon)
-    {
-        Commands.Register(
-            new(
-                id,
-                Strings.Get(titleKey),
-                Strings.Get("CmdCat_Transfer"),
-                () => ActiveTerminalTab?.StartManualTransfer(protocol, direction),
-                () => ActiveTerminalTab?.CanStartManualTransfer(direction) == true,
-                Icon: icon
-            )
-        );
     }
 
     /// <summary>
@@ -1326,7 +1251,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
         // 命令补全:注入建议提供器;提交(已回显校验)的命令进全局历史。
         terminalTab.SuggestionProvider = _suggestionProvider;
-        WireZModemDownload(terminalTab);
         terminalTab.CommandLineSubmitted += CommandHistory.Record;
         if (terminalEmulator is VelaTerminalControl bellSource)
         {
@@ -2337,7 +2261,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
         // 命令补全:注入建议提供器;提交(已回显校验)的命令进全局历史。
         terminalTab.SuggestionProvider = _suggestionProvider;
-        WireZModemDownload(terminalTab);
         terminalTab.CommandLineSubmitted += CommandHistory.Record;
 
         // 树上的状态圆点与「活跃/连接中/离线」标签不在这里订阅:一条配置可能同时开着

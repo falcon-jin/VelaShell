@@ -32,11 +32,11 @@ internal sealed class AntiIdleKeeper : IDisposable
     internal static readonly byte[] Payload = [0x00];
 
     /// <summary>
-    /// 该发但发不出去(ZMODEM 会话进行中、流暂时不可写)时的重试间隔。
+    /// 该发但发不出去(流暂时不可写)时的重试间隔。
     /// </summary>
     /// <remarks>
-    /// 不按整个间隔重排:传输结束后不该再干等一整轮 —— 用户配 60 秒是因为服务器 90 秒踢人,
-    /// 一次传输把窗口吃掉半轮,下一发就可能迟到。每秒一次的空转只是一个 bool 判断。
+    /// 不按整个间隔重排:流恢复后不该再干等一整轮 —— 用户配 60 秒是因为服务器 90 秒踢人,
+    /// 被挡掉半轮,下一发就可能迟到。每秒一次的空转只是一个 bool 判断。
     /// </remarks>
     private static readonly TimeSpan RetryWhenBlocked = TimeSpan.FromSeconds(1);
 
@@ -145,8 +145,7 @@ internal sealed class AntiIdleKeeper : IDisposable
         }
         else
         {
-            // ZMODEM 传输中或流正不可写。传输本身就是流量,服务端此刻不会认为会话空闲;
-            // 等它结束再补,而不是把字节插进协议帧里(那会让整笔传输 CRC 错乃至失败)。
+            // 流正不可写:等它恢复再补,而不是整轮干等。
             next = RetryWhenBlocked;
         }
 

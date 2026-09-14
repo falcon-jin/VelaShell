@@ -154,27 +154,6 @@
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>トンネル管理</value>
   </data>
-  <data name="Cmd_XModemReceive" xml:space="preserve">
-    <value>XMODEM: ファイル受信(リモート sx)</value>
-  </data>
-  <data name="Cmd_XModemSend" xml:space="preserve">
-    <value>XMODEM: ファイル送信(リモート rx)</value>
-  </data>
-  <data name="Cmd_XModem1KSend" xml:space="preserve">
-    <value>XMODEM-1K: ファイル送信(リモート rx)</value>
-  </data>
-  <data name="Cmd_YModemReceive" xml:space="preserve">
-    <value>YMODEM: ファイル受信(リモート sb)</value>
-  </data>
-  <data name="Cmd_YModemSend" xml:space="preserve">
-    <value>YMODEM: ファイル送信(リモート rb)</value>
-  </data>
-  <data name="Cmd_YModemGReceive" xml:space="preserve">
-    <value>YMODEM-G: ファイル受信(高速・再送なし)</value>
-  </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>ファイル転送</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>操作</value>
   </data>
@@ -3344,21 +3323,6 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   </data>
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>ターミナルタブの切り替え時に、対応する保存済み接続を展開して選択します。</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolder" xml:space="preserve">
-    <value>ZMODEM ダウンロードフォルダーを選択</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolderFor" xml:space="preserve">
-    <value>{0} のダウンロード先フォルダーを選択</value>
-  </data>
-  <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
-    <value>アップロードするファイルを選択(ZMODEM)</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolderRetry" xml:space="preserve">
-    <value>フォルダー未選択——選択するか、もう一度キャンセルすると受信を中止します</value>
-  </data>
-  <data name="ZModem_ChooseUploadFilesRetry" xml:space="preserve">
-    <value>ファイル未選択——選択するか、もう一度キャンセルするとアップロードを中止します</value>
   </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>同期入力</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>チャンネル A に参加</value></data>

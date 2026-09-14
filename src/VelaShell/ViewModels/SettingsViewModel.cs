@@ -1201,7 +1201,7 @@ public class SettingsViewModel : ReactiveObject
         }
     }
 
-    /// <summary>双击行为下拉选中项与 <see cref="TransferOptions.DoubleClickAction" /> 之间的索引映射。</summary>
+    /// <summary>“双击远端文件”下拉选中项与 <see cref="TransferOptions.DoubleClickAction" /> 之间的索引映射。</summary>
     public int DoubleClickActionIndex
     {
         get =>

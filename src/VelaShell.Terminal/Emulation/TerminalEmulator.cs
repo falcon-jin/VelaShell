@@ -1353,9 +1353,6 @@ public sealed class TerminalEmulator : IVtActions
         {
             return;
         }
-        // 诊断:记录每次备用屏切换(DECSET 1047/1049)。ZMODEM 传输期间本不该发生此切换,
-        // 若日志显示在 sz/rz 取消前后出现 enter=true,即坐实"杂散协议字节污染终端 → 整屏消失"。
-        Core.FileTransfer.Diagnostics.TransferTrace.Log($"ALT-SCREEN switch enable={enable} (was {IsAlternateScreen})");
         // 备用屏整块换掉,在途的提示符行不再属于当前缓冲区(退出备用屏时它还会被整个丢弃)。
         // 攥着它等于给一条已经不在场的行记退出码。
         _promptRow = null;

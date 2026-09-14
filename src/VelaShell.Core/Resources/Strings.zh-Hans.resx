@@ -1005,27 +1005,6 @@
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>隧道管理</value>
   </data>
-  <data name="Cmd_XModemReceive" xml:space="preserve">
-    <value>XMODEM:接收文件(远端 sx)</value>
-  </data>
-  <data name="Cmd_XModemSend" xml:space="preserve">
-    <value>XMODEM:发送文件(远端 rx)</value>
-  </data>
-  <data name="Cmd_XModem1KSend" xml:space="preserve">
-    <value>XMODEM-1K:发送文件(远端 rx)</value>
-  </data>
-  <data name="Cmd_YModemReceive" xml:space="preserve">
-    <value>YMODEM:接收文件(远端 sb)</value>
-  </data>
-  <data name="Cmd_YModemSend" xml:space="preserve">
-    <value>YMODEM:发送文件(远端 rb)</value>
-  </data>
-  <data name="Cmd_YModemGReceive" xml:space="preserve">
-    <value>YMODEM-G:接收文件(高速,不重传)</value>
-  </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>文件传输</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>操作</value>
   </data>
@@ -3492,21 +3471,6 @@ Windows 填 exe 完整路径或命令名(如 notepad);Linux 填命令名(如 ged
   </data>
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>切换终端标签时,自动展开、选中并定位到对应的已保存连接。</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolder" xml:space="preserve">
-    <value>选择 ZMODEM 下载目录</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolderFor" xml:space="preserve">
-    <value>为 {0} 选择下载目录</value>
-  </data>
-  <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
-    <value>选择要上传的文件(ZMODEM)</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolderRetry" xml:space="preserve">
-    <value>未选择目录——请选择一个,或再次取消以中止本次接收</value>
-  </data>
-  <data name="ZModem_ChooseUploadFilesRetry" xml:space="preserve">
-    <value>未选择文件——请选择文件,或再次取消以中止本次上传</value>
   </data>
   <data name="SyncInput_Menu" xml:space="preserve">
     <value>同步输入</value>
