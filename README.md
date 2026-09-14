@@ -15,6 +15,8 @@
 
 **简体中文** · [English](README.en.md) · [插件商店](https://market.easilynet.top) · [文档](https://github.com/VelaShellLabs/velashell-docs)
 
+<img src="mascot/chibi.png" alt="VelaShell 看板娘" width="720">
+
 </div>
 
 ---
