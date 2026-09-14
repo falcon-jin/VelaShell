@@ -7,12 +7,7 @@ namespace VelaShell.Services.FileTransfer;
 /// <param name="SuggestedDirectory">建议的起始目录(已做 <c>~</c> 展开的默认下载目录)。</param>
 /// <param name="FirstFileName">本会话首个待接收文件名,用于对话框标题;可为 <c>null</c>。</param>
 /// <param name="FirstFileSize">首个文件的字节大小(若发送方提供);可为 <c>null</c>。</param>
-/// <param name="IsRetryAfterCancel">
-/// 是否为首次取消后的二次弹窗。为 <c>true</c> 时视图层应在标题里提示"再次取消将中止本次接收",
-/// 让用户明白这是防误触的最后一次机会。
-/// </param>
 public sealed record TransferFolderPromptRequest(
     string SuggestedDirectory,
     string? FirstFileName,
-    long? FirstFileSize,
-    bool IsRetryAfterCancel = false);
+    long? FirstFileSize);

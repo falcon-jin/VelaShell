@@ -1,3 +1,4 @@
+using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Models;
 
 namespace VelaShell.Core.Tests.Models;
@@ -89,5 +90,63 @@ public class AppSettingsNormalizeTests
         settings.Normalize();
 
         Assert.IsTrue(settings.Security.RecordProductionSessions);
+    }
+
+    /// <summary>
+    /// 默认传输方式是个枚举,磁盘上的内容拦不住:手改坏的值要回落到 SFTP,
+    /// 而不是让那对通用收发命令走进一个谁也认不出的分支。
+    /// </summary>
+    [TestMethod]
+    public void UnknownTerminalDefaultMethod_FallsBackToSftp()
+    {
+        AppSettings settings = new();
+        settings.Transfer.TerminalDefaultMethod = (TerminalTransferMethod)99;
+
+        settings.Normalize();
+
+        Assert.AreEqual(TerminalTransferMethod.Sftp, settings.Transfer.TerminalDefaultMethod);
+    }
+
+    /// <summary>用户明确选过的方式不能被规整改掉。</summary>
+    [TestMethod]
+    public void ValidTerminalDefaultMethod_IsKept()
+    {
+        AppSettings settings = new();
+        settings.Transfer.TerminalDefaultMethod = TerminalTransferMethod.YModem;
+
+        settings.Normalize();
+
+        Assert.AreEqual(TerminalTransferMethod.YModem, settings.Transfer.TerminalDefaultMethod);
+    }
+
+    /// <summary>空白的上传命令等于注入一个空行,远端什么都不会发生;回落到出厂默认。</summary>
+    [TestMethod]
+    public void BlankZModemUploadCommand_FallsBackToDefault()
+    {
+        AppSettings settings = new();
+        settings.Transfer.TerminalZModemUploadCommand = "  ";
+
+        settings.Normalize();
+
+        Assert.AreEqual(
+            TerminalTransferPolicy.DefaultZModemUploadCommand,
+            settings.Transfer.TerminalZModemUploadCommand);
+    }
+
+    /// <summary>XMODEM 块大小只有 128 与 1024 两个合法值,其余一律当 1K。</summary>
+    [TestMethod]
+    [DataRow(0, 1024)]
+    [DataRow(64, 1024)]
+    [DataRow(2048, 1024)]
+    [DataRow(128, 128)]
+    [DataRow(1024, 1024)]
+    public void TerminalXModemBlockSize_IsSnappedToALegalValue(int stored, int expected)
+    {
+        AppSettings settings = new();
+        settings.Transfer.TerminalXModemBlockSize = stored;
+
+        settings.Normalize();
+
+        Assert.AreEqual(expected, settings.Transfer.TerminalXModemBlockSize);
     }
 }

@@ -7,7 +7,8 @@ namespace VelaShell.Services.FileTransfer;
 /// <summary>
 /// 基于「一次会话选一次目录」的 ZMODEM 接收落地实现:首个文件触发一次原生文件夹选择框,
 /// 之后本会话所有文件都写入该目录。文件名经 <see cref="Path.GetFileName(string)" /> 归一
-/// (防止 <c>../</c> 路径穿越)并替换非法字符;重名按设置里的冲突策略处理;取消选择即中止会话。
+/// (防止 <c>../</c> 路径穿越)并替换非法字符;重名按设置里的冲突策略处理;
+/// <b>取消一次即中止会话</b>(不再重弹追问)。
 /// 由 <c>TerminalTransferRouter</c> 每会话经 sinkFactory 新建一个实例,因此不跨会话缓存目录。
 /// </summary>
 internal sealed class FolderTransferFileSink(
@@ -39,18 +40,12 @@ internal sealed class FolderTransferFileSink(
             string suggested = ExpandDownloadDirectory(settings.Transfer.LocalDownloadDirectory);
             var request = new TransferFolderPromptRequest(suggested, metadata.FileName, metadata.Size);
             _sessionFolder = await _pickFolderAsync(request, cancellationToken).ConfigureAwait(false);
-
-            // 防误触:首次取消可能是不小心点了关闭/取消,再给一次机会;二次取消即视为确认中止。
-            if (string.IsNullOrWhiteSpace(_sessionFolder))
-            {
-                _sessionFolder = await _pickFolderAsync(
-                    request with { IsRetryAfterCancel = true },
-                    cancellationToken).ConfigureAwait(false);
-            }
             _folderResolved = true;
         }
 
-        // 两次都取消了目录选择:中止整个会话(而非跳过单个文件)。
+        // 取消了目录选择:中止整个会话(而非跳过单个文件)。
+        // 取消就是取消,不再追问第二遍 —— 那层「防误触」重弹的代价是每个真心想放弃的用户
+        // 都要点两次,而点错关闭按钮本来就可以再敲一次 sz 重来。
         if (string.IsNullOrWhiteSpace(_sessionFolder))
         {
             return (TransferFileDisposition.Abort, 0);

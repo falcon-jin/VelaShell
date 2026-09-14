@@ -1618,18 +1618,9 @@ public partial class MainWindow : Window
             {
                 // 起始目录解析失败无关紧要。
             }
-            string title;
-            if (request.IsRetryAfterCancel)
-            {
-                // 二次弹窗:标题提示这是防误触的最后机会,再次取消即中止。
-                title = Strings.Get("ZModem_ChooseDownloadFolderRetry");
-            }
-            else
-            {
-                title = string.IsNullOrEmpty(request.FirstFileName)
-                    ? Strings.Get("ZModem_ChooseDownloadFolder")
-                    : Strings.Format("ZModem_ChooseDownloadFolderFor", request.FirstFileName);
-            }
+            string title = string.IsNullOrEmpty(request.FirstFileName)
+                ? Strings.Get("ZModem_ChooseDownloadFolder")
+                : Strings.Format("ZModem_ChooseDownloadFolderFor", request.FirstFileName);
             IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(new()
             {
                 Title = title,
@@ -1644,9 +1635,8 @@ public partial class MainWindow : Window
     /// ZMODEM 上传文件选择(视图层):远端跑 <c>rz</c> 时,后台发送线程调用本方法编组到 UI 线程,
     /// 弹出原生多选文件框。返回所选本地文件的绝对路径清单;用户取消则返回空清单。
     /// </summary>
-    /// <param name="isRetryAfterCancel">是否为首次取消后的二次弹窗(标题提示再次取消即中止)。</param>
-    /// <param name="cancellationToken"></param>
-    private Task<IReadOnlyList<string>> PromptForTransferUploadFilesAsync(bool isRetryAfterCancel, CancellationToken cancellationToken)
+    /// <param name="cancellationToken">取消令牌(当前未使用,选择框由用户关闭)。</param>
+    private Task<IReadOnlyList<string>> PromptForTransferUploadFilesAsync(CancellationToken cancellationToken)
     {
         _ = cancellationToken;
         return Dispatcher.UIThread.InvokeAsync<IReadOnlyList<string>>(async () =>
@@ -1658,9 +1648,7 @@ public partial class MainWindow : Window
             }
             IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(new()
             {
-                Title = isRetryAfterCancel
-                    ? Strings.Get("ZModem_ChooseUploadFilesRetry")
-                    : Strings.Get("ZModem_ChooseUploadFiles"),
+                Title = Strings.Get("ZModem_ChooseUploadFiles"),
                 AllowMultiple = true,
                 SuggestedStartLocation = await StorageDefaults.DownloadsAsync(top)
             });

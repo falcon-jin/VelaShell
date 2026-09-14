@@ -34,7 +34,10 @@ public enum TransferStartFailure
     AlreadyInSession,
 
     /// <summary>宿主没有接线对应方向的文件选择能力(上传缺 source,下载缺 sink)。</summary>
-    NotWired
+    NotWired,
+
+    /// <summary>该协议已被当前会话的传输策略禁用(全局设置或本条连接的覆盖项)。</summary>
+    ProtocolDisabled
 }
 
 /// <summary>
@@ -50,13 +53,19 @@ public enum TransferStartFailure
 /// </para>
 /// 会话期间入站字节改喂 <see cref="ShellStreamByteDuplex" />,由后台任务上的引擎消费,
 /// 终端停止喂入;会话结束后自动复位回常态。设计为传输无关,SSH / ConPTY / 串口 / Telnet 通用。
+/// <para>
+/// 三种协议各自的启停由 <see cref="Policy" /> 决定(全局设置 + 本条连接的覆盖项合成)。
+/// 被禁用的协议在这里是<b>彻底不参与</b>:ZMODEM 关掉就不再嗅探输出流(引导字节原样喂终端),
+/// X/YMODEM 关掉就不再武装命令行、手动启动也直接拒绝。
+/// </para>
 /// </summary>
 public sealed class TerminalTransferRouter(
     IShellStreamWrapper shellStream,
     Func<IFileTransferSink> sinkFactory,
     Func<IFileTransferSource>? sourceFactory = null,
     ZModemOptions? options = null,
-    IFileTransferObserver? observer = null)
+    IFileTransferObserver? observer = null,
+    TerminalTransferPolicy? policy = null)
 {
     private readonly IShellStreamWrapper _shellStream =
         shellStream ?? throw new ArgumentNullException(nameof(shellStream));
@@ -67,6 +76,47 @@ public sealed class TerminalTransferRouter(
     private readonly IFileTransferObserver? _observer = observer;
     private readonly ZModemDetector _detector = new();
     private readonly Lock _gate = new();
+
+    private TerminalTransferPolicy _policy = policy ?? TerminalTransferPolicy.Default;
+
+    /// <summary>
+    /// 当前生效的传输策略(三种协议的启停与默认方式)。
+    /// </summary>
+    /// <remarks>
+    /// 不可变记录,换策略就是换一个引用,因此读它不必持锁也不会读到半个状态。
+    /// </remarks>
+    public TerminalTransferPolicy Policy => Volatile.Read(ref _policy);
+
+    /// <summary>
+    /// 替换生效策略(设置页保存后由宿主下发,连接不必重开)。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>不打断进行中的会话</b>:用户在传输途中去设置页关掉 ZMODEM,期望的是「下次别自动接管了」,
+    /// 而不是把手里这笔传了一半的文件当场掐断。新策略从下一次检测 / 下一次手动启动开始生效。
+    /// </para>
+    /// <para>
+    /// <b>ZMODEM 开关一翻就复位检测器</b>:关着的那段时间里 <see cref="CanPassThrough" /> 直接放行,
+    /// 检测器一个字节都没吃到,于是它的跨分片尾部副本停在关掉的那一刻 —— 可能正好是半个帧头。
+    /// 重新打开后若不清掉,下一块字节会与那段陈旧前缀拼在一起判定,拼出一个「帧头」就会把
+    /// 一段普通 shell 输出当协议流交给引擎。
+    /// </para>
+    /// </remarks>
+    /// <param name="value">新的策略;null 视为出厂默认。</param>
+    public void UpdatePolicy(TerminalTransferPolicy? value)
+    {
+        TerminalTransferPolicy next = value ?? TerminalTransferPolicy.Default;
+        lock (_gate)
+        {
+            bool zmodemToggled = _policy.ZModem != next.ZModem;
+            Volatile.Write(ref _policy, next);
+            // 会话进行中不碰检测器:那段状态属于会话收尾时的 EndSession 复位。
+            if (zmodemToggled && _state != TransferRoutingState.InSession)
+            {
+                _detector.Reset();
+            }
+        }
+    }
 
     /// <summary>
     /// 敲过 <c>sz</c>/<c>rz</c> 后放宽 ZMODEM 判据的时长。够远端把命令跑起来、把引导吐出来,
@@ -114,17 +164,30 @@ public sealed class TerminalTransferRouter(
     /// 的窗口拼接与切片。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// ZMODEM 会话只会在同一读线程的 <see cref="ProcessIncoming" /> 里启动,判定与直喂之间
-    /// 不存在竞态。<see cref="StartManualSession" /> 来自 UI 线程,理论上存在「判定为可直通、
-    /// 直喂之前会话开了」的一帧窗口;但 XMODEM/YMODEM 的对端在我们主动写出握手字符之前是沉默的
-    /// (接收方向)或只在打印横幅(发送方向,那些字节本就该进终端),这一帧最多让本就属于终端的
-    /// 字节进终端,不会吃掉协议字节。
+    /// 不存在竞态。<see cref="StartManualSession" /> 来自别的线程(命令面板在 UI 线程上调,
+    /// 命令行武装那条走桥的写队列续体,在线程池上),理论上存在「判定为可直通、直喂之前会话开了」
+    /// 的一帧窗口;但 XMODEM/YMODEM 的对端在我们主动写出握手字符之前是沉默的(接收方向)
+    /// 或只在打印横幅(发送方向,那些字节本就该进终端),这一帧最多让本就属于终端的字节进终端,
+    /// 不会吃掉协议字节。
+    /// </para>
+    /// <para>
+    /// 同理,<see cref="UpdatePolicy" /> 也可能恰好卡在判定与直喂之间:代价是那一块字节按旧策略
+    /// 走完,最多漏掉一次自动接管,用户重敲一次 <c>sz</c> 即可。
+    /// </para>
     /// </remarks>
     public bool CanPassThrough(ReadOnlySpan<byte> data)
     {
         lock (_gate)
         {
-            return _state != TransferRoutingState.InSession && _detector.CanPassThrough(data);
+            if (_state == TransferRoutingState.InSession)
+            {
+                return false;
+            }
+            // ZMODEM 被禁用时检测器根本不跑(见 ProcessIncoming),这一块字节没有任何理由
+            // 走慢路径 —— 直接告诉读循环原样喂终端。
+            return !Policy.ZModem || _detector.CanPassThrough(data);
         }
     }
 
@@ -150,6 +213,14 @@ public sealed class TerminalTransferRouter(
                 // (2026-09-13 真机日志)。管道测试替身自带拷贝,所以从来测不到。
                 _duplex?.Push(data.ToArray());
                 return new([], false);
+            }
+
+            // ZMODEM 被禁用:一个字节都不嗅探,引导序列原样进终端(与 SecureCRT 的
+            // Disable Zmodem 同义)。用户明确关掉了它,却还留一份「检测到了但不接管」的
+            // 隐藏状态,只会让后面一切诡异行为都无从解释。
+            if (!Policy.ZModem)
+            {
+                return new(data.ToArray(), false);
             }
 
             // 命令行武装窗内放宽尾锚定(见 NoteCommandSubmitted);过期即自动收回。
@@ -205,6 +276,10 @@ public sealed class TerminalTransferRouter(
             {
                 return TransferStartFailure.AlreadyInSession;
             }
+            if (!Policy.Allows(protocol))
+            {
+                return TransferStartFailure.ProtocolDisabled;
+            }
             if (direction == FileTransferDirection.Send && _sourceFactory is null)
             {
                 return TransferStartFailure.NotWired;
@@ -247,6 +322,12 @@ public sealed class TerminalTransferRouter(
         TransferTrace.Log($"COMMAND intent protocol={intent.Protocol} direction={intent.Direction}");
         lock (_gate)
         {
+            // 该协议被禁用:既不武装 X/YMODEM,也不为 ZMODEM 放宽判据 —— 用户敲的
+            // sz/rz/sb/rb 照常交给远端执行,我们只是不接管,让它自己在终端里报错或干等。
+            if (!Policy.Allows(intent.Protocol))
+            {
+                return false;
+            }
             if (intent.Protocol == TerminalTransferProtocol.ZModem)
             {
                 _relaxDetectorUntil = DateTime.UtcNow + CommandArmWindow;

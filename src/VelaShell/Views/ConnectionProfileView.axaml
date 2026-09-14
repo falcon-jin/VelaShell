@@ -661,6 +661,52 @@
             </Grid>
           </StackPanel>
 
+          <!-- 会话级终端内传输覆盖:串口 / 嵌入式那几台就指着 X/YMODEM 过日子,而绝大多数
+               SSH 机器上这两种协议慢且脆,开着只是多一份误触发的风险 —— 全局开关做不到两头兼顾。
+               四项都是「跟随全局」时整个对象存回 null,老配置零迁移。
+               显示条件同「认证后执行命令」:没有终端的连接摆这一排下拉只会骗人。 -->
+          <StackPanel IsVisible="{Binding SupportsTransferOverrides}" Spacing="4">
+            <TextBlock Classes="field-label" Text="{loc:Localize Profile_TransferSection}" Margin="0,12,0,0" />
+            <TextBlock Text="{loc:Localize Profile_TransferHint}"
+                       Foreground="{DynamicResource VelaTextMuted}" FontSize="{DynamicResource VelaFontSize10}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+              <StackPanel Grid.Row="0" Grid.Column="0">
+                <TextBlock Classes="field-label" Text="{loc:Localize Profile_TransferDefaultMethod}" />
+                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding TransferDefaultMethodIndex}">
+                  <ComboBoxItem Content="{loc:Localize Profile_FollowGlobal}" />
+                  <ComboBoxItem Content="{loc:Localize Method_Sftp}" />
+                  <ComboBoxItem Content="{loc:Localize Method_ZModem}" />
+                  <ComboBoxItem Content="{loc:Localize Method_YModem}" />
+                  <ComboBoxItem Content="{loc:Localize Method_XModem}" />
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Row="0" Grid.Column="2">
+                <TextBlock Classes="field-label" Text="{loc:Localize Profile_TransferZModem}" />
+                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding TransferZModemIndex}">
+                  <ComboBoxItem Content="{loc:Localize Profile_FollowGlobal}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideEnabled}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideDisabled}" />
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,0,0">
+                <TextBlock Classes="field-label" Text="{loc:Localize Profile_TransferYModem}" />
+                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding TransferYModemIndex}">
+                  <ComboBoxItem Content="{loc:Localize Profile_FollowGlobal}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideEnabled}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideDisabled}" />
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,8,0,0">
+                <TextBlock Classes="field-label" Text="{loc:Localize Profile_TransferXModem}" />
+                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding TransferXModemIndex}">
+                  <ComboBoxItem Content="{loc:Localize Profile_FollowGlobal}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideEnabled}" />
+                  <ComboBoxItem Content="{loc:Localize Profile_OverrideDisabled}" />
+                </ComboBox>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+
           <!-- FTP / FTPS 的「默认打开路径」:上传目标常年是同一个目录,而 FTP 给的登录工作目录
                往往就是根,每连一次手点四五层是纯粹的重复劳动。只对 FTP 出现——SSH/SFTP 走的是
                登录家目录,插件协议(S3…)自己在描述符里声明字段。 -->

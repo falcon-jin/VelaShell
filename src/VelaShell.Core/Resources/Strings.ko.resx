@@ -3354,12 +3354,6 @@ Windows는 exe 전체 경로 또는 명령 이름(예: notepad), Linux는 명령
   <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
     <value>업로드할 파일 선택(ZMODEM)</value>
   </data>
-  <data name="ZModem_ChooseDownloadFolderRetry" xml:space="preserve">
-    <value>폴더가 선택되지 않음 — 폴더를 선택하거나 다시 취소하면 수신을 중단합니다</value>
-  </data>
-  <data name="ZModem_ChooseUploadFilesRetry" xml:space="preserve">
-    <value>파일이 선택되지 않음 — 파일을 선택하거나 다시 취소하면 업로드를 중단합니다</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>동기 입력</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>채널 A 참여</value></data>
   <data name="SyncInput_JoinChannelB" xml:space="preserve"><value>채널 B 참여</value></data>
@@ -4824,5 +4818,89 @@ Windows는 exe 전체 경로 또는 명령 이름(예: notepad), Linux는 명령
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 사용 불가, 크기/시간으로 비교)</value>
+  </data>
+  <data name="SetTransfer_SectionTerminalModem" xml:space="preserve">
+    <value>터미널 내 전송 (X / Y / ZMODEM)</value>
+  </data>
+  <data name="SetTransfer_DefaultMethod" xml:space="preserve">
+    <value>기본 전송 방식</value>
+  </data>
+  <data name="SetTransfer_DefaultMethodDesc" xml:space="preserve">
+    <value>「파일 보내기 / 받기」 명령이 사용하는 경로입니다. SFTP 채널이 없는 연결(시리얼, Telnet, 로컬 터미널)에서는 사용 가능한 첫 번째 터미널 내 프로토콜로 자동 전환됩니다.</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabled" xml:space="preserve">
+    <value>ZMODEM 자동 시작</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabledDesc" xml:space="preserve">
+    <value>원격에서 sz / rz 를 실행하면 자동으로 전송을 시작합니다. 끄면 시작 바이트가 터미널에 그대로 표시됩니다.</value>
+  </data>
+  <data name="SetTransfer_YModemEnabled" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="SetTransfer_YModemEnabledDesc" xml:space="preserve">
+    <value>sb / rb 와 명령 팔레트의 YMODEM 항목을 허용합니다.</value>
+  </data>
+  <data name="SetTransfer_XModemEnabled" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="SetTransfer_XModemEnabledDesc" xml:space="preserve">
+    <value>sx / rx 와 명령 팔레트의 XMODEM 항목을 허용합니다.</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommand" xml:space="preserve">
+    <value>ZMODEM 업로드 명령</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommandDesc" xml:space="preserve">
+    <value>「파일 보내기」가 ZMODEM 을 사용할 때 원격 셸에 입력하는 명령입니다.</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSize" xml:space="preserve">
+    <value>XMODEM 블록 크기</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSizeDesc" xml:space="preserve">
+    <value>보내기 방향에만 적용됩니다. 받기는 보내는 쪽이 쓰는 블록에 맞춰 자동으로 처리합니다.</value>
+  </data>
+  <data name="Method_Sftp" xml:space="preserve">
+    <value>SFTP</value>
+  </data>
+  <data name="Method_ZModem" xml:space="preserve">
+    <value>ZMODEM</value>
+  </data>
+  <data name="Method_YModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Method_XModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Cmd_TransferSend" xml:space="preserve">
+    <value>원격으로 파일 보내기…</value>
+  </data>
+  <data name="Cmd_TransferReceive" xml:space="preserve">
+    <value>원격에서 파일 받기…</value>
+  </data>
+  <data name="Profile_TransferSection" xml:space="preserve">
+    <value>파일 전송</value>
+  </data>
+  <data name="Profile_TransferHint" xml:space="preserve">
+    <value>이 연결에만 터미널 내 전송 설정을 덮어씁니다. 「전역 설정 따름」이면 설정 → 파일 전송 의 값을 그대로 사용합니다.</value>
+  </data>
+  <data name="Profile_TransferDefaultMethod" xml:space="preserve">
+    <value>기본 전송 방식</value>
+  </data>
+  <data name="Profile_TransferZModem" xml:space="preserve">
+    <value>ZMODEM 자동 시작</value>
+  </data>
+  <data name="Profile_TransferYModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Profile_TransferXModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Profile_OverrideEnabled" xml:space="preserve">
+    <value>사용</value>
+  </data>
+  <data name="Profile_OverrideDisabled" xml:space="preserve">
+    <value>사용 안 함</value>
+  </data>
+  <data name="Msg_TransferWaitingForRemote" xml:space="preserve">
+    <value>원격을 기다리는 중 —— 그쪽에서 `{0}` 를 실행하세요. 그때까지 터미널은 전송에 점유됩니다. Ctrl+C 로 취소합니다.</value>
   </data>
 </root>

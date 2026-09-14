@@ -63,3 +63,33 @@ public enum TerminalTransferProtocol
     /// <summary>YMODEM-G:YMODEM 的流式变体,不逐块应答,依赖无错链路(SSH 天然满足)。</summary>
     YModemG
 }
+
+/// <summary>
+/// 「发送 / 接收文件」这对通用命令默认走哪条路。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 刻意<b>不</b>复用 <see cref="TerminalTransferProtocol" />:那个枚举里的 <c>XModem1K</c> 与
+/// <c>YModemG</c> 是引擎参数(块大小、要不要逐块应答),而这里表达的是用户意图 ——
+/// 「这台机器上传文件走 SFTP 还是走终端里的 ZMODEM」。粒度不同,而且这里还要多一个
+/// <see cref="Sftp" />,它根本不是终端内协议。
+/// </para>
+/// <para>
+/// <see cref="Sftp" /> 只对有 SFTP 通道的连接成立。本地终端、插件终端协议(Telnet / 串口)
+/// 没有那条通道,解析时会按启用情况退回终端内协议,见 <c>SessionTransferSettings.Resolve</c>。
+/// </para>
+/// </remarks>
+public enum TerminalTransferMethod
+{
+    /// <summary>SFTP 传输队列(独立通道,不占终端;仅 SSH 会话可用)。</summary>
+    Sftp,
+
+    /// <summary>终端内 ZMODEM。</summary>
+    ZModem,
+
+    /// <summary>终端内 YMODEM。</summary>
+    YModem,
+
+    /// <summary>终端内 XMODEM(具体用 128 还是 1K 块由块大小设置决定)。</summary>
+    XModem
+}

@@ -2,6 +2,7 @@ using NSubstitute;
 using ReactiveUI.Primitives;
 using VelaShell.Behaviors;
 using VelaShell.Core.Data;
+using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Models;
 using VelaShell.Presentation.Services;
 using VelaShell.Security;
@@ -746,6 +747,102 @@ public sealed class ConnectionProfileViewModelTests
         Assert.IsNotNull(profile);
         Assert.IsNull(profile.GroupId);
         await repository.DidNotReceive().SaveGroupAsync(Arg.Any<ServerGroup>());
+    }
+
+    /// <summary>
+    /// 会话级传输覆盖的往返:打开已存的配置要回显,保存要原样带回去。
+    /// </summary>
+    /// <remarks>
+    /// 回显丢字段的表现是「改个端口顺手把 ZMODEM 又打开了」,而且不报错 ——
+    /// 与 <see cref="PostAuthCommand_RoundTripsThroughTheEditDialog" /> 防的是同一类事故。
+    /// </remarks>
+    [TestMethod]
+    public async Task TransferOverrides_RoundTripThroughTheEditDialog()
+    {
+        var existing = new SessionProfile
+        {
+            Name = "bastion",
+            Host = "10.0.0.1",
+            Username = "ops",
+            Transfer = new()
+            {
+                ZModemEnabled = false,
+                XModemEnabled = true,
+                DefaultMethod = TerminalTransferMethod.YModem,
+            },
+        };
+
+        var vm = new ConnectionProfileViewModel(existing);
+
+        Assert.IsTrue(vm.SupportsTransferOverrides, "SSH 才有终端,这一块也只对它出现。");
+        Assert.AreEqual(2, vm.TransferZModemIndex, "已禁用 = 第 3 项。");
+        Assert.AreEqual(0, vm.TransferYModemIndex, "没覆盖的那一项停在「跟随全局」。");
+        Assert.AreEqual(1, vm.TransferXModemIndex, "已启用 = 第 2 项。");
+        Assert.AreEqual(3, vm.TransferDefaultMethodIndex, "跟随全局 / SFTP / ZMODEM / YMODEM / XMODEM。");
+
+        SessionProfile? saved = await vm.SaveCommand.Execute().FirstAsync();
+
+        Assert.IsNotNull(saved);
+        Assert.IsNotNull(saved.Transfer);
+        Assert.IsFalse(saved.Transfer!.ZModemEnabled);
+        Assert.IsNull(saved.Transfer.YModemEnabled);
+        Assert.IsTrue(saved.Transfer.XModemEnabled);
+        Assert.AreEqual(TerminalTransferMethod.YModem, saved.Transfer.DefaultMethod);
+    }
+
+    /// <summary>
+    /// 四项都是「跟随全局」时存回 null,而不是一个全空对象 —— 后者会给每条老配置的落盘 JSON
+    /// 平白多出一段,也让「有没有覆盖」这件事有了两种表示。
+    /// </summary>
+    [TestMethod]
+    public async Task TransferOverrides_WhenAllFollowGlobal_AreSavedAsNull()
+    {
+        var vm = new ConnectionProfileViewModel { Host = "h", Username = "u" };
+
+        Assert.AreEqual(0, vm.TransferZModemIndex, "新建配置默认一项都不覆盖。");
+        SessionProfile? saved = await vm.SaveCommand.Execute().FirstAsync();
+
+        Assert.IsNotNull(saved);
+        Assert.IsNull(saved.Transfer);
+    }
+
+    /// <summary>改回「跟随全局」要真的把那一项清掉,而不是留下一个和全局同值的覆盖。</summary>
+    [TestMethod]
+    public async Task TransferOverrides_ResetToFollowGlobal_ClearsThatField()
+    {
+        var existing = new SessionProfile
+        {
+            Name = "bastion",
+            Host = "10.0.0.1",
+            Username = "ops",
+            Transfer = new() { ZModemEnabled = false, YModemEnabled = false },
+        };
+        var vm = new ConnectionProfileViewModel(existing) { TransferZModemIndex = 0 };
+
+        SessionProfile? saved = await vm.SaveCommand.Execute().FirstAsync();
+
+        Assert.IsNotNull(saved);
+        Assert.IsNotNull(saved.Transfer);
+        Assert.IsNull(saved.Transfer!.ZModemEnabled, "改回跟随全局 = 没有这一项覆盖。");
+        Assert.IsFalse(saved.Transfer.YModemEnabled, "另一项不受影响。");
+    }
+
+    /// <summary>
+    /// 换到不显示这一块的协议时覆盖项不落盘。留着的话,一条先按 SSH 配过「禁用 ZMODEM」、
+    /// 后来改成插件终端协议的配置会把那个禁用带过去 —— 而那正是最需要终端内协议的一类连接,
+    /// 偏偏此时四个下拉已经隐藏,用户看不见也改不回来。
+    /// </summary>
+    [TestMethod]
+    public async Task TransferOverrides_OnProtocolsWithoutATerminalBlock_AreNotSaved()
+    {
+        var vm = new ConnectionProfileViewModel { Host = "h", Username = "u", TransferZModemIndex = 2 };
+
+        await vm.SelectConnectionTypeCommand.Execute(ConnectionType.SFTP).FirstAsync();
+
+        Assert.IsFalse(vm.SupportsTransferOverrides);
+        SessionProfile? saved = await vm.SaveCommand.Execute().FirstAsync();
+        Assert.IsNotNull(saved);
+        Assert.IsNull(saved.Transfer);
     }
 
     private static ConnectionProfileViewModel CreateValidViewModel(IConnectionWorkflowService workflow)

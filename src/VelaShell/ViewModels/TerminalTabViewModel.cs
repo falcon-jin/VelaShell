@@ -243,7 +243,40 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
     /// 后台发送线程经它弹出多选文件框;返回所选文件的绝对路径,取消则为空清单。
     /// null = 未接线,遇到 <c>rz</c> 不接管(字节原样喂终端)。
     /// </summary>
-    public Func<bool, CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
+    public Func<CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
+
+    /// <summary>
+    /// 合成本标签生效传输策略的委托(宿主注入)。null = 用出厂默认。
+    /// </summary>
+    /// <remarks>
+    /// 做成委托而不是让宿主把算好的值推进来:策略要在<b>每次挂载传输时</b>按当时的全局设置重新求值,
+    /// 而挂载点有四处(首连、重连、本地终端、插件终端)。推值的话必须在四处各推一遍,
+    /// 漏掉重连那处的表现是「改了设置,断线重连之后又变回老样子」—— 而那种 bug 没人会往这里想。
+    /// </remarks>
+    public Func<TerminalTransferPolicy>? TransferPolicyProvider { get; set; }
+
+    /// <summary>
+    /// 本标签当前生效的终端内传输策略(全局设置 + 本条连接的覆盖项合成)。
+    /// </summary>
+    /// <remarks>
+    /// 在每次 <see cref="AttachTransport" /> 时重新求值,因此<b>重连即生效</b>;
+    /// 设置页保存后的热更新走 <see cref="RefreshTransferPolicy" />。
+    /// <para>
+    /// 唯一不会当场跟上的是<b>改了连接配置本身</b>:标签持有的是建标签那一刻的
+    /// <see cref="Profile" /> 实例,编辑对话框保存的是另一份。这与同一批会话级覆盖
+    /// (编码、TERM、保活)口径一致 —— 改配置要新开一个标签才生效。
+    /// </para>
+    /// </remarks>
+    public TerminalTransferPolicy TransferPolicy { get; private set; } = TerminalTransferPolicy.Default;
+
+    /// <summary>
+    /// 重新求值传输策略并下发给已经跑着的路由器(设置页保存后调用),不打断进行中的会话。
+    /// </summary>
+    public void RefreshTransferPolicy()
+    {
+        TransferPolicy = TransferPolicyProvider?.Invoke() ?? TerminalTransferPolicy.Default;
+        TransferRouter?.UpdatePolicy(TransferPolicy);
+    }
 
     /// <summary>共享的文件传输面板(宿主注入),用于展示 ZMODEM 接收进度;null = 不展示进度。</summary>
     public FileTransferViewModel? FileTransfer { get; set; }
@@ -467,13 +500,15 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
     public TerminalTransferRouter? TransferRouter => Bridge?.TransferRouter;
 
     /// <summary>
-    /// 当前是否可以手动发起指定方向的 XMODEM / YMODEM 传输:要有活着的路由器、
+    /// 当前是否可以手动发起指定协议与方向的传输:该协议要被策略允许、要有活着的路由器、
     /// 没有正在跑的会话,上传方向还要求宿主接线了文件选择能力。
     /// </summary>
+    /// <param name="protocol">协议变体。</param>
     /// <param name="direction">传输方向。</param>
     /// <returns>可以发起返回 <c>true</c>。</returns>
-    public bool CanStartManualTransfer(FileTransferDirection direction) =>
+    public bool CanStartManualTransfer(TerminalTransferProtocol protocol, FileTransferDirection direction) =>
         TransferRouter is { IsInSession: false } router
+        && router.Policy.Allows(protocol)
         && (direction == FileTransferDirection.Receive || router.CanSend);
 
     /// <summary>
@@ -856,10 +891,16 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
     }
 
     /// <summary>
-    /// 为新建的桥装配 ZMODEM 路由器(仅当目录选择委托、传输面板与设置委托都已注入时)。
+    /// 为新建的桥装配文件传输路由器(仅当目录选择委托、传输面板与设置委托都已注入时)。
     /// 必须在 <see cref="Start" /> 之前调用;每个会话经 sinkFactory / sourceFactory 新建一个实例,
     /// 因此目录与文件选择都不跨会话缓存。上传选择器可选:未注入时遇到 <c>rz</c> 不接管。
     /// </summary>
+    /// <remarks>
+    /// 三种协议全被禁用时<b>照样装</b>路由器,只是它内部什么都不做(策略门控)。
+    /// 不装的话,用户在设置页把协议重新打开之后就没有东西可以接收这条新策略 ——
+    /// 于是「关掉再打开」与「一直开着」两条路径会得到不同的结果,而那种不对称没人能想明白。
+    /// 常态代价是每块入站字节多一次无竞争的加锁判断(纳秒级),换的是热更新永远成立。
+    /// </remarks>
     private void AttachTransferRouter(SshTerminalBridge bridge, IShellStreamWrapper shellStream)
     {
         Func<TransferFolderPromptRequest, CancellationToken, Task<string?>>? picker = TransferDownloadFolderPicker;
@@ -869,14 +910,17 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
         {
             return;
         }
-        Func<bool, CancellationToken, Task<IReadOnlyList<string>>>? uploadPicker = TransferUploadFilePicker;
+        // 每次挂载传输都重新求值:首连与重连各算一次,设置改了不必重开连接(#见类注释)。
+        TransferPolicy = TransferPolicyProvider?.Invoke() ?? TerminalTransferPolicy.Default;
+        Func<CancellationToken, Task<IReadOnlyList<string>>>? uploadPicker = TransferUploadFilePicker;
         var observer = new TerminalTransferObserver(transfer);
         bridge.TransferRouter = new TerminalTransferRouter(
             shellStream,
             () => new FolderTransferFileSink(picker, settings),
             uploadPicker is null ? null : () => new PickedFilesTransferSource(uploadPicker),
             Core.ZModem.Model.ZModemOptions.Default,
-            observer);
+            observer,
+            TransferPolicy);
     }
 
     private void OnBridgeClosed(ShellCloseReason reason)

@@ -3502,12 +3502,6 @@ Windows 填 exe 完整路径或命令名(如 notepad);Linux 填命令名(如 ged
   <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
     <value>选择要上传的文件(ZMODEM)</value>
   </data>
-  <data name="ZModem_ChooseDownloadFolderRetry" xml:space="preserve">
-    <value>未选择目录——请选择一个,或再次取消以中止本次接收</value>
-  </data>
-  <data name="ZModem_ChooseUploadFilesRetry" xml:space="preserve">
-    <value>未选择文件——请选择文件,或再次取消以中止本次上传</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve">
     <value>同步输入</value>
   </data>
@@ -5273,5 +5267,89 @@ Windows 填 exe 完整路径或命令名(如 notepad);Linux 填命令名(如 ged
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 不可用,按大小与时间比较)</value>
+  </data>
+  <data name="SetTransfer_SectionTerminalModem" xml:space="preserve">
+    <value>终端内传输(X / Y / ZMODEM)</value>
+  </data>
+  <data name="SetTransfer_DefaultMethod" xml:space="preserve">
+    <value>默认传输方式</value>
+  </data>
+  <data name="SetTransfer_DefaultMethodDesc" xml:space="preserve">
+    <value>「发送文件 / 接收文件」这两条命令走哪条路。没有 SFTP 通道的连接(串口、Telnet、本地终端)会自动退回第一种已启用的终端内协议。</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabled" xml:space="preserve">
+    <value>ZMODEM 自动接管</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabledDesc" xml:space="preserve">
+    <value>远端运行 sz / rz 时自动开始传输。关闭后,引导字节原样显示在终端里。</value>
+  </data>
+  <data name="SetTransfer_YModemEnabled" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="SetTransfer_YModemEnabledDesc" xml:space="preserve">
+    <value>允许 sb / rb 与命令面板里的 YMODEM 入口。</value>
+  </data>
+  <data name="SetTransfer_XModemEnabled" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="SetTransfer_XModemEnabledDesc" xml:space="preserve">
+    <value>允许 sx / rx 与命令面板里的 XMODEM 入口。</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommand" xml:space="preserve">
+    <value>ZMODEM 上传命令</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommandDesc" xml:space="preserve">
+    <value>「发送文件」走 ZMODEM 时注入到远端 shell 的命令。</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSize" xml:space="preserve">
+    <value>XMODEM 数据块</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSizeDesc" xml:space="preserve">
+    <value>只影响发送方向;接收方向按发送方实际使用的块自适应。</value>
+  </data>
+  <data name="Method_Sftp" xml:space="preserve">
+    <value>SFTP</value>
+  </data>
+  <data name="Method_ZModem" xml:space="preserve">
+    <value>ZMODEM</value>
+  </data>
+  <data name="Method_YModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Method_XModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Cmd_TransferSend" xml:space="preserve">
+    <value>发送文件到远端…</value>
+  </data>
+  <data name="Cmd_TransferReceive" xml:space="preserve">
+    <value>从远端接收文件…</value>
+  </data>
+  <data name="Profile_TransferSection" xml:space="preserve">
+    <value>文件传输</value>
+  </data>
+  <data name="Profile_TransferHint" xml:space="preserve">
+    <value>只对这一条连接覆盖终端内传输设置。选「跟随全局」即沿用设置 → 文件传输里的值。</value>
+  </data>
+  <data name="Profile_TransferDefaultMethod" xml:space="preserve">
+    <value>默认传输方式</value>
+  </data>
+  <data name="Profile_TransferZModem" xml:space="preserve">
+    <value>ZMODEM 自动接管</value>
+  </data>
+  <data name="Profile_TransferYModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Profile_TransferXModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Profile_OverrideEnabled" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="Profile_OverrideDisabled" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="Msg_TransferWaitingForRemote" xml:space="preserve">
+    <value>正在等待远端 —— 请在那边运行 `{0}`。在此之前终端被传输接管;按 Ctrl+C 取消。</value>
   </data>
 </root>

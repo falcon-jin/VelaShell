@@ -3354,12 +3354,6 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
     <value>アップロードするファイルを選択(ZMODEM)</value>
   </data>
-  <data name="ZModem_ChooseDownloadFolderRetry" xml:space="preserve">
-    <value>フォルダー未選択——選択するか、もう一度キャンセルすると受信を中止します</value>
-  </data>
-  <data name="ZModem_ChooseUploadFilesRetry" xml:space="preserve">
-    <value>ファイル未選択——選択するか、もう一度キャンセルするとアップロードを中止します</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>同期入力</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>チャンネル A に参加</value></data>
   <data name="SyncInput_JoinChannelB" xml:space="preserve"><value>チャンネル B に参加</value></data>
@@ -4824,5 +4818,89 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 使用不可、サイズと日時で比較)</value>
+  </data>
+  <data name="SetTransfer_SectionTerminalModem" xml:space="preserve">
+    <value>ターミナル内転送(X / Y / ZMODEM)</value>
+  </data>
+  <data name="SetTransfer_DefaultMethod" xml:space="preserve">
+    <value>既定の転送方式</value>
+  </data>
+  <data name="SetTransfer_DefaultMethodDesc" xml:space="preserve">
+    <value>「ファイルを送信 / 受信」コマンドが使う経路です。SFTP チャネルを持たない接続(シリアル、Telnet、ローカルターミナル)では、有効なターミナル内プロトコルの先頭に自動で切り替わります。</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabled" xml:space="preserve">
+    <value>ZMODEM 自動開始</value>
+  </data>
+  <data name="SetTransfer_ZModemEnabledDesc" xml:space="preserve">
+    <value>リモートで sz / rz を実行したときに自動で転送を開始します。オフにすると、開始バイトはそのままターミナルに表示されます。</value>
+  </data>
+  <data name="SetTransfer_YModemEnabled" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="SetTransfer_YModemEnabledDesc" xml:space="preserve">
+    <value>sb / rb とコマンドパレットの YMODEM 項目を有効にします。</value>
+  </data>
+  <data name="SetTransfer_XModemEnabled" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="SetTransfer_XModemEnabledDesc" xml:space="preserve">
+    <value>sx / rx とコマンドパレットの XMODEM 項目を有効にします。</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommand" xml:space="preserve">
+    <value>ZMODEM アップロードコマンド</value>
+  </data>
+  <data name="SetTransfer_ZModemUploadCommandDesc" xml:space="preserve">
+    <value>「ファイルを送信」が ZMODEM を使うとき、リモートシェルに送り込むコマンドです。</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSize" xml:space="preserve">
+    <value>XMODEM ブロックサイズ</value>
+  </data>
+  <data name="SetTransfer_XModemBlockSizeDesc" xml:space="preserve">
+    <value>送信方向のみに影響します。受信は送信側が使うブロックに自動で合わせます。</value>
+  </data>
+  <data name="Method_Sftp" xml:space="preserve">
+    <value>SFTP</value>
+  </data>
+  <data name="Method_ZModem" xml:space="preserve">
+    <value>ZMODEM</value>
+  </data>
+  <data name="Method_YModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Method_XModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Cmd_TransferSend" xml:space="preserve">
+    <value>リモートへファイルを送信…</value>
+  </data>
+  <data name="Cmd_TransferReceive" xml:space="preserve">
+    <value>リモートからファイルを受信…</value>
+  </data>
+  <data name="Profile_TransferSection" xml:space="preserve">
+    <value>ファイル転送</value>
+  </data>
+  <data name="Profile_TransferHint" xml:space="preserve">
+    <value>この接続だけターミナル内転送の設定を上書きします。「グローバルに従う」なら 設定 → ファイル転送 の値をそのまま使います。</value>
+  </data>
+  <data name="Profile_TransferDefaultMethod" xml:space="preserve">
+    <value>既定の転送方式</value>
+  </data>
+  <data name="Profile_TransferZModem" xml:space="preserve">
+    <value>ZMODEM 自動開始</value>
+  </data>
+  <data name="Profile_TransferYModem" xml:space="preserve">
+    <value>YMODEM</value>
+  </data>
+  <data name="Profile_TransferXModem" xml:space="preserve">
+    <value>XMODEM</value>
+  </data>
+  <data name="Profile_OverrideEnabled" xml:space="preserve">
+    <value>有効</value>
+  </data>
+  <data name="Profile_OverrideDisabled" xml:space="preserve">
+    <value>無効</value>
+  </data>
+  <data name="Msg_TransferWaitingForRemote" xml:space="preserve">
+    <value>リモートを待っています —— 向こうで `{0}` を実行してください。それまでターミナルは転送に占有されます。Ctrl+C で中止できます。</value>
   </data>
 </root>

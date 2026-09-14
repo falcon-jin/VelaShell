@@ -636,21 +636,46 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     /// 窗口注入的 ZMODEM 上传文件选择委托(视图层实现,独占 StorageProvider)。
     /// 分发给每个新建的终端标签,供远端 <c>rz</c> 时弹出多选文件框。
     /// </summary>
-    public Func<bool, CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
+    public Func<CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
 
     /// <summary>
-    /// 为新建的终端标签注入 ZMODEM 传输所需的依赖:下载目录选择委托、上传文件选择委托、
-    /// 共享传输面板与设置读取委托。前者 + 面板 + 设置就绪时 AttachTransport 才会启用 ZMODEM 路由器。
+    /// 为新建的终端标签注入终端内传输所需的依赖:下载目录选择委托、上传文件选择委托、
+    /// 共享传输面板、设置读取委托,以及这条会话生效的传输策略。
+    /// 前三者就绪时 AttachTransport 才会装上传输路由器。
     /// </summary>
-    private void WireZModemDownload(TerminalTabViewModel terminalTab)
+    private void WireTerminalTransfer(TerminalTabViewModel terminalTab, AppSettings settings)
     {
         terminalTab.TransferDownloadFolderPicker = TransferDownloadFolderPicker;
         terminalTab.TransferUploadFilePicker = TransferUploadFilePicker;
         terminalTab.FileTransfer = _fileTransfer;
-        if (_settingsService is { } settings)
+        if (_settingsService is { } service)
         {
-            terminalTab.GetSettingsAsync = () => settings.GetSnapshotAsync().AsTask();
+            terminalTab.GetSettingsAsync = () => service.GetSnapshotAsync().AsTask();
         }
+        // 委托而不是算好的值:标签在每次挂载传输时自己调一次,于是重连也按当时的设置重算。
+        // 这里读 _latestSettings 而不是闭包捕获 settings —— 后者会把建标签那一刻的设置钉死,
+        // 重连时拿到的还是老值,等于白做。
+        terminalTab.TransferPolicyProvider =
+            () => ResolveTransferPolicy(terminalTab, _latestSettings ?? settings);
+        terminalTab.RefreshTransferPolicy();
+    }
+
+    /// <summary>
+    /// 合成一条会话生效的终端内传输策略(全局设置 + 本条连接的覆盖项)。
+    /// </summary>
+    /// <remarks>
+    /// 只有 SSH 连接有 SFTP 通道 —— 本地终端(ConPTY)与插件终端协议(Telnet / 串口)都没有,
+    /// 它们选中的「默认走 SFTP」会在解析里退回第一种仍启用的终端内协议,
+    /// 否则那对通用收发命令在这些标签上永远是灰的,而用户完全看不出是为什么。
+    /// </remarks>
+    /// <param name="terminalTab">目标终端标签。</param>
+    /// <param name="settings">全局设置(由调用方传入,不读缓存快照 —— 建标签与设置热更新两条路径各有各的来源)。</param>
+    /// <returns>合成后的策略。</returns>
+    private TerminalTransferPolicy ResolveTransferPolicy(TerminalTabViewModel terminalTab, AppSettings settings)
+    {
+        bool hasSftp = _sftpService is not null
+                       && terminalTab.Profile is { ConnectionType: ConnectionType.SSH };
+        return SessionTransferSettings.Resolve(terminalTab.Profile, settings, hasSftp);
     }
 
     /// <summary>左侧边栏视图模型:资源管理器会话树与最近连接。</summary>
@@ -1235,9 +1260,33 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                 Icon: "Icon.layout-grid"
             )
         );
+        // 通用收发入口:按这条会话生效的「默认传输方式」决定走 SFTP 还是某种终端内协议。
+        // 它是「默认传输方式」这项设置唯一的消费者 —— 没有它,那项设置就只是个存着没人用的字段。
+        Commands.Register(
+            new(
+                "transfer.send",
+                Strings.Get("Cmd_TransferSend"),
+                Strings.Get("CmdCat_Transfer"),
+                () => _ = StartDefaultTransferAsync(FileTransferDirection.Send),
+                () => CanStartDefaultTransfer(FileTransferDirection.Send),
+                Icon: "Icon.upload"
+            )
+        );
+        Commands.Register(
+            new(
+                "transfer.receive",
+                Strings.Get("Cmd_TransferReceive"),
+                Strings.Get("CmdCat_Transfer"),
+                () => _ = StartDefaultTransferAsync(FileTransferDirection.Receive),
+                () => CanStartDefaultTransfer(FileTransferDirection.Receive),
+                Icon: "Icon.download"
+            )
+        );
+
         // XMODEM / YMODEM 手动入口。ZMODEM 会自动接管(远端 sz/rz 的引导序列可识别),
         // 而这一族协议在链路上没有可识别的引导 —— sb/sx 静默等接收方发 'C',rb/rx 只吐裸 'C',
         // 在终端输出里与普通字符无异,自动检测必然误触发。所以只能由用户在远端敲好命令后手动发起。
+        // 这些条目按变体写死,是给高级用户的救援入口;协议被策略禁用时一并置灰。
         RegisterManualTransferCommand(
             "transfer.ymodem.receive", "Cmd_YModemReceive",
             TerminalTransferProtocol.YModem, FileTransferDirection.Receive, "Icon.download");
@@ -1275,8 +1324,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
     /// <summary>
     /// 注册一条「手动发起 XMODEM / YMODEM 传输」的命令。可用性由当前活动标签决定:
-    /// 要有活着的传输路由器、没有正在跑的会话,上传方向还要求已接线文件选择能力 ——
-    /// 条件不满足时命令在面板里就是灰的,不需要再弹一层失败提示。
+    /// 该协议要被这条会话的传输策略允许、要有活着的传输路由器、没有正在跑的会话,
+    /// 上传方向还要求已接线文件选择能力 —— 条件不满足时命令在面板里就是灰的,
+    /// 不需要再弹一层失败提示。
     /// </summary>
     private void RegisterManualTransferCommand(
         string id,
@@ -1291,10 +1341,169 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                 Strings.Get(titleKey),
                 Strings.Get("CmdCat_Transfer"),
                 () => ActiveTerminalTab?.StartManualTransfer(protocol, direction),
-                () => ActiveTerminalTab?.CanStartManualTransfer(direction) == true,
+                () => ActiveTerminalTab?.CanStartManualTransfer(protocol, direction) == true,
                 Icon: icon
             )
         );
+    }
+
+    /// <summary>
+    /// 「发送 / 接收文件」这对通用命令当前是否可用:按本会话生效的默认传输方式判定。
+    /// </summary>
+    /// <param name="direction">传输方向。</param>
+    /// <returns>可用返回 <c>true</c>。</returns>
+    private bool CanStartDefaultTransfer(FileTransferDirection direction)
+    {
+        if (ActiveTerminalTab is not { } tab)
+        {
+            return false;
+        }
+        TerminalTransferPolicy policy = tab.TransferPolicy;
+        // 解析器已经把「选了 SFTP 但这条连接没有 SFTP 通道」退回到终端内协议了;
+        // 还停在 SFTP 上就说明这条会话确实有通道(或三种协议全被关掉,此时下面这条也不成立)。
+        return policy.DefaultProtocol() is { } protocol
+            ? tab.CanStartManualTransfer(protocol, direction)
+            : CanToggleFileBrowser;
+    }
+
+    /// <summary>
+    /// 执行「发送 / 接收文件」:按本会话生效的默认传输方式分派到 SFTP 面板或终端内协议。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>SFTP</b>:把面板开到终端当前目录 —— 用户在 shell 里 <c>cd</c> 到哪,文件就收发在哪,
+    /// 这正是终端内协议相对 SFTP 仅剩的那点优势,补上之后 SFTP 就没有短板了。
+    /// </para>
+    /// <para>
+    /// <b>ZMODEM</b>:发送方向注入配置好的上传命令(默认 <c>rz -E</c>),随后由既有的自动接管
+    /// 顺势接手;接收方向手动开一次会话,用于「远端已经在跑 sz、引导却被漏掉」的补救。
+    /// </para>
+    /// <para>
+    /// <b>X/YMODEM</b>:两个方向都只能手动开会话,调用前用户须已在远端敲好对应命令。
+    /// 不替用户注入命令 —— 这一族在链路上没有引导序列,「注入 → 等回车落流 → 开会话」
+    /// 那条三段接力本就脆(见 TerminalTransferRouter 的类注释),再叠一层程序化注入只会更难查。
+    /// </para>
+    /// </remarks>
+    /// <param name="direction">传输方向。</param>
+    private async Task StartDefaultTransferAsync(FileTransferDirection direction)
+    {
+        if (ActiveTerminalTab is not { } tab || !CanStartDefaultTransfer(direction))
+        {
+            return;
+        }
+        TerminalTransferPolicy policy = tab.TransferPolicy;
+        if (policy.DefaultProtocol() is not { } protocol)
+        {
+            await StartSftpTransferAsync(tab, direction);
+            return;
+        }
+        if (protocol == TerminalTransferProtocol.ZModem && direction == FileTransferDirection.Send)
+        {
+            // 注入上传命令,远端 rz 一起来就会吐出 ZRINIT,检测器命中后我们自动转为发送方。
+            tab.Bridge?.SendRaw(Encoding.UTF8.GetBytes(policy.ZModemUploadCommand + "\r"));
+            return;
+        }
+
+        // 接管期间终端是全黑的(字节全归引擎,击键只认取消键),握手谈不拢还要等十几秒。
+        // 先把这件事写在屏幕上:等谁、怎么取消。否则用户看到的就是"点了一下,终端死了"。
+        FeedTransferWaitNotice(tab, protocol, direction);
+        tab.StartManualTransfer(protocol, direction);
+    }
+
+    /// <summary>
+    /// 接管终端之前,在终端里留一行说明:正在等远端跑哪条命令,以及怎么退出来。
+    /// </summary>
+    /// <param name="tab">活动终端标签。</param>
+    /// <param name="protocol">即将使用的协议变体。</param>
+    /// <param name="direction">传输方向。</param>
+    private static void FeedTransferWaitNotice(
+        TerminalTabViewModel tab,
+        TerminalTransferProtocol protocol,
+        FileTransferDirection direction)
+    {
+        // 该让用户在远端敲的那条命令:我们扮演接收方时对端要跑 s*,反之跑 r*。
+        string remoteCommand = (protocol, direction) switch
+        {
+            (TerminalTransferProtocol.ZModem, FileTransferDirection.Receive) => "sz <file>",
+            (TerminalTransferProtocol.ZModem, _) => "rz",
+            (TerminalTransferProtocol.XModem or TerminalTransferProtocol.XModem1K, FileTransferDirection.Receive) => "sx <file>",
+            (TerminalTransferProtocol.XModem or TerminalTransferProtocol.XModem1K, _) => "rx <file>",
+            (_, FileTransferDirection.Receive) => "sb <file>",
+            _ => "rb"
+        };
+        string notice =
+            "\e[90m● "
+            + Strings.Format("Msg_TransferWaitingForRemote", remoteCommand)
+            + "\e[0m\r\n";
+        tab.TerminalEmulator.Feed(Encoding.UTF8.GetBytes(notice));
+    }
+
+    /// <summary>
+    /// 默认方式为 SFTP 时的收发:把面板绑到当前会话、开到终端所在目录,发送方向再走一次上传。
+    /// </summary>
+    /// <param name="tab">活动终端标签。</param>
+    /// <param name="direction">传输方向。</param>
+    /// <remarks>
+    /// 命令面板是 <c>_ = StartDefaultTransferAsync(...)</c> 这样发起的,抛出去的异常没人接 ——
+    /// 所以这里自己兜住并记一条,免得一个 SFTP 侧的失败变成"点了没反应、日志里也没有"。
+    /// </remarks>
+    private async Task StartSftpTransferAsync(TerminalTabViewModel tab, FileTransferDirection direction)
+    {
+        try
+        {
+            await RunSftpTransferAsync(tab, direction);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"[Transfer] SFTP transfer from the palette failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>把面板绑到当前会话并开到终端所在目录,发送方向再走一次上传。</summary>
+    /// <param name="tab">活动终端标签。</param>
+    /// <param name="direction">传输方向。</param>
+    private async Task RunSftpTransferAsync(TerminalTabViewModel tab, FileTransferDirection direction)
+    {
+        if (!FileBrowser.IsVisible)
+        {
+            ToggleFileBrowser();
+        }
+        else
+        {
+            RebindFileBrowser();
+        }
+
+        // 终端报过工作目录就跟过去(#305 的目录上报钩子);没报过就留在面板当前位置,
+        // 而不是猜一个家目录 —— 猜错的代价是文件传到了别处,且用户不会立刻发现。
+        if (tab.TerminalWorkingDirectory is { Length: > 0 } cwd
+            && !string.Equals(cwd, FileBrowser.CurrentPath, StringComparison.Ordinal))
+        {
+            try
+            {
+                await FileBrowser.NavigateToCommand.Execute(cwd).FirstAsync();
+            }
+            catch (Exception)
+            {
+                // 面板此刻正在列目录(跟随终端目录那条路刚被 OSC 7 触发)时 CanExecute 为 false,
+                // 而 ReactiveCommand 对这种执行是 OnError 而非空操作 —— 不吞掉的话,整个方法
+                // 会在这里断掉,连文件选择框都弹不出来,表现为「点了发送文件,什么都没发生」。
+                // 目录没跟过去不致命:下面照样把文件传进面板当前目录。
+            }
+        }
+
+        if (direction != FileTransferDirection.Send)
+        {
+            return;
+        }
+        if (TransferUploadFilePicker is not { } picker)
+        {
+            return;
+        }
+        IReadOnlyList<string> paths = await picker(CancellationToken.None);
+        if (paths.Count > 0)
+        {
+            await FileBrowser.UploadLocalPathsAsync(paths);
+        }
     }
 
     /// <summary>
@@ -1326,7 +1535,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
         // 命令补全:注入建议提供器;提交(已回显校验)的命令进全局历史。
         terminalTab.SuggestionProvider = _suggestionProvider;
-        WireZModemDownload(terminalTab);
+        WireTerminalTransfer(terminalTab, settings);
         terminalTab.CommandLineSubmitted += CommandHistory.Record;
         if (terminalEmulator is VelaTerminalControl bellSource)
         {
@@ -2337,7 +2546,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
         // 命令补全:注入建议提供器;提交(已回显校验)的命令进全局历史。
         terminalTab.SuggestionProvider = _suggestionProvider;
-        WireZModemDownload(terminalTab);
+        WireTerminalTransfer(terminalTab, settings);
         terminalTab.CommandLineSubmitted += CommandHistory.Record;
 
         // 树上的状态圆点与「活跃/连接中/离线」标签不在这里订阅:一条配置可能同时开着
@@ -4893,6 +5102,14 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                     browser.TransferOptions = settings.Transfer;
                     browser.ShowHiddenFiles = settings.Transfer.ShowHiddenFiles;
                     ApplyColumnVisibility(browser, settings.Transfer);
+                }
+
+                // 终端内传输的启停 / 默认方式改了要当场生效:用户刚在设置页关掉 ZMODEM,
+                // 期望是「从现在起别再自动接管了」,而不是等下次重连。
+                // 进行中的会话不受影响(见 TerminalTransferRouter.UpdatePolicy)。
+                foreach (TerminalTabViewModel tab in TerminalTabs)
+                {
+                    tab.RefreshTransferPolicy();
                 }
 
                 RevealActiveSessionInSidebar();

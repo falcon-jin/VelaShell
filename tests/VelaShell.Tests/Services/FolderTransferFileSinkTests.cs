@@ -5,8 +5,8 @@ using VelaShell.Services.FileTransfer;
 namespace VelaShell.Tests.Services;
 
 /// <summary>
-/// <see cref="FolderTransferFileSink" /> 的目录选择与防误触重弹逻辑。
-/// 用户放弃保存目录时,首次取消应再弹一次(防不小心点关闭/取消),二次取消才真正中止。
+/// <see cref="FolderTransferFileSink" /> 的目录选择逻辑。
+/// 取消一次即中止(2026-09-14 起不再重弹追问),选定后同会话不再弹第二次。
 /// </summary>
 [TestClass]
 [TestCategory("ZModem")]
@@ -22,15 +22,15 @@ public class FolderTransferFileSinkTests
 
     private static TransferFileMetadata Meta(string name) => new() { FileName = name, Size = 10 };
 
-    /// <summary>首次取消(picker 返回 null)后,应再弹一次目录框,而不是立即中止。</summary>
+    /// <summary>取消(picker 返回 null)应当只弹一次就中止,不再给第二次机会。</summary>
     [TestMethod]
-    public async Task FirstCancel_RepromptsOnceBeforeAborting()
+    public async Task Cancel_AbortsWithoutReprompting()
     {
         var calls = new List<TransferFolderPromptRequest>();
         Task<string?> picker(TransferFolderPromptRequest req, CancellationToken _)
         {
             calls.Add(req);
-            return Task.FromResult<string?>(null); // 两次都取消。
+            return Task.FromResult<string?>(null);
         }
 
         var sink = new FolderTransferFileSink(picker, Settings());
@@ -38,21 +38,39 @@ public class FolderTransferFileSinkTests
             await sink.OnFileOfferedAsync(Meta("a.bin"), new FileTransferItem { FileName = "a.bin" }, CancellationToken.None);
 
         Assert.AreEqual(TransferFileDisposition.Abort, disposition);
-        Assert.HasCount(2, calls, "首次取消应重弹一次,共两次");
-        Assert.IsFalse(calls[0].IsRetryAfterCancel, "第一次弹窗不是重试");
-        Assert.IsTrue(calls[1].IsRetryAfterCancel, "第二次弹窗应标记为重试(标题提示再次取消即中止)");
+        Assert.HasCount(1, calls, "取消就是取消,不该追问第二遍");
     }
 
-    /// <summary>首次取消、第二次选定目录:应接受该文件并写入所选目录,不再中止。</summary>
+    /// <summary>取消之后,同会话的后续文件也不再弹窗 —— 整笔会话已经判定中止。</summary>
     [TestMethod]
-    public async Task CancelThenChoose_AcceptsIntoChosenFolder()
+    public async Task CancelThenNextFile_StillAbortsWithoutPrompting()
     {
-        string chosen = Path.Combine(Path.GetTempPath(), "vela-zmodem-reprompt-" + Guid.NewGuid().ToString("N"));
         int callCount = 0;
         Task<string?> picker(TransferFolderPromptRequest _1, CancellationToken _2)
         {
             callCount++;
-            return Task.FromResult(callCount == 1 ? null : chosen); // 先取消,后选定。
+            return Task.FromResult<string?>(null);
+        }
+
+        var sink = new FolderTransferFileSink(picker, Settings());
+        await sink.OnFileOfferedAsync(Meta("a.bin"), new FileTransferItem { FileName = "a.bin" }, CancellationToken.None);
+        (TransferFileDisposition disposition, _) =
+            await sink.OnFileOfferedAsync(Meta("b.bin"), new FileTransferItem { FileName = "b.bin" }, CancellationToken.None);
+
+        Assert.AreEqual(TransferFileDisposition.Abort, disposition);
+        Assert.AreEqual(1, callCount, "目录选择的结果缓存在 sink 内,取消也算一次已解析");
+    }
+
+    /// <summary>选定目录:应接受该文件并写入所选目录。</summary>
+    [TestMethod]
+    public async Task Choose_AcceptsIntoChosenFolder()
+    {
+        string chosen = Path.Combine(Path.GetTempPath(), "vela-zmodem-choose-" + Guid.NewGuid().ToString("N"));
+        int callCount = 0;
+        Task<string?> picker(TransferFolderPromptRequest _1, CancellationToken _2)
+        {
+            callCount++;
+            return Task.FromResult<string?>(chosen);
         }
 
         var sink = new FolderTransferFileSink(picker, Settings());
@@ -63,7 +81,7 @@ public class FolderTransferFileSinkTests
         try
         {
             Assert.AreEqual(TransferFileDisposition.Accept, disposition);
-            Assert.AreEqual(2, callCount);
+            Assert.AreEqual(1, callCount);
             Assert.IsNotNull(item.LocalPath);
             Assert.IsTrue(item.LocalPath!.StartsWith(chosen, StringComparison.Ordinal));
         }
