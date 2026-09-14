@@ -7,7 +7,6 @@ using System.Text.Json;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using VelaShell.Core.Data;
-using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Localization;
 using VelaShell.Core.Models;
 using VelaShell.Core.Resources;
@@ -1198,46 +1197,6 @@ public class SettingsViewModel : ReactiveObject
                 3 => "rename",
                 _ => "ask",
             };
-            this.RaisePropertyChanged();
-        }
-    }
-
-    /// <summary>
-    /// 「默认传输方式」下拉的选中项与 <see cref="TransferOptions.TerminalDefaultMethod" /> 之间的索引映射。
-    /// </summary>
-    /// <remarks>下拉项顺序即枚举顺序(SFTP / ZMODEM / YMODEM / XMODEM),认不出来的一律回落 SFTP。</remarks>
-    public int TransferDefaultMethodIndex
-    {
-        get =>
-            Transfer.TerminalDefaultMethod switch
-            {
-                TerminalTransferMethod.ZModem => 1,
-                TerminalTransferMethod.YModem => 2,
-                TerminalTransferMethod.XModem => 3,
-                _ => 0,
-            };
-        set
-        {
-            Transfer.TerminalDefaultMethod = value switch
-            {
-                1 => TerminalTransferMethod.ZModem,
-                2 => TerminalTransferMethod.YModem,
-                3 => TerminalTransferMethod.XModem,
-                _ => TerminalTransferMethod.Sftp,
-            };
-            this.RaisePropertyChanged();
-        }
-    }
-
-    /// <summary>
-    /// 「XMODEM 数据块」下拉的选中项与 <see cref="TransferOptions.TerminalXModemBlockSize" /> 之间的索引映射。
-    /// </summary>
-    public int XModemBlockSizeIndex
-    {
-        get => Transfer.TerminalXModemBlockSize == 128 ? 0 : 1;
-        set
-        {
-            Transfer.TerminalXModemBlockSize = value == 0 ? 128 : TerminalTransferPolicy.DefaultXModemBlockSize;
             this.RaisePropertyChanged();
         }
     }

@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using VelaShell.Core.FileTransfer.Model;
 
 namespace VelaShell.Core.Models;
 
@@ -119,25 +118,6 @@ public class AppSettings
         if (Transfer.DoubleClickAction is not ("system" or "builtin" or "editor"))
         {
             Transfer.DoubleClickAction = "system";
-        }
-
-        // 终端内传输的默认方式是个枚举,磁盘上的内容拦不住:认不出来的一律回落到 SFTP
-        // (在 SSH 上它各方面都更好;没有 SFTP 通道的连接会在解析时再退回终端内协议)。
-        if (!Enum.IsDefined(Transfer.TerminalDefaultMethod))
-        {
-            Transfer.TerminalDefaultMethod = TerminalTransferMethod.Sftp;
-        }
-
-        // 上传命令空白 = 注入一个空行,远端什么也不会发生,那对通用命令就成了哑弹。
-        if (string.IsNullOrWhiteSpace(Transfer.TerminalZModemUploadCommand))
-        {
-            Transfer.TerminalZModemUploadCommand = TerminalTransferPolicy.DefaultZModemUploadCommand;
-        }
-
-        // XMODEM 块大小只有两个合法值;其余一律当 1K(与设置页的两个单选项同一口径)。
-        if (Transfer.TerminalXModemBlockSize != 128)
-        {
-            Transfer.TerminalXModemBlockSize = TerminalTransferPolicy.DefaultXModemBlockSize;
         }
 
         ClampNumbers();
@@ -994,65 +974,6 @@ public class TransferOptions : ObservableOptions
         get;
         set => Set(ref field, value);
     } = "system";
-
-    // —— 终端内文件传输(X / Y / ZMODEM):全局默认值,每条连接可在 SessionProfile.Transfer 里覆盖。
-    //    合成生效值的唯一入口是 SessionTransferSettings.Resolve,别在别处拼 ?? 。
-
-    /// <summary>
-    /// 是否启用 ZMODEM 自动接管。关闭后路由器不再嗅探输出流,远端 <c>sz</c>/<c>rz</c> 的引导字节
-    /// 原样显示在终端里。默认开启 —— 改默认值等于动所有存量用户的肌肉记忆。
-    /// </summary>
-    public bool TerminalZModemEnabled
-    {
-        get;
-        set => Set(ref field, value);
-    } = true;
-
-    /// <summary>是否启用 YMODEM / YMODEM-G(命令行武装与命令面板入口一并生效)。默认开启。</summary>
-    public bool TerminalYModemEnabled
-    {
-        get;
-        set => Set(ref field, value);
-    } = true;
-
-    /// <summary>是否启用 XMODEM / XMODEM-1K。默认开启。</summary>
-    public bool TerminalXModemEnabled
-    {
-        get;
-        set => Set(ref field, value);
-    } = true;
-
-    /// <summary>
-    /// 「发送 / 接收文件」这对通用命令默认走哪条路。默认 <see cref="TerminalTransferMethod.Sftp" />。
-    /// </summary>
-    /// <remarks>
-    /// 默认选 SFTP 而不是 ZMODEM:在 SSH 上它独立通道、不占终端、能续传能并发能限速,
-    /// 各方面都优于终端内协议。没有 SFTP 通道的连接(串口、Telnet、本地终端)会自动退回
-    /// 第一种仍启用的终端内协议,见 <see cref="SessionTransferSettings.Resolve" />。
-    /// </remarks>
-    public TerminalTransferMethod TerminalDefaultMethod
-    {
-        get;
-        set => Set(ref field, value);
-    } = TerminalTransferMethod.Sftp;
-
-    /// <summary>
-    /// 默认方式为 ZMODEM 时,「发送文件」注入到远端 shell 的命令。默认 <c>rz -E</c>。
-    /// </summary>
-    public string TerminalZModemUploadCommand
-    {
-        get;
-        set => Set(ref field, value);
-    } = TerminalTransferPolicy.DefaultZModemUploadCommand;
-
-    /// <summary>
-    /// 默认方式为 XMODEM 时,发送使用的数据块负载字节数:128 或 1024。默认 1024(XMODEM-1K)。
-    /// </summary>
-    public int TerminalXModemBlockSize
-    {
-        get;
-        set => Set(ref field, value);
-    } = TerminalTransferPolicy.DefaultXModemBlockSize;
 }
 
 /// <summary>设置 - 安全审计(设计 glqQE;策略项持久化,审计数据在 SonnetDB audit_log)。</summary>

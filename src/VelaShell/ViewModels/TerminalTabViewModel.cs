@@ -2,15 +2,12 @@ using System.Text;
 using Avalonia.Threading;
 using ReactiveUI;
 using ReactiveUI.Primitives;
-using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Models;
 using VelaShell.Core.Resources;
 using VelaShell.Core.Ssh;
 using VelaShell.Presentation.ViewModels;
 using VelaShell.Services;
-using VelaShell.Services.FileTransfer;
 using VelaShell.Terminal;
-using VelaShell.Terminal.FileTransfer;
 using VelaShell.Terminal.Input;
 using VelaShell.Terminal.Rendering;
 
@@ -232,58 +229,6 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
     /// <summary>补全建议提供器(宿主 MainWindowViewModel 注入;null = 补全不可用)。</summary>
     public CommandSuggestionProvider? SuggestionProvider { get; set; }
 
-    /// <summary>
-    /// ZMODEM 下载目录选择委托(由视图层 MainWindow 注入,视图层独占 StorageProvider)。
-    /// 后台接收线程经它弹出原生文件夹选择框;返回所选目录,取消则为 null。null = 未接线,ZMODEM 不启用。
-    /// </summary>
-    public Func<TransferFolderPromptRequest, CancellationToken, Task<string?>>? TransferDownloadFolderPicker { get; set; }
-
-    /// <summary>
-    /// ZMODEM 上传文件选择委托(由视图层 MainWindow 注入)。远端跑 <c>rz</c> 时,
-    /// 后台发送线程经它弹出多选文件框;返回所选文件的绝对路径,取消则为空清单。
-    /// null = 未接线,遇到 <c>rz</c> 不接管(字节原样喂终端)。
-    /// </summary>
-    public Func<CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
-
-    /// <summary>
-    /// 合成本标签生效传输策略的委托(宿主注入)。null = 用出厂默认。
-    /// </summary>
-    /// <remarks>
-    /// 做成委托而不是让宿主把算好的值推进来:策略要在<b>每次挂载传输时</b>按当时的全局设置重新求值,
-    /// 而挂载点有四处(首连、重连、本地终端、插件终端)。推值的话必须在四处各推一遍,
-    /// 漏掉重连那处的表现是「改了设置,断线重连之后又变回老样子」—— 而那种 bug 没人会往这里想。
-    /// </remarks>
-    public Func<TerminalTransferPolicy>? TransferPolicyProvider { get; set; }
-
-    /// <summary>
-    /// 本标签当前生效的终端内传输策略(全局设置 + 本条连接的覆盖项合成)。
-    /// </summary>
-    /// <remarks>
-    /// 在每次 <see cref="AttachTransport" /> 时重新求值,因此<b>重连即生效</b>;
-    /// 设置页保存后的热更新走 <see cref="RefreshTransferPolicy" />。
-    /// <para>
-    /// 唯一不会当场跟上的是<b>改了连接配置本身</b>:标签持有的是建标签那一刻的
-    /// <see cref="Profile" /> 实例,编辑对话框保存的是另一份。这与同一批会话级覆盖
-    /// (编码、TERM、保活)口径一致 —— 改配置要新开一个标签才生效。
-    /// </para>
-    /// </remarks>
-    public TerminalTransferPolicy TransferPolicy { get; private set; } = TerminalTransferPolicy.Default;
-
-    /// <summary>
-    /// 重新求值传输策略并下发给已经跑着的路由器(设置页保存后调用),不打断进行中的会话。
-    /// </summary>
-    public void RefreshTransferPolicy()
-    {
-        TransferPolicy = TransferPolicyProvider?.Invoke() ?? TerminalTransferPolicy.Default;
-        TransferRouter?.UpdatePolicy(TransferPolicy);
-    }
-
-    /// <summary>共享的文件传输面板(宿主注入),用于展示 ZMODEM 接收进度;null = 不展示进度。</summary>
-    public FileTransferViewModel? FileTransfer { get; set; }
-
-    /// <summary>读取应用设置的委托(宿主注入),ZMODEM 落地据此取默认下载目录与冲突策略。</summary>
-    public Func<Task<AppSettings>>? GetSettingsAsync { get; set; }
-
     /// <summary>用户在本标签提交了一条通过回显校验的命令(宿主记入全局命令历史)。</summary>
     public event Action<string>? CommandLineSubmitted;
 
@@ -304,10 +249,6 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
 
     private void OnTrackedCommandSubmitted(string command)
     {
-        // 传输意图先于回显校验处理:远端的 sz/rz 引导可能在几毫秒内就到,等 200ms 二次校验
-        // 就晚了。这一路只认命令名,密码行不可能解析成 sz/rz(解析失败即无副作用)。
-        NoteTransferCommand(command);
-
         // 回显校验:所键入的文本应已被 shell 回显到屏上;密码提示符不回显 → 不记录,
         // 防止口令进历史。注意桥接层的输出是按帧合并 Feed 的——Enter 瞬间最后几个
         // 字符的回显可能还在队列里,同步校验失败时延迟 200ms 后在整个可视区做二次
@@ -347,31 +288,12 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
             string? command = ExtractCommandAfterPrompt(control.GetBufferLine(control.CursorRow));
             if (!string.IsNullOrWhiteSpace(command))
             {
-                // 未知态同样要认传输命令:"sz fi<Tab>" 补全后行内容就不可知了,
-                // 而带 Tab 补全的文件名恰恰是最常见的敲法。
-                NoteTransferCommand(command);
                 CommandLineSubmitted?.Invoke(command);
             }
         }
         catch
         {
             // 读缓冲失败时宁可漏记不误记。
-        }
-    }
-
-    /// <summary>
-    /// 把用户提交的命令行转给路由器:X/YMODEM 据此自动开会话(它们在链路上没有引导,
-    /// 只能靠这一路),ZMODEM 据此放宽检测判据。不是传输命令时是空操作。
-    /// </summary>
-    private void NoteTransferCommand(string command)
-    {
-        try
-        {
-            _ = TransferRouter?.NoteCommandSubmitted(command);
-        }
-        catch
-        {
-            // 传输意图识别失败不得影响命令历史等其余处理。
         }
     }
 
@@ -493,35 +415,6 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
 
     /// <summary>连接 shell 流与终端模拟器的桥接器;未连接时为 null。</summary>
     public SshTerminalBridge? Bridge { get; private set; }
-
-    /// <summary>
-    /// 本标签的文件传输路由器(ZMODEM 自动接管 + XMODEM/YMODEM 手动接管);未接线时为 null。
-    /// </summary>
-    public TerminalTransferRouter? TransferRouter => Bridge?.TransferRouter;
-
-    /// <summary>
-    /// 当前是否可以手动发起指定协议与方向的传输:该协议要被策略允许、要有活着的路由器、
-    /// 没有正在跑的会话,上传方向还要求宿主接线了文件选择能力。
-    /// </summary>
-    /// <param name="protocol">协议变体。</param>
-    /// <param name="direction">传输方向。</param>
-    /// <returns>可以发起返回 <c>true</c>。</returns>
-    public bool CanStartManualTransfer(TerminalTransferProtocol protocol, FileTransferDirection direction) =>
-        TransferRouter is { IsInSession: false } router
-        && router.Policy.Allows(protocol)
-        && (direction == FileTransferDirection.Receive || router.CanSend);
-
-    /// <summary>
-    /// 手动发起一次 XMODEM / YMODEM 传输。调用前用户应已在远端敲好对应命令
-    /// (下载 <c>sb file</c> / <c>sx file</c>,上传 <c>rb</c> / <c>rx</c>)。
-    /// </summary>
-    /// <param name="protocol">协议变体。</param>
-    /// <param name="direction">传输方向。</param>
-    /// <returns>启动结果;<see cref="TransferStartFailure.None" /> 表示已开始。</returns>
-    public TransferStartFailure StartManualTransfer(
-        TerminalTransferProtocol protocol,
-        FileTransferDirection direction) =>
-        TransferRouter?.StartManualSession(protocol, direction) ?? TransferStartFailure.NotWired;
 
     /// <summary>
     /// 本标签的连接状态。赋值时同步 <see cref="IsConnected" />、在连接成功时清除错误,
@@ -834,7 +727,6 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
         ShellStream = shellStream;
         var bridge = new SshTerminalBridge(TerminalEmulator, shellStream);
         bridge.Closed += OnBridgeClosed;
-        AttachTransferRouter(bridge, shellStream);
         ApplyAntiIdle(bridge);
         Bridge = bridge;
         _started = false;
@@ -880,47 +772,12 @@ public class TerminalTabViewModel : TabViewModel, IDisposable
             return;
         }
         bridge.Closed -= OnBridgeClosed;
-        // 拆除传输前先取消进行中的 ZMODEM 会话(向对端发 ZCAN),避免后台接收任务悬空。
-        bridge.TransferRouter?.CancelActiveSession();
         Bridge = null;
         ShellStream = null;
         _started = false;
 
         // Bridge.Dispose 也会释放 shell 流;放到调用方线程之外执行。
         Task.Run(bridge.Dispose);
-    }
-
-    /// <summary>
-    /// 为新建的桥装配文件传输路由器(仅当目录选择委托、传输面板与设置委托都已注入时)。
-    /// 必须在 <see cref="Start" /> 之前调用;每个会话经 sinkFactory / sourceFactory 新建一个实例,
-    /// 因此目录与文件选择都不跨会话缓存。上传选择器可选:未注入时遇到 <c>rz</c> 不接管。
-    /// </summary>
-    /// <remarks>
-    /// 三种协议全被禁用时<b>照样装</b>路由器,只是它内部什么都不做(策略门控)。
-    /// 不装的话,用户在设置页把协议重新打开之后就没有东西可以接收这条新策略 ——
-    /// 于是「关掉再打开」与「一直开着」两条路径会得到不同的结果,而那种不对称没人能想明白。
-    /// 常态代价是每块入站字节多一次无竞争的加锁判断(纳秒级),换的是热更新永远成立。
-    /// </remarks>
-    private void AttachTransferRouter(SshTerminalBridge bridge, IShellStreamWrapper shellStream)
-    {
-        Func<TransferFolderPromptRequest, CancellationToken, Task<string?>>? picker = TransferDownloadFolderPicker;
-        FileTransferViewModel? transfer = FileTransfer;
-        Func<Task<AppSettings>>? settings = GetSettingsAsync;
-        if (picker is null || transfer is null || settings is null)
-        {
-            return;
-        }
-        // 每次挂载传输都重新求值:首连与重连各算一次,设置改了不必重开连接(#见类注释)。
-        TransferPolicy = TransferPolicyProvider?.Invoke() ?? TerminalTransferPolicy.Default;
-        Func<CancellationToken, Task<IReadOnlyList<string>>>? uploadPicker = TransferUploadFilePicker;
-        var observer = new TerminalTransferObserver(transfer);
-        bridge.TransferRouter = new TerminalTransferRouter(
-            shellStream,
-            () => new FolderTransferFileSink(picker, settings),
-            uploadPicker is null ? null : () => new PickedFilesTransferSource(uploadPicker),
-            Core.ZModem.Model.ZModemOptions.Default,
-            observer,
-            TransferPolicy);
     }
 
     private void OnBridgeClosed(ShellCloseReason reason)

@@ -7,7 +7,6 @@ using Avalonia.Threading;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using VelaShell.Core.Data;
-using VelaShell.Core.FileTransfer.Model;
 using VelaShell.Core.Models;
 using VelaShell.Core.Resources;
 using VelaShell.Infrastructure.Plugins.Protocols;
@@ -80,12 +79,6 @@ public class ConnectionProfileViewModel : ReactiveObject, IDisposable
     private string? _overrideStartupDirectory;
     private int _overrideKeepAliveSeconds = -1;
     private int _antiIdleSeconds;
-
-    // ---- 会话级终端内传输覆盖项;下拉的 0 号项一律是「跟随全局」 ----
-    private int _transferZModemIndex;
-    private int _transferYModemIndex;
-    private int _transferXModemIndex;
-    private int _transferDefaultMethodIndex;
 
     // ---- 插件协议 ----
     private readonly PluginProtocolRegistry? _protocolRegistry;
@@ -181,13 +174,6 @@ public class ConnectionProfileViewModel : ReactiveObject, IDisposable
                 _overrideStartupDirectory = overrides.StartupDirectory;
                 _overrideKeepAliveSeconds = overrides.KeepAliveSeconds ?? -1;
                 _antiIdleSeconds = overrides.AntiIdleSeconds ?? 0;
-            }
-            if (existing.Transfer is { } transfer)
-            {
-                _transferZModemIndex = ToggleIndex(transfer.ZModemEnabled);
-                _transferYModemIndex = ToggleIndex(transfer.YModemEnabled);
-                _transferXModemIndex = ToggleIndex(transfer.XModemEnabled);
-                _transferDefaultMethodIndex = MethodIndex(transfer.DefaultMethod);
             }
         }
         else
@@ -307,7 +293,6 @@ public class ConnectionProfileViewModel : ReactiveObject, IDisposable
             this.RaisePropertyChanged(nameof(IsPluginSelected));
             this.RaisePropertyChanged(nameof(RequiresSshAuth));
             this.RaisePropertyChanged(nameof(SupportsPostAuthCommand));
-            this.RaisePropertyChanged(nameof(SupportsTransferOverrides));
             this.RaisePropertyChanged(nameof(ShowFtpPlaintextWarning));
 
             this.RaisePropertyChanged(nameof(ShowPasswordField));
@@ -1001,91 +986,6 @@ public class ConnectionProfileViewModel : ReactiveObject, IDisposable
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "XAML 绑定只解析实例成员。")]
     public int MaxAntiIdleSeconds => TerminalOverrides.MaxAntiIdleSeconds;
 
-    /// <summary>
-    /// 「文件传输」这一块是否出现。
-    /// </summary>
-    /// <remarks>
-    /// 当前只对 SSH 成立。终端内传输对没有终端的连接(SFTP / FTP / 对象存储)毫无意义,
-    /// 摆一排永远不生效的下拉只会骗人 —— 与「认证后执行命令」同一条纪律。
-    /// <para>
-    /// <b>已知缺口</b>:插件提供的终端协议(Telnet / 串口)其实也用得上这一块,而且是最用得上的 ——
-    /// 它们没有 SFTP 通道,只能靠终端内协议传文件。但连接对话框拿不到「这个插件协议带不带终端」
-    /// 这个信息:协议页签(<c>PluginProtocolTab</c>)不带该能力位,要拿到得走异步的
-    /// <c>ResolveAsync</c>(还可能触发插件惰性激活),在一个下拉的显隐判断里做这件事不合适。
-    /// 在补上那个能力位之前,这些连接跟随全局设置 —— 全局那套对它们是完整生效的。
-    /// </para>
-    /// </remarks>
-    public bool SupportsTransferOverrides => ConnectionType == ConnectionType.SSH;
-
-    /// <summary>ZMODEM 自动接管的会话级覆盖:0 = 跟随全局,1 = 启用,2 = 禁用。</summary>
-    public int TransferZModemIndex
-    {
-        get => _transferZModemIndex;
-        set => this.RaiseAndSetIfChanged(ref _transferZModemIndex, value);
-    }
-
-    /// <summary>YMODEM 的会话级覆盖:0 = 跟随全局,1 = 启用,2 = 禁用。</summary>
-    public int TransferYModemIndex
-    {
-        get => _transferYModemIndex;
-        set => this.RaiseAndSetIfChanged(ref _transferYModemIndex, value);
-    }
-
-    /// <summary>XMODEM 的会话级覆盖:0 = 跟随全局,1 = 启用,2 = 禁用。</summary>
-    public int TransferXModemIndex
-    {
-        get => _transferXModemIndex;
-        set => this.RaiseAndSetIfChanged(ref _transferXModemIndex, value);
-    }
-
-    /// <summary>
-    /// 默认传输方式的会话级覆盖:0 = 跟随全局,其后依次为 SFTP / ZMODEM / YMODEM / XMODEM。
-    /// </summary>
-    /// <remarks>
-    /// 这里存的是用户<b>选了什么</b>。选了 SFTP 而这条连接没有 SFTP 通道时的退回发生在运行时
-    /// (见 <c>SessionTransferSettings.Resolve</c>),不写回配置 —— 把退回结果存进去,
-    /// 用户以后再也回不到 SFTP。
-    /// </remarks>
-    public int TransferDefaultMethodIndex
-    {
-        get => _transferDefaultMethodIndex;
-        set => this.RaiseAndSetIfChanged(ref _transferDefaultMethodIndex, value);
-    }
-
-    /// <summary>可空布尔覆盖 → 下拉索引。</summary>
-    private static int ToggleIndex(bool? value) => value is null ? 0 : value.Value ? 1 : 2;
-
-    /// <summary>下拉索引 → 可空布尔覆盖(0 = 没覆盖)。</summary>
-    private static bool? ToggleValue(int index) =>
-        index switch
-        {
-            1 => true,
-            2 => false,
-            _ => null
-        };
-
-    /// <summary>可空传输方式覆盖 → 下拉索引。</summary>
-    private static int MethodIndex(TerminalTransferMethod? value) =>
-        value switch
-        {
-            TerminalTransferMethod.Sftp => 1,
-            TerminalTransferMethod.ZModem => 2,
-            TerminalTransferMethod.YModem => 3,
-            TerminalTransferMethod.XModem => 4,
-            _ => 0
-        };
-
-    /// <summary>下拉索引 → 可空传输方式覆盖(0 = 没覆盖)。</summary>
-    private static TerminalTransferMethod? MethodValue(int index) =>
-        index switch
-        {
-            1 => TerminalTransferMethod.Sftp,
-            2 => TerminalTransferMethod.ZModem,
-            3 => TerminalTransferMethod.YModem,
-            4 => TerminalTransferMethod.XModem,
-            _ => null
-        };
-
     /// <summary>下拉选中「跟随全局」时归一化为 null。</summary>
     private string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) || value == FollowGlobalOption ? null : value;
@@ -1412,31 +1312,8 @@ public class ConnectionProfileViewModel : ReactiveObject, IDisposable
             PluginSecrets = ConnectionType == ConnectionType.Plugin ? CollectPluginValues(secrets: true) : null,
             // 会话级终端覆盖(F-06)。一项都没设时整个对象存 null,而不是一个全空对象:
             // 后者会让"有没有覆盖"这件事有了两种表示,也给每条老配置的 JSON 平白多一段。
-            Terminal = BuildTerminalOverrides(),
-            Transfer = BuildTransferOverrides()
+            Terminal = BuildTerminalOverrides()
         };
-    }
-
-    /// <summary>把界面上的四个会话级传输项收成一个对象;一项都没设时返回 null。</summary>
-    /// <remarks>
-    /// 换到不显示这一块的协议时**一律存 null**(同「认证后执行命令」那条纪律)。留着的话,
-    /// 一条先按 SSH 配过「禁用 ZMODEM」、后来改成插件终端协议的配置会把那个禁用带过去 ——
-    /// 而那正是最需要终端内协议的一类连接,偏偏此时四个下拉已经隐藏,用户看不见也改不回来。
-    /// </remarks>
-    private TransferOverrides? BuildTransferOverrides()
-    {
-        if (!SupportsTransferOverrides)
-        {
-            return null;
-        }
-        TransferOverrides overrides = new()
-        {
-            ZModemEnabled = ToggleValue(_transferZModemIndex),
-            YModemEnabled = ToggleValue(_transferYModemIndex),
-            XModemEnabled = ToggleValue(_transferXModemIndex),
-            DefaultMethod = MethodValue(_transferDefaultMethodIndex)
-        };
-        return overrides.IsEmpty ? null : overrides;
     }
 
     /// <summary>把界面上的七个会话级终端项收成一个对象;一项都没设时返回 null。</summary>

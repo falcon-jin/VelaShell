@@ -25,7 +25,6 @@ using VelaShell.Presentation.Services;
 using VelaShell.Presentation.ViewModels;
 using VelaShell.Security;
 using VelaShell.Services;
-using VelaShell.Services.FileTransfer;
 using VelaShell.ViewModels;
 
 namespace VelaShell.Views;
@@ -427,7 +426,6 @@ public partial class MainWindow : Window
                 proposalRegistry.ConnectionProposalHandler = ProposeConnectionAsync;
             }
             vm.MultilinePasteConfirmer = ConfirmMultilinePasteAsync;
-            vm.TransferDownloadFolderPicker = PromptForTransferDownloadFolderAsync;
             vm.TransferUploadFilePicker = PromptForTransferUploadFilesAsync;
             vm.ExportBufferRequested += (_, _) => _ = ExportTerminalBufferAsync(vm);
             // 工具菜单“连接诊断”:对当前标签的配置打开诊断中心(设计 RGXg1)。
@@ -1593,46 +1591,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// ZMODEM 下载目录选择(视图层):后台接收线程调用时编组到 UI 线程,
-    /// 弹出原生文件夹选择框。返回所选本地目录的绝对路径;用户取消则返回 null。
-    /// </summary>
-    private Task<string?> PromptForTransferDownloadFolderAsync(TransferFolderPromptRequest request, CancellationToken cancellationToken)
-    {
-        _ = cancellationToken;
-        return Dispatcher.UIThread.InvokeAsync(async () =>
-        {
-            TopLevel? top = GetTopLevel(this);
-            if (top?.StorageProvider is not { } storage)
-            {
-                return null;
-            }
-            IStorageFolder? start = null;
-            try
-            {
-                if (Directory.Exists(request.SuggestedDirectory))
-                {
-                    start = await storage.TryGetFolderFromPathAsync(request.SuggestedDirectory);
-                }
-            }
-            catch
-            {
-                // 起始目录解析失败无关紧要。
-            }
-            string title = string.IsNullOrEmpty(request.FirstFileName)
-                ? Strings.Get("ZModem_ChooseDownloadFolder")
-                : Strings.Format("ZModem_ChooseDownloadFolderFor", request.FirstFileName);
-            IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(new()
-            {
-                Title = title,
-                AllowMultiple = false,
-                SuggestedStartLocation = start
-            });
-            return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
-        });
-    }
-
-    /// <summary>
-    /// ZMODEM 上传文件选择(视图层):远端跑 <c>rz</c> 时,后台发送线程调用本方法编组到 UI 线程,
+    /// 上传文件选择(视图层):「发送文件到远端…」命令调用本方法编组到 UI 线程,
     /// 弹出原生多选文件框。返回所选本地文件的绝对路径清单;用户取消则返回空清单。
     /// </summary>
     /// <param name="cancellationToken">取消令牌(当前未使用,选择框由用户关闭)。</param>
@@ -1648,7 +1607,7 @@ public partial class MainWindow : Window
             }
             IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(new()
             {
-                Title = Strings.Get("ZModem_ChooseUploadFiles"),
+                Title = Strings.Get("Main_ChooseUploadFiles"),
                 AllowMultiple = true,
                 SuggestedStartLocation = await StorageDefaults.DownloadsAsync(top)
             });

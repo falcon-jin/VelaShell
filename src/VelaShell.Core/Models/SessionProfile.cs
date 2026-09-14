@@ -154,17 +154,6 @@ public class SessionProfile
     public TerminalOverrides? Terminal { get; set; }
 
     /// <summary>
-    /// 会话级的终端内文件传输覆盖项:三种协议各自的启停、默认传输方式。
-    /// null(整个对象,或其中任一字段)= 跟随全局。
-    /// </summary>
-    /// <remarks>
-    /// 与 <see cref="Terminal" /> 分成两个对象而不是并作一个:那一组的界面只对 SSH 显示,
-    /// 而最需要按连接配置 X/YMODEM 的恰恰是没有 SFTP 通道的插件终端协议(Telnet / 串口)。
-    /// 详见 <see cref="TransferOverrides" />。
-    /// </remarks>
-    public TransferOverrides? Transfer { get; set; }
-
-    /// <summary>
     /// 连接建立后自动开启的隧道 id 列表;null 或空 = 不自动开。
     /// </summary>
     /// <remarks>
@@ -219,7 +208,6 @@ public class SessionProfile
             PluginSettings = CloneSettings(PluginSettings),
             PluginSecrets = CloneSettings(PluginSecrets),
             Terminal = Terminal?.Clone(),
-            Transfer = Transfer?.Clone(),
             AutoStartTunnelIds = AutoStartTunnelIds is null ? null : [.. AutoStartTunnelIds]
         };
 }

@@ -84,8 +84,7 @@ public class EchoSuppressorTests
 
     /// <summary>
     /// 宿主一旦发现抑制器失效就会弃用实例(<c>SshTerminalBridge</c>),此时块尾扣住的部分命中
-    /// 必须取得回来——否则再没有下一次 Process 放行它们,那几个字节被永久吞掉
-    /// (与 #291 的 ZMODEM 扣留同源)。
+    /// 必须取得回来——否则再没有下一次 Process 放行它们,那几个字节被永久吞掉。
     /// </summary>
     [TestMethod]
     public void ExpiredWithHeldTail_TakeHeldReturnsBytesInsteadOfLosingThem()

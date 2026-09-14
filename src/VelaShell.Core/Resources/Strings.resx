@@ -896,24 +896,6 @@ If this keeps happening, close any other VelaShell windows and try again.</value
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>Tunnel Manager</value>
   </data>
-  <data name="Cmd_XModemReceive" xml:space="preserve">
-    <value>XMODEM: Receive File (remote sx)</value>
-  </data>
-  <data name="Cmd_XModemSend" xml:space="preserve">
-    <value>XMODEM: Send File (remote rx)</value>
-  </data>
-  <data name="Cmd_XModem1KSend" xml:space="preserve">
-    <value>XMODEM-1K: Send File (remote rx)</value>
-  </data>
-  <data name="Cmd_YModemReceive" xml:space="preserve">
-    <value>YMODEM: Receive Files (remote sb)</value>
-  </data>
-  <data name="Cmd_YModemSend" xml:space="preserve">
-    <value>YMODEM: Send Files (remote rb)</value>
-  </data>
-  <data name="Cmd_YModemGReceive" xml:space="preserve">
-    <value>YMODEM-G: Receive Files (fast, no retry)</value>
-  </data>
   <data name="CmdCat_Transfer" xml:space="preserve">
     <value>File Transfer</value>
   </data>
@@ -3384,14 +3366,8 @@ Overwrite it?</value>
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>When switching terminal tabs, reveal and select the matching saved connection.</value>
   </data>
-  <data name="ZModem_ChooseDownloadFolder" xml:space="preserve">
-    <value>Choose ZMODEM download folder</value>
-  </data>
-  <data name="ZModem_ChooseDownloadFolderFor" xml:space="preserve">
-    <value>Choose download folder for {0}</value>
-  </data>
-  <data name="ZModem_ChooseUploadFiles" xml:space="preserve">
-    <value>Choose files to upload (ZMODEM)</value>
+  <data name="Main_ChooseUploadFiles" xml:space="preserve">
+    <value>Choose files to upload</value>
   </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>Sync Input</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>Join Channel A</value></data>
@@ -4822,88 +4798,10 @@ Choose how much to clean up. Every option rebuilds the store so the space is gen
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 unavailable, compared by size/time)</value>
   </data>
-  <data name="SetTransfer_SectionTerminalModem" xml:space="preserve">
-    <value>In-terminal transfer (X / Y / ZMODEM)</value>
-  </data>
-  <data name="SetTransfer_DefaultMethod" xml:space="preserve">
-    <value>Default transfer method</value>
-  </data>
-  <data name="SetTransfer_DefaultMethodDesc" xml:space="preserve">
-    <value>Used by the Send file / Receive file commands. A connection with no SFTP channel (serial, Telnet, local terminal) falls back to the first enabled in-terminal protocol.</value>
-  </data>
-  <data name="SetTransfer_ZModemEnabled" xml:space="preserve">
-    <value>ZMODEM auto-start</value>
-  </data>
-  <data name="SetTransfer_ZModemEnabledDesc" xml:space="preserve">
-    <value>Take over automatically when the remote runs sz or rz. When off, the startup bytes are shown in the terminal as-is.</value>
-  </data>
-  <data name="SetTransfer_YModemEnabled" xml:space="preserve">
-    <value>YMODEM</value>
-  </data>
-  <data name="SetTransfer_YModemEnabledDesc" xml:space="preserve">
-    <value>Allow sb / rb and the YMODEM entries in the command palette.</value>
-  </data>
-  <data name="SetTransfer_XModemEnabled" xml:space="preserve">
-    <value>XMODEM</value>
-  </data>
-  <data name="SetTransfer_XModemEnabledDesc" xml:space="preserve">
-    <value>Allow sx / rx and the XMODEM entries in the command palette.</value>
-  </data>
-  <data name="SetTransfer_ZModemUploadCommand" xml:space="preserve">
-    <value>ZMODEM upload command</value>
-  </data>
-  <data name="SetTransfer_ZModemUploadCommandDesc" xml:space="preserve">
-    <value>Injected into the remote shell when Send file uses ZMODEM.</value>
-  </data>
-  <data name="SetTransfer_XModemBlockSize" xml:space="preserve">
-    <value>XMODEM block size</value>
-  </data>
-  <data name="SetTransfer_XModemBlockSizeDesc" xml:space="preserve">
-    <value>Sending only. Receiving adapts to whatever the sender uses.</value>
-  </data>
-  <data name="Method_Sftp" xml:space="preserve">
-    <value>SFTP</value>
-  </data>
-  <data name="Method_ZModem" xml:space="preserve">
-    <value>ZMODEM</value>
-  </data>
-  <data name="Method_YModem" xml:space="preserve">
-    <value>YMODEM</value>
-  </data>
-  <data name="Method_XModem" xml:space="preserve">
-    <value>XMODEM</value>
-  </data>
   <data name="Cmd_TransferSend" xml:space="preserve">
     <value>Send file to remote…</value>
   </data>
   <data name="Cmd_TransferReceive" xml:space="preserve">
     <value>Receive file from remote…</value>
-  </data>
-  <data name="Profile_TransferSection" xml:space="preserve">
-    <value>File transfer</value>
-  </data>
-  <data name="Profile_TransferHint" xml:space="preserve">
-    <value>Overrides the in-terminal transfer settings for this connection only. Follow global keeps whatever Settings → File transfer says.</value>
-  </data>
-  <data name="Profile_TransferDefaultMethod" xml:space="preserve">
-    <value>Default method</value>
-  </data>
-  <data name="Profile_TransferZModem" xml:space="preserve">
-    <value>ZMODEM auto-start</value>
-  </data>
-  <data name="Profile_TransferYModem" xml:space="preserve">
-    <value>YMODEM</value>
-  </data>
-  <data name="Profile_TransferXModem" xml:space="preserve">
-    <value>XMODEM</value>
-  </data>
-  <data name="Profile_OverrideEnabled" xml:space="preserve">
-    <value>Enabled</value>
-  </data>
-  <data name="Profile_OverrideDisabled" xml:space="preserve">
-    <value>Disabled</value>
-  </data>
-  <data name="Msg_TransferWaitingForRemote" xml:space="preserve">
-    <value>Waiting for the remote — run `{0}` there. The terminal stays captured until then; Ctrl+C cancels.</value>
   </data>
 </root>

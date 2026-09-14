@@ -39,7 +39,7 @@ VelaShell 是用 **.NET 11 + Avalonia** 写的桌面终端应用，Windows / Lin
 | --- | --- |
 | **终端** | 自研 VT 引擎（DEC ANSI / VT / Xterm 状态机）· 十种终端 profile（vt52 → xterm-256color）· 256 色 / 真彩色 / 线绘字符 / 主备屏 / 鼠标协议 / CJK 双宽 · 自绘渲染 · 行 / 块 / 多段不连续选区 · 行号与时间侧栏 · OSC 8 显式超链接（Ctrl+点击直达） · OSC 133 命令块（失败命令标红 · 提示符间跳转 · 一键选中命令输出 · 按块折叠） |
 | **连接** | SSH · SFTP · FTP / FTPS · 本地终端（Windows ConPTY）· 跳板机 ProxyJump（≤5 跳、环检测）· HTTP / SOCKS5 / 跟随系统代理 · 两步身份验证 · 主机指纹 TOFU · 每条连接各配「认证后执行命令」· 断线自动重连（含睡眠唤醒 / 网络恢复） |
-| **文件** | SFTP 双栏浏览与拖拽互传 · 断点续传与传输队列 · 远程文件内置编辑器（AvaloniaEdit 语法高亮）或交给外部编辑器并监听落盘回传 · ZMODEM / XMODEM / YMODEM 收发（全部自研，可全局或按连接分别启停，并选定默认传输方式） |
+| **文件** | SFTP 双栏浏览与拖拽互传 · 断点续传与传输队列 · 远程文件内置编辑器（AvaloniaEdit 语法高亮）或交给外部编辑器并监听落盘回传 |
 | **隧道** | 本地 `-L` / 远程 `-R` / 动态 SOCKS5 `-D` · 自研计量数据面（实时连接数与字节数）· 断线自动恢复 · 端口冲突预检 |
 | **运维** | 资源监视器（CPU / 内存 / 磁盘 / 网络 / 进程）· 进程管理器 · 路由追踪（带地理信息）· 连接诊断 · 会话录制与回放（可导出 asciicast v2） |
 | **工作区** | 自研 VelaDock 拖拽分屏 · 分组会话管理 · 从 WinSCP / Xshell / OpenSSH `~/.ssh/config` 导入 · 命令面板（`Ctrl+P` / `Ctrl+K`）· 快捷命令片段 · **多终端同步输入** · 命令智能补全（历史 + 片段，程序提问时自动闭嘴）· 消息中心与安全资讯源 |
@@ -65,19 +65,8 @@ VelaShell 是用 **.NET 11 + Avalonia** 写的桌面终端应用，Windows / Lin
   （RFC 1928），远程转发经本机计量监听接力。搬运保留半关闭语义，否则
   「发完请求就 shutdown 再等响应」的协议全部读不到东西。
 
-- **三种 X / Y / ZMODEM 都是自研引擎**，收发双向、传输无关（SSH 与本地 ConPTY 通用）。
-  ZMODEM 从输出流识别引导序列后**自动接管**，结束自动复位回终端；
-  XMODEM / YMODEM 在链路上没有可识别的引导序列，只能从命令面板手动发起
-  （先在远端敲 `sb` / `rb`，再点对应命令）。
-  排障置 `VELASHELL_TRANSFER_TRACE=1` 打开协议帧跟踪。
-
-- **三种协议各自可关，并有一个「默认传输方式」**（设置 → 文件传输；每条连接可在「高级 → 文件传输」里覆盖，
-  留「跟随全局」即不覆盖）。关掉 ZMODEM 就**不再嗅探输出流**，`sz` / `rz` 的引导字节原样显示在终端里；
-  关掉 X/YMODEM 则命令行不再武装、命令面板对应条目置灰。
-  默认方式在 SSH 上是 **SFTP**——独立通道、不占终端、能续传能并发能限速，各方面都优于终端内协议；
-  没有 SFTP 通道的连接（插件串口 / Telnet、本地终端）自动退回第一种仍启用的终端内协议。
-  它的消费者是命令面板里的「发送文件到远端…」「从远端接收文件…」这一对：
-  走 SFTP 时把文件面板开到**终端当前目录**，走 ZMODEM 时注入配置好的上传命令（默认 `rz -E`）。
+- **命令面板里的「发送文件到远端…」「从远端接收文件…」** 走 SFTP：把文件面板开到**终端当前目录**，
+  发送方向再弹一次文件选择。
 
 - **FTP / FTPS** —— 基于 [FluentFTP](https://github.com/robinrodricks/FluentFTP)，
   自带连接池以支持并发传输（FTP 一条控制连接同时只能跑一条命令），
@@ -377,8 +366,8 @@ dotnet run -c Release --project tests/VelaShell.Benchmarks -- --filter *VtParser
 
 | 测试项目 | 覆盖 |
 | --- | --- |
-| `VelaShell.Core.Tests` | 领域模型、SFTP 与传输队列、隧道与计量转发、云同步加密、ZMODEM / XMODEM / YMODEM 协议（期望值按 lrzsz 与 ymodem.txt 手工构造的互操作回归） |
-| `VelaShell.Terminal.Tests` | VT 解析、终端仿真、编码、字符宽度、侧栏折叠，以及 ZMODEM 自动接管与 X / YMODEM 手动接管的路由 |
+| `VelaShell.Core.Tests` | 领域模型、SFTP 与传输队列、隧道与计量转发、云同步加密 |
+| `VelaShell.Terminal.Tests` | VT 解析、终端仿真、编码、字符宽度、侧栏折叠 |
 | `VelaShell.Terminal.RenderTests` | 字形绘制的**像素级**回归（挂 Skia 软件后端做真实光栅化） |
 | `VelaShell.Presentation.Tests` | ViewModel 工作流与命令 |
 | `VelaShell.Infrastructure.Tests` | SonnetDB 持久化、凭据加密、ConPTY、SSH 密钥管理、插件管理与跨进程 RPC |
@@ -390,7 +379,7 @@ dotnet run -c Release --project tests/VelaShell.Benchmarks -- --filter *VtParser
 当前基线：排除 `DockerIntegration` / `CrossPlatform` 分类后 **3194 条通过**，构建零警告。
 
 > ⚠️ **早退跳过在 MSTest 里记为「通过」**。`DockerIntegration` 分类需要 Docker 与
-> `docker-compose.test.yml` 里的 SSH 服务器（ZMODEM 那几条还需容器内能装上 `lrzsz`），
+> `docker-compose.test.yml` 里的 SSH 服务器，
 > `CrossPlatformPublishTests` 需 `VELASHELL_PUBLISH_TESTS=1`。前提不满足时它们会安静地全绿
 > 而一行都没跑 —— 看测试结果分辨不出来，要确认真跑过就看 `TestContext` 里有没有 `[SKIP]` 行。
 > 判据本身也要够诚实：探 TCP 端口是不够的，Docker 的端口代理**永远**接受连接，
@@ -435,7 +424,7 @@ English in [`en/`](https://github.com/VelaShellLabs/velashell-docs/tree/main/en)
 | | |
 | --- | --- |
 | **运行时 / UI** | .NET 11（`net11.0`，启用预览特性与 `runtime-async`）· Avalonia 12.1 · ReactiveUI |
-| **自研** | VT 终端引擎 · VelaDock 停靠分屏 · ZMODEM / XMODEM / YMODEM · 计量端口转发与 SOCKS5 服务端 · 插件运行时（可收集 ALC + 独立宿主进程 + 命名管道 RPC + `.vpx` 打包）· 便携式自更新 |
+| **自研** | VT 终端引擎 · VelaDock 停靠分屏 · 计量端口转发与 SOCKS5 服务端 · 插件运行时（可收集 ALC + 独立宿主进程 + 命名管道 RPC + `.vpx` 打包）· 便携式自更新 |
 | **网络** | Tmds.Ssh（SSH / SFTP / 端口转发 / ProxyJump，全托管 async-first）· FluentFTP（FTP / FTPS） |
 | **存储** | SonnetDB —— 嵌入式多模型数据库（文档 + 时序），唯一持久化引擎 |
 | **编辑 / 渲染** | AvaloniaEdit（远程文件编辑器与 AI 输入框）· LiveMarkdown.Avalonia（增量 Markdown，含 Mermaid / LaTeX / SVG 扩展） |
@@ -450,7 +439,7 @@ English in [`en/`](https://github.com/VelaShellLabs/velashell-docs/tree/main/en)
 仓库内 `Directory.Build.props` 的 `0.0.1-dev` 是开发期占位，发版时由 Release 标签经
 `-p:Version` 覆盖 —— 别把它当成产品版本号。
 
-**已可用** —— 终端引擎、SSH / SFTP、FTP / FTPS、X / Y / ZMODEM、本地终端、跳板机、
+**已可用** —— 终端引擎、SSH / SFTP、FTP / FTPS、本地终端、跳板机、
 会话管理与导入、身份验证、隧道（含计量、流量统计与断线自愈）、持久化、设置中心、云同步、
 会话录制、资源监视 / 进程管理 / 路由追踪、消息中心与资讯源、同步输入与命令补全，
 以及**插件系统框架层**（双宿主模式、完整能力面、UI 与协议扩展、心跳自愈与空闲回收、

@@ -103,8 +103,7 @@ public sealed class AntiIdleTests
     [TestMethod]
     public void WhenItCannotSend_TheInjectionIsDeferredNotDropped()
     {
-        // ZMODEM 传输期间那条流上跑的是协议帧,插一个字节进去轻则 CRC 错重传,重则整笔失败。
-        // 而传输本身就是流量,服务端此刻并不认为会话空闲 —— 等它结束再补才是对的。
+        // 流暂时不可写时不能把这一发丢掉 —— 等它恢复再补才是对的。
         var h = new Harness { CanSend = false };
         h.Keeper.Interval = Interval;
 

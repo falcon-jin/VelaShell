@@ -55,10 +55,8 @@ Together, VelaShell means **"a terminal as your sail, riding the signal winds to
 - **Xshell-compatible launch (external invocation)**  
   VelaShell can be launched by third-party security clients using Xshell's (and SecureCRT's / PuTTY's) calling convention: the user clicks "open in terminal" on a bastion host or SSO portal, and the one-time credential is handed straight to VelaShell — the user never sees the password. Includes URL protocol registration and single-instance forwarding; threat model and credential handling in [`velashell-docs en/host/xshell-compatible-login.md`](https://github.com/VelaShellLabs/velashell-docs/blob/main/en/host/xshell-compatible-login.md).
 
-- **ZMODEM (rz / sz), XMODEM (rx / sx), YMODEM (rb / sb)**  
-  Transfer files straight from the terminal. All three engines are in-house, bidirectional and transport agnostic (SSH or local ConPTY). ZMODEM takes over **automatically** once its lead-in sequence is spotted in the output stream, and the terminal is restored afterwards. XMODEM and YMODEM have no lead-in on the wire, so they are started **manually** from the command palette (Ctrl+P → "File Transfer") — run `sb`/`rb` on the remote first, then invoke the matching entry. YMODEM supports batches and the YMODEM-G streaming variant. Set `VELASHELL_TRANSFER_TRACE=1` (the old `VELASHELL_ZMODEM_TRACE=1` still works) for frame-level tracing.
-
-  Each of the three can be switched off, and there is a **default transfer method** (Settings → File transfer; any connection can override it under Advanced → File transfer, where "follow global" means no override). With ZMODEM off the output stream is **not sniffed at all** — the lead-in bytes from `sz` / `rz` show up in the terminal as ordinary text; with X/YMODEM off the command line no longer arms a session and the matching palette entries grey out. On SSH the default method is **SFTP**: a separate channel that does not occupy the terminal, with resume, concurrency and rate limits. A connection with no SFTP channel (plugin serial / Telnet, local shells) falls back to the first in-terminal protocol still enabled. The setting is consumed by the palette pair "Send file to remote…" / "Receive file from remote…": over SFTP they open the file pane **at the terminal's current directory**, over ZMODEM they inject the configured upload command (`rz -E` by default).
+- **Send / receive files from the terminal**  
+  The command palette pair "Send file to remote…" / "Receive file from remote…" goes over SFTP: it opens the file pane **at the terminal's current directory**, and the send direction then asks which files to upload.
 
 - **FTP / FTPS**  
   Built on [FluentFTP](https://github.com/robinrodricks/FluentFTP) (MIT) with a connection pool for concurrent transfers (a single FTP control connection can only run one command at a time), reusing exactly the same dual-pane file browser and transfer stack as SFTP. Rationale in [`velashell-docs en/host/ftp-client-feasibility-research.md`](https://github.com/VelaShellLabs/velashell-docs/blob/main/en/host/ftp-client-feasibility-research.md).
@@ -337,15 +335,15 @@ dotnet test --logger "console;verbosity=detailed"
 
 | Test project | Scope |
 |--------------|-------|
-| `VelaShell.Core.Tests` | Domain models, SFTP and the transfer queue, tunnels, sync encryption, ZMODEM / XMODEM / YMODEM (interop regressions against hand-built lrzsz and ymodem.txt wire bytes) |
-| `VelaShell.Terminal.Tests` | VT parsing, emulation, encodings, character widths, gutter folding, plus ZMODEM auto-takeover and XMODEM / YMODEM manual-takeover routing |
+| `VelaShell.Core.Tests` | Domain models, SFTP and the transfer queue, tunnels, sync encryption |
+| `VelaShell.Terminal.Tests` | VT parsing, emulation, encodings, character widths, gutter folding |
 | `VelaShell.Presentation.Tests` | View-model workflows and commands |
 | `VelaShell.Infrastructure.Tests` | SonnetDB persistence, credential encryption, ConPTY, SSH key management, plugin management and cross-process RPC |
 | `VelaShell.Controls.Tests` | Custom control behaviour |
 | `VelaShell.Plugin.Ai.Tests` | AI plugin: toolbox approval gate, capability bridging, settings/secret storage, chat history, `@` reference syntax and headless panel interaction |
 | `VelaShell.Tests` | Window-level view models, authentication flow, plugin panels and theme tokens, integration and smoke tests |
 
-> Integration tests **bail out early** when their environment is missing: `SshIntegrationTests` and `TransferRealChannelIntegrationTests` (category `DockerIntegration`) need Docker plus the SSH server from `docker-compose.test.yml`, and the ZMODEM ones additionally need `lrzsz` to be installable inside the container; `CrossPlatformPublishTests` needs `VELASHELL_PUBLISH_TESTS=1`.
+> Integration tests **bail out early** when their environment is missing: `SshIntegrationTests` (category `DockerIntegration`) needs Docker plus the SSH server from `docker-compose.test.yml`; `CrossPlatformPublishTests` needs `VELASHELL_PUBLISH_TESTS=1`.
 >
 > ⚠️ **An early bail-out counts as "passed" in MSTest.** When the prerequisites are absent these tests go quietly green without executing a single line — the test result alone cannot tell you the difference. The gate itself has to be honest too: probing the TCP port is not enough, because Docker's port proxy **always** accepts the connection even when the sshd behind it cannot complete a handshake, so the fixture now caches one real SSH handshake and decides from that. To confirm they actually ran, look for `[SKIP]` lines in `TestContext`.
 >
@@ -386,7 +384,6 @@ Three documents stay here, because what they serve is writing code *in this repo
 - **VelaDock (in-house)** — draggable split/dock layout with zero third-party dependencies
 - **Tmds.Ssh** — SSH / SFTP / port forwarding / ProxyJump (fully managed, async-first)
 - **FluentFTP** — FTP / FTPS client
-- **ZMODEM / XMODEM / YMODEM (in-house)** — in-terminal rz/sz, rx/sx and rb/sb; engines under `VelaShell.Core/ZModem/` and `VelaShell.Core/XYModem/`, shared contracts under `VelaShell.Core/FileTransfer/`
 - **AvaloniaEdit** — remote file editor and the AI composer (syntax highlighting, inline reference chips)
 - **SonnetDB** — embedded multi-model database (document + time series), the only persistence engine
 - **Plugin runtime (in-house)** — collectible ALCs, a separate host process, named-pipe RPC and `.vpx` packaging
@@ -402,7 +399,7 @@ Three documents stay here, because what they serve is writing code *in this repo
 
 The project is under active development.
 
-**Working today**: terminal engine, SSH/SFTP, FTP/FTPS, ZMODEM / XMODEM / YMODEM, local shells, jump hosts, session management and import, authentication, tunnels, persistence, settings centre, cloud sync, session recording, resource monitor / process manager / traceroute, plus the **plugin system framework** (dual hosting modes, the full capability surface, UI extensions, heartbeat self-healing and idle recycling, per-plugin storage with uninstall cleanup, `.vpx` install/uninstall, SDK test doubles and developer docs) and the first-party **AI assistant plugin**.
+**Working today**: terminal engine, SSH/SFTP, FTP/FTPS, local shells, jump hosts, session management and import, authentication, tunnels, persistence, settings centre, cloud sync, session recording, resource monitor / process manager / traceroute, plus the **plugin system framework** (dual hosting modes, the full capability surface, UI extensions, heartbeat self-healing and idle recycling, per-plugin storage with uninstall cleanup, `.vpx` install/uninstall, SDK test doubles and developer docs) and the first-party **AI assistant plugin**.
 
 **Provided by plugins** — none preinstalled; install on demand from the [plugin marketplace](https://market.easilynet.top):
 

@@ -13,9 +13,8 @@ public class AltScreenCursorTests
     private static void Feed(TerminalEmulator e, string s) => e.Feed(Encoding.ASCII.GetBytes(s));
 
     /// <summary>
-    /// 复刻并验证 ZMODEM 会话结束时的终端自愈:若杂散协议字节把终端切到备用屏(DECSET 1049),
-    /// 主屏内容会"整屏消失"。SshTerminalBridge 在每次 ZMODEM 会话收尾补发的 DECRST 1049
-    /// (即本测试的 <c>ESC[?1049l</c>)必须切回主屏并让原内容重新可见。
+    /// 若杂散字节把终端切到备用屏(DECSET 1049),主屏内容会"整屏消失"。
+    /// DECRST 1049(即本测试的 <c>ESC[?1049l</c>)必须切回主屏并让原内容重新可见。
     /// </summary>
     [TestMethod]
     public void Exit1049_RecoversMainScreenContent_AfterStrayAltSwitch()
@@ -30,7 +29,7 @@ public class AltScreenCursorTests
         Feed(e, ESC + "[?1049h");
         Assert.IsTrue(e.IsAlternateScreen);
 
-        // 桥在 ZMODEM 会话收尾补发的自愈序列:切回主屏。
+        // 自愈序列:切回主屏。
         Feed(e, ESC + "[?1049l");
         Assert.IsFalse(e.IsAlternateScreen, "1049l 应切回主屏");
 

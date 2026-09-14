@@ -9,7 +9,7 @@ namespace VelaShell.Infrastructure.Plugins.Protocols;
 /// <summary>
 /// 插件终端协议的宿主适配器:把插件的 <see cref="IProtocolTerminalSession" /> 翻成
 /// <see cref="IShellStreamWrapper" />,于是 Telnet / 串口这类协议**零改动**接进
-/// 桥 → VT 引擎 → 自绘控件 那条既有管线,连同回滚、搜索、会话日志、会话录制与 ZMODEM。
+/// 桥 → VT 引擎 → 自绘控件 那条既有管线,连同回滚、搜索、会话日志与会话录制。
 /// <para>
 /// 这一层只做三件插件不该各写一遍的事:
 /// </para>

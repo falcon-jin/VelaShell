@@ -14,7 +14,6 @@
 - **补全幽灵** — `GhostTextRemainderTests`：剩余文本必须每帧从已回显文本现算，逐键推演会抖动。
 - **侧栏渲染** — `GutterLayoutTests`、`GutterFoldTests`、`GutterFoldUiTests`、`GutterVisibilityTests`、`LineTimestampTests`。
 - **桥接与语义** — `TerminalBridgeTests`（SSH ↔ 引擎）、`SemanticMatcherTests`。
-- **ZMODEM 路由** — `ZModemRouterTests`：引导序列检测、会话期间终端停喂、结束后复位回常态。
 - **广播输入** — `BroadcastInputEncodingTests`：多终端同步输入的按键编码一致性。
 
 ## 运行

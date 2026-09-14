@@ -82,64 +82,6 @@
 
     <Border Classes="sep" />
 
-    <!-- 终端内传输(X / Y / ZMODEM):三种协议各自的启停 + 默认传输方式。
-         每条连接可在「连接 → 高级 → 文件传输」里覆盖这四项。 -->
-    <TextBlock Classes="section-title" Text="{loc:Localize SetTransfer_SectionTerminalModem}" />
-    <Grid ColumnDefinitions="*,Auto">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_DefaultMethod}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_DefaultMethodDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <ComboBox Grid.Column="1" Width="120" SelectedIndex="{Binding TransferDefaultMethodIndex}" VerticalAlignment="Center">
-        <ComboBoxItem Content="{loc:Localize Method_Sftp}" />
-        <ComboBoxItem Content="{loc:Localize Method_ZModem}" />
-        <ComboBoxItem Content="{loc:Localize Method_YModem}" />
-        <ComboBoxItem Content="{loc:Localize Method_XModem}" />
-      </ComboBox>
-    </Grid>
-    <Grid ColumnDefinitions="*,Auto">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_ZModemEnabled}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_ZModemEnabledDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <ToggleSwitch Grid.Column="1" IsChecked="{Binding Transfer.TerminalZModemEnabled}" VerticalAlignment="Center" />
-    </Grid>
-    <!-- 从属设置:ZMODEM 关掉时这条命令没有任何消费者(设置审计 §10)。 -->
-    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Transfer.TerminalZModemEnabled}">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_ZModemUploadCommand}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_ZModemUploadCommandDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <TextBox Grid.Column="1" Width="180" Text="{Binding Transfer.TerminalZModemUploadCommand}" PlaceholderText="rz -E" VerticalAlignment="Center" />
-    </Grid>
-    <Grid ColumnDefinitions="*,Auto">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_YModemEnabled}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_YModemEnabledDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <ToggleSwitch Grid.Column="1" IsChecked="{Binding Transfer.TerminalYModemEnabled}" VerticalAlignment="Center" />
-    </Grid>
-    <Grid ColumnDefinitions="*,Auto">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_XModemEnabled}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_XModemEnabledDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <ToggleSwitch Grid.Column="1" IsChecked="{Binding Transfer.TerminalXModemEnabled}" VerticalAlignment="Center" />
-    </Grid>
-    <!-- 从属设置:块大小只在 XMODEM 启用时有意义;两个选项即经典 XMODEM 与 XMODEM-1K。 -->
-    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Transfer.TerminalXModemEnabled}">
-      <StackPanel Spacing="2">
-        <TextBlock Classes="row-label" Text="{loc:Localize SetTransfer_XModemBlockSize}" />
-        <TextBlock Classes="row-desc" Text="{loc:Localize SetTransfer_XModemBlockSizeDesc}" TextWrapping="Wrap" />
-      </StackPanel>
-      <ComboBox Grid.Column="1" Width="180" SelectedIndex="{Binding XModemBlockSizeIndex}" VerticalAlignment="Center">
-        <ComboBoxItem Content="128 B (XMODEM)" />
-        <ComboBoxItem Content="1024 B (XMODEM-1K)" />
-      </ComboBox>
-    </Grid>
-
-    <Border Classes="sep" />
-
     <!-- 冲突处理 -->
     <TextBlock Classes="section-title" Text="{loc:Localize SetTransfer_SectionConflict}" />
     <Grid ColumnDefinitions="*,Auto">
