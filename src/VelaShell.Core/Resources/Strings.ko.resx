@@ -154,9 +154,6 @@
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>터널 관리</value>
   </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>파일 전송</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>작업</value>
   </data>
@@ -3327,9 +3324,6 @@ Windows는 exe 전체 경로 또는 명령 이름(예: notepad), Linux는 명령
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>터미널 탭을 전환할 때 해당 저장 연결을 펼치고 선택합니다.</value>
   </data>
-  <data name="Main_ChooseUploadFiles" xml:space="preserve">
-    <value>업로드할 파일 선택</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>동기 입력</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>채널 A 참여</value></data>
   <data name="SyncInput_JoinChannelB" xml:space="preserve"><value>채널 B 참여</value></data>
@@ -4794,11 +4788,5 @@ Windows는 exe 전체 경로 또는 명령 이름(예: notepad), Linux는 명령
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 사용 불가, 크기/시간으로 비교)</value>
-  </data>
-  <data name="Cmd_TransferSend" xml:space="preserve">
-    <value>원격으로 파일 보내기…</value>
-  </data>
-  <data name="Cmd_TransferReceive" xml:space="preserve">
-    <value>원격에서 파일 받기…</value>
   </data>
 </root>

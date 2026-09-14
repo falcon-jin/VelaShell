@@ -154,9 +154,6 @@
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>トンネル管理</value>
   </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>ファイル転送</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>操作</value>
   </data>
@@ -3327,9 +3324,6 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>ターミナルタブの切り替え時に、対応する保存済み接続を展開して選択します。</value>
   </data>
-  <data name="Main_ChooseUploadFiles" xml:space="preserve">
-    <value>アップロードするファイルを選択</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>同期入力</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>チャンネル A に参加</value></data>
   <data name="SyncInput_JoinChannelB" xml:space="preserve"><value>チャンネル B に参加</value></data>
@@ -4794,11 +4788,5 @@ Windows は exe のフルパスまたはコマンド名(例: notepad)、Linux �
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 使用不可、サイズと日時で比較)</value>
-  </data>
-  <data name="Cmd_TransferSend" xml:space="preserve">
-    <value>リモートへファイルを送信…</value>
-  </data>
-  <data name="Cmd_TransferReceive" xml:space="preserve">
-    <value>リモートからファイルを受信…</value>
   </data>
 </root>

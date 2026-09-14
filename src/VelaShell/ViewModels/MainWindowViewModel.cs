@@ -624,12 +624,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     /// <summary>窗口注入的多行粘贴确认弹窗(设置 → 终端 → 粘贴时确认多行内容)。</summary>
     public Func<string, Task<bool>>? MultilinePasteConfirmer { get; set; }
 
-    /// <summary>
-    /// 窗口注入的上传文件选择委托(视图层实现,独占 StorageProvider)。
-    /// 「发送文件到远端…」命令经它弹出多选文件框,再交给 SFTP 面板上传。
-    /// </summary>
-    public Func<CancellationToken, Task<IReadOnlyList<string>>>? TransferUploadFilePicker { get; set; }
-
     /// <summary>左侧边栏视图模型:资源管理器会话树与最近连接。</summary>
     public SidebarViewModel Sidebar
     {
@@ -1212,28 +1206,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                 Icon: "Icon.layout-grid"
             )
         );
-        // 通用收发入口:把 SFTP 面板开到终端当前目录,发送方向再弹一次文件选择。
-        Commands.Register(
-            new(
-                "transfer.send",
-                Strings.Get("Cmd_TransferSend"),
-                Strings.Get("CmdCat_Transfer"),
-                () => _ = StartSftpTransferAsync(upload: true),
-                () => ActiveTerminalTab is not null && CanToggleFileBrowser,
-                Icon: "Icon.upload"
-            )
-        );
-        Commands.Register(
-            new(
-                "transfer.receive",
-                Strings.Get("Cmd_TransferReceive"),
-                Strings.Get("CmdCat_Transfer"),
-                () => _ = StartSftpTransferAsync(upload: false),
-                () => ActiveTerminalTab is not null && CanToggleFileBrowser,
-                Icon: "Icon.download"
-            )
-        );
-
         // 本地终端(§12 P1-1):按本机安装情况动态注册 PowerShell/CMD/WSL/Git Bash 入口。
         foreach (LocalShellInfo shell in LocalShellCatalog.DetectShells())
         {
@@ -1247,77 +1219,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
                     Icon: "Icon.terminal"
                 )
             );
-        }
-    }
-
-    /// <summary>
-    /// 执行「发送 / 接收文件」:把 SFTP 面板绑到当前会话、开到终端所在目录,发送方向再走一次上传。
-    /// </summary>
-    /// <param name="upload">true = 发送到远端(弹文件选择并上传);false = 只把面板开到当前目录。</param>
-    /// <remarks>
-    /// 命令面板是 <c>_ = StartSftpTransferAsync(...)</c> 这样发起的,抛出去的异常没人接 ——
-    /// 所以这里自己兜住并记一条,免得一个 SFTP 侧的失败变成"点了没反应、日志里也没有"。
-    /// </remarks>
-    private async Task StartSftpTransferAsync(bool upload)
-    {
-        if (ActiveTerminalTab is not { } tab || !CanToggleFileBrowser)
-        {
-            return;
-        }
-        try
-        {
-            await RunSftpTransferAsync(tab, upload);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Trace.WriteLine($"[Transfer] SFTP transfer from the palette failed: {ex.Message}");
-        }
-    }
-
-    /// <summary>把面板绑到当前会话并开到终端所在目录,发送方向再走一次上传。</summary>
-    /// <param name="tab">活动终端标签。</param>
-    /// <param name="upload">是否为发送方向。</param>
-    private async Task RunSftpTransferAsync(TerminalTabViewModel tab, bool upload)
-    {
-        if (!FileBrowser.IsVisible)
-        {
-            ToggleFileBrowser();
-        }
-        else
-        {
-            RebindFileBrowser();
-        }
-
-        // 终端报过工作目录就跟过去(#305 的目录上报钩子);没报过就留在面板当前位置,
-        // 而不是猜一个家目录 —— 猜错的代价是文件传到了别处,且用户不会立刻发现。
-        if (tab.TerminalWorkingDirectory is { Length: > 0 } cwd
-            && !string.Equals(cwd, FileBrowser.CurrentPath, StringComparison.Ordinal))
-        {
-            try
-            {
-                await FileBrowser.NavigateToCommand.Execute(cwd).FirstAsync();
-            }
-            catch (Exception)
-            {
-                // 面板此刻正在列目录(跟随终端目录那条路刚被 OSC 7 触发)时 CanExecute 为 false,
-                // 而 ReactiveCommand 对这种执行是 OnError 而非空操作 —— 不吞掉的话,整个方法
-                // 会在这里断掉,连文件选择框都弹不出来,表现为「点了发送文件,什么都没发生」。
-                // 目录没跟过去不致命:下面照样把文件传进面板当前目录。
-            }
-        }
-
-        if (!upload)
-        {
-            return;
-        }
-        if (TransferUploadFilePicker is not { } picker)
-        {
-            return;
-        }
-        IReadOnlyList<string> paths = await picker(CancellationToken.None);
-        if (paths.Count > 0)
-        {
-            await FileBrowser.UploadLocalPathsAsync(paths);
         }
     }
 

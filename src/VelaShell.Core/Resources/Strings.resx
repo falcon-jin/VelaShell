@@ -896,9 +896,6 @@ If this keeps happening, close any other VelaShell windows and try again.</value
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>Tunnel Manager</value>
   </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>File Transfer</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>Actions</value>
   </data>
@@ -3366,9 +3363,6 @@ Overwrite it?</value>
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>When switching terminal tabs, reveal and select the matching saved connection.</value>
   </data>
-  <data name="Main_ChooseUploadFiles" xml:space="preserve">
-    <value>Choose files to upload</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve"><value>Sync Input</value></data>
   <data name="SyncInput_JoinChannelA" xml:space="preserve"><value>Join Channel A</value></data>
   <data name="SyncInput_JoinChannelB" xml:space="preserve"><value>Join Channel B</value></data>
@@ -4797,11 +4791,5 @@ Choose how much to clean up. Every option rebuilds the store so the space is gen
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 unavailable, compared by size/time)</value>
-  </data>
-  <data name="Cmd_TransferSend" xml:space="preserve">
-    <value>Send file to remote…</value>
-  </data>
-  <data name="Cmd_TransferReceive" xml:space="preserve">
-    <value>Receive file from remote…</value>
   </data>
 </root>

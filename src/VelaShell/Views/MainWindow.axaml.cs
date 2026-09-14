@@ -426,7 +426,6 @@ public partial class MainWindow : Window
                 proposalRegistry.ConnectionProposalHandler = ProposeConnectionAsync;
             }
             vm.MultilinePasteConfirmer = ConfirmMultilinePasteAsync;
-            vm.TransferUploadFilePicker = PromptForTransferUploadFilesAsync;
             vm.ExportBufferRequested += (_, _) => _ = ExportTerminalBufferAsync(vm);
             // 工具菜单“连接诊断”:对当前标签的配置打开诊断中心(设计 RGXg1)。
             vm.DiagnosticsRequested += profile =>
@@ -1588,39 +1587,6 @@ public partial class MainWindow : Window
                 MessageDialogKind.Error
             );
         }
-    }
-
-    /// <summary>
-    /// 上传文件选择(视图层):「发送文件到远端…」命令调用本方法编组到 UI 线程,
-    /// 弹出原生多选文件框。返回所选本地文件的绝对路径清单;用户取消则返回空清单。
-    /// </summary>
-    /// <param name="cancellationToken">取消令牌(当前未使用,选择框由用户关闭)。</param>
-    private Task<IReadOnlyList<string>> PromptForTransferUploadFilesAsync(CancellationToken cancellationToken)
-    {
-        _ = cancellationToken;
-        return Dispatcher.UIThread.InvokeAsync<IReadOnlyList<string>>(async () =>
-        {
-            TopLevel? top = GetTopLevel(this);
-            if (top?.StorageProvider is not { } storage)
-            {
-                return [];
-            }
-            IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(new()
-            {
-                Title = Strings.Get("Main_ChooseUploadFiles"),
-                AllowMultiple = true,
-                SuggestedStartLocation = await StorageDefaults.DownloadsAsync(top)
-            });
-            List<string> paths = [];
-            foreach (IStorageFile file in files)
-            {
-                if (file.TryGetLocalPath() is { } path)
-                {
-                    paths.Add(path);
-                }
-            }
-            return paths;
-        });
     }
 
     /// <summary>

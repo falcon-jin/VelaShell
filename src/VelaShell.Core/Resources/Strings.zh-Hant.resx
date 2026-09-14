@@ -1005,9 +1005,6 @@
   <data name="Cmd_TunnelManager" xml:space="preserve">
     <value>隧道管理</value>
   </data>
-  <data name="CmdCat_Transfer" xml:space="preserve">
-    <value>檔案傳輸</value>
-  </data>
   <data name="CmdCat_Actions" xml:space="preserve">
     <value>操作</value>
   </data>
@@ -3475,9 +3472,6 @@ Windows 填 exe 完整路徑或命令名稱(如 notepad);Linux 填命令名稱(�
   <data name="SetGeneral_FollowActiveTerminalDesc" xml:space="preserve">
     <value>切換終端分頁時,自動展開、選取並定位到對應的已儲存連線。</value>
   </data>
-  <data name="Main_ChooseUploadFiles" xml:space="preserve">
-    <value>選擇要上傳的檔案</value>
-  </data>
   <data name="SyncInput_Menu" xml:space="preserve">
     <value>同步輸入</value>
   </data>
@@ -5243,11 +5237,5 @@ Windows 填 exe 完整路徑或命令名稱(如 notepad);Linux 填命令名稱(�
   </data>
   <data name="Sync_CompareFellBack" xml:space="preserve">
     <value>(SHA-256 不可用,依大小與時間比較)</value>
-  </data>
-  <data name="Cmd_TransferSend" xml:space="preserve">
-    <value>傳送檔案到遠端…</value>
-  </data>
-  <data name="Cmd_TransferReceive" xml:space="preserve">
-    <value>從遠端接收檔案…</value>
   </data>
 </root>

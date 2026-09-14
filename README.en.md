@@ -55,9 +55,6 @@ Together, VelaShell means **"a terminal as your sail, riding the signal winds to
 - **Xshell-compatible launch (external invocation)**  
   VelaShell can be launched by third-party security clients using Xshell's (and SecureCRT's / PuTTY's) calling convention: the user clicks "open in terminal" on a bastion host or SSO portal, and the one-time credential is handed straight to VelaShell — the user never sees the password. Includes URL protocol registration and single-instance forwarding; threat model and credential handling in [`velashell-docs en/host/xshell-compatible-login.md`](https://github.com/VelaShellLabs/velashell-docs/blob/main/en/host/xshell-compatible-login.md).
 
-- **Send / receive files from the terminal**  
-  The command palette pair "Send file to remote…" / "Receive file from remote…" goes over SFTP: it opens the file pane **at the terminal's current directory**, and the send direction then asks which files to upload.
-
 - **FTP / FTPS**  
   Built on [FluentFTP](https://github.com/robinrodricks/FluentFTP) (MIT) with a connection pool for concurrent transfers (a single FTP control connection can only run one command at a time), reusing exactly the same dual-pane file browser and transfer stack as SFTP. Rationale in [`velashell-docs en/host/ftp-client-feasibility-research.md`](https://github.com/VelaShellLabs/velashell-docs/blob/main/en/host/ftp-client-feasibility-research.md).
 
