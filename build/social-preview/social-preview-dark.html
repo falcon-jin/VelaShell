@@ -1,0 +1,280 @@
+<!doctype html>
+<!--
+  社交预览候选:暗色版。沿用最初的终端暗色品牌底,右侧把 mascot/key-visual.png 做成拍立得卡片。
+  裁掉主视觉右上角自带的 Logo 与日文标语,避免和左侧字标重复。
+  渲染:Build-SocialPreview.ps1(渲染本目录全部 .html)。
+-->
+<html lang="zh-CN">
+
+  <head>
+    <meta charset="utf-8">
+    <title>VelaShell social preview · dark</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1280px;
+        height: 640px;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+        background: #06110F;
+        color: #E9FBF4;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .glow-brand {
+        position: absolute;
+        left: -180px;
+        top: -220px;
+        width: 900px;
+        height: 760px;
+        background: radial-gradient(circle at 35% 40%, rgba(16, 214, 164, .26), transparent 62%);
+      }
+
+      .glow-card {
+        position: absolute;
+        right: -120px;
+        top: -40px;
+        width: 760px;
+        height: 760px;
+        background: radial-gradient(circle, rgba(47, 216, 171, .20), transparent 60%);
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(120, 235, 205, .045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120, 235, 205, .045) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(circle at 30% 45%, #000 0%, transparent 78%);
+      }
+
+      .brand {
+        position: absolute;
+        left: 68px;
+        top: 84px;
+        width: 640px;
+      }
+
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .lockup img {
+        width: 96px;
+        height: 96px;
+        filter: drop-shadow(0 14px 34px rgba(0, 196, 148, .42));
+      }
+
+      .wordmark {
+        font-size: 72px;
+        font-weight: 700;
+        letter-spacing: -1.2px;
+        line-height: 1;
+        background: linear-gradient(120deg, #F2FFFA 12%, #4BE9C0 92%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .pronounce {
+        margin-top: 10px;
+        font-size: 17px;
+        color: #59897E;
+      }
+
+      .tagline {
+        margin-top: 34px;
+        font-size: 36px;
+        font-weight: 700;
+        line-height: 1.34;
+        color: #DCF7EE;
+      }
+
+      .tagline em {
+        font-style: normal;
+        color: #35DDAF;
+      }
+
+      .stack {
+        margin-top: 12px;
+        font-size: 19px;
+        color: #6FA598;
+      }
+
+      .chips {
+        margin-top: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 600px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 15px 7px 12px;
+        border-radius: 999px;
+        font-size: 17px;
+        color: #A8EBD8;
+        background: rgba(18, 195, 150, .10);
+        border: 1px solid rgba(56, 219, 175, .34);
+      }
+
+      .chip svg {
+        width: 13px;
+        height: 13px;
+        fill: #35DDAF;
+      }
+
+      /* 拍立得卡片:主视觉 1254² 取 x 330–1030、y 280–980 的人物区域(约 0.651 缩放),
+         避开终端屏、马克杯、书脊、Logo 标语与手写字。 */
+      .polaroid {
+        position: absolute;
+        right: 74px;
+        top: 58px;
+        padding: 12px 12px 50px;
+        border-radius: 18px;
+        background: #F7FBFA;
+        box-shadow: 0 30px 70px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .06);
+        transform: rotate(3.5deg);
+      }
+
+      .photo {
+        position: relative;
+        width: 456px;
+        height: 456px;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .photo img {
+        position: absolute;
+        width: 816px;
+        left: -215px;
+        top: -182px;
+        max-width: none;
+      }
+
+      .caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 11px;
+        text-align: center;
+        font-family: "Segoe Print", "Ink Free", cursive;
+        font-size: 19px;
+        color: #108F73;
+      }
+
+      .tape {
+        position: absolute;
+        left: 50%;
+        top: -16px;
+        width: 120px;
+        height: 32px;
+        margin-left: -60px;
+        background: rgba(47, 216, 171, .55);
+        transform: rotate(-4deg);
+      }
+
+      .deco {
+        position: absolute;
+      }
+
+      .star {
+        fill: #F4C44E;
+      }
+
+      .paw {
+        fill: #2FD8AB;
+      }
+
+      .footer {
+        position: absolute;
+        left: 68px;
+        bottom: 40px;
+        display: flex;
+        gap: 14px;
+        font-size: 17px;
+        color: #4F7D73;
+      }
+
+      .footer .sep {
+        color: #2B4E47;
+      }
+    </style>
+  </head>
+
+  <body>
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <symbol id="paw" viewBox="0 0 64 64">
+          <ellipse cx="32" cy="42" rx="15" ry="13" />
+          <ellipse cx="13" cy="26" rx="6.5" ry="8" transform="rotate(-18 13 26)" />
+          <ellipse cx="25" cy="15" rx="6.5" ry="8.5" transform="rotate(-6 25 15)" />
+          <ellipse cx="39" cy="15" rx="6.5" ry="8.5" transform="rotate(6 39 15)" />
+          <ellipse cx="51" cy="26" rx="6.5" ry="8" transform="rotate(18 51 26)" />
+        </symbol>
+        <symbol id="star" viewBox="0 0 64 64">
+          <path d="M32 2C34 22 42 30 62 32 42 34 34 42 32 62 30 42 22 34 2 32 22 30 30 22 32 2Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="glow-brand"></div>
+    <div class="glow-card"></div>
+    <div class="grid"></div>
+
+    <section class="brand">
+      <div class="lockup">
+        <img src="../../src/VelaShell/Assets/velashell.png" alt="">
+        <div>
+          <div class="wordmark">VelaShell</div>
+          <div class="pronounce">/ˈveɪlə ʃɛl/ · 以终端为帆,驶向远方主机</div>
+        </div>
+      </div>
+      <h1 class="tagline">现代化跨平台<br><em>SSH / SFTP / FTP 终端客户端</em></h1>
+      <div class="stack">.NET 11 · Avalonia · Windows / Linux / macOS · x64 &amp; arm64</div>
+      <div class="chips">
+        <span class="chip"><svg><use href="#paw" /></svg>自研 VT 引擎</span>
+        <span class="chip"><svg><use href="#paw" /></svg>跳板机 ProxyJump</span>
+        <span class="chip"><svg><use href="#paw" /></svg>端口转发隧道</span>
+        <span class="chip"><svg><use href="#paw" /></svg>SFTP 断点续传</span>
+        <span class="chip"><svg><use href="#paw" /></svg>插件系统</span>
+        <span class="chip"><svg><use href="#paw" /></svg>AI 助手</span>
+      </div>
+    </section>
+
+    <div class="polaroid">
+      <div class="tape"></div>
+      <div class="photo"><img src="../../mascot/key-visual.png" alt=""></div>
+      <div class="caption">Good Servers, Brighter Days! =^･ω･^=</div>
+    </div>
+
+    <svg class="deco star" style="left:690px;top:120px;width:34px;height:34px"><use href="#star" /></svg>
+    <svg class="deco star" style="left:726px;top:162px;width:16px;height:16px"><use href="#star" /></svg>
+    <svg class="deco paw" style="left:700px;top:520px;width:26px;height:26px;opacity:.6;transform:rotate(-18deg)"><use href="#paw" /></svg>
+    <svg class="deco paw" style="left:738px;top:562px;width:20px;height:20px;opacity:.4;transform:rotate(-8deg)"><use href="#paw" /></svg>
+
+    <div class="footer">
+      <span>github.com/joesdu/VelaShell</span>
+      <span class="sep">|</span>
+      <span>AGPL-3.0 / 商业双许可</span>
+    </div>
+  </body>
+
+</html>
