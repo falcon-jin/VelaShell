@@ -210,7 +210,7 @@ public sealed class ConnectionProfileViewModelTests
             Id = "test.telnet",
             DisplayName = "Telnet",
             DefaultPort = 23,
-            Features = VelaShell.PluginSdk.Protocols.ProtocolFeatures.NoCredentials
+            Features = PluginSdk.Protocols.ProtocolFeatures.NoCredentials
         }, new NoCredentialTerminal());
 
         var vm = new ConnectionProfileViewModel(protocolRegistry: registry) { Host = "10.0.0.9" };

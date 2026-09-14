@@ -57,9 +57,13 @@ public sealed class ZModemReceiver(
                         cancellationToken,
                         handshakeDone ? null : _options.HandshakeTimeout)
                     .ConfigureAwait(false);
-                TransferTrace.Log(frame.Status == ZModemReadStatus.Header
-                    ? $"RECV frame {frame.Header.Type} fmt={frame.Format} pos={frame.Header.Position}"
-                    : $"RECV frame status={frame.Status}");
+                // 三元表达式会先拼成 string,走不到插值处理器的「关闭时不拼」,显式判一次。
+                if (TransferTrace.IsEnabled)
+                {
+                    TransferTrace.Log(frame.Status == ZModemReadStatus.Header
+                        ? $"RECV frame {frame.Header.Type} fmt={frame.Format} pos={frame.Header.Position}"
+                        : $"RECV frame status={frame.Status}");
+                }
                 switch (frame.Status)
                 {
                     case ZModemReadStatus.Cancelled:
@@ -324,6 +328,9 @@ public sealed class ZModemReceiver(
         while (true)
         {
             ZModemSubpacketResult sub = await ReadSubpacketAsync(ct).ConfigureAwait(false);
+            // 数据阶段逐子包记账:ZEOF 长度对不上时,只有看得到每个子包是 Ok / CrcError / 结尾类型,
+            // 才分得清是链路丢了字节、还是我们把帧边界读错了。
+            TransferTrace.Log($"RECV subpacket status={sub.Status} len={sub.Data.Length} end={sub.End} at={item.BytesTransferred}");
             switch (sub.Status)
             {
                 case ZModemSubpacketStatus.Cancelled:

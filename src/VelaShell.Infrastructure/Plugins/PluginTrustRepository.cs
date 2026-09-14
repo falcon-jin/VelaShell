@@ -90,7 +90,7 @@ public sealed class PluginTrustRepository(
                     {
                         continue;
                     }
-                    state.Publishers.Add(new(key, VelaShell.PluginSdk.Packaging.VpxContainer.PublicKeyFingerprint(key), DateTimeOffset.UtcNow));
+                    state.Publishers.Add(new(key, PluginSdk.Packaging.VpxContainer.PublicKeyFingerprint(key), DateTimeOffset.UtcNow));
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or FormatException)
@@ -142,7 +142,7 @@ public sealed class PluginTrustRepository(
             string expected;
             try
             {
-                expected = VelaShell.PluginSdk.Packaging.VpxContainer.PublicKeyFingerprint(publisher.PublicKey);
+                expected = PluginSdk.Packaging.VpxContainer.PublicKeyFingerprint(publisher.PublicKey);
             }
             catch (FormatException ex)
             {

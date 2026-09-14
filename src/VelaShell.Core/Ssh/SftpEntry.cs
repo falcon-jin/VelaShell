@@ -16,8 +16,17 @@ public sealed record SftpEntry
     /// <summary>文件字节数(目录为 0 或服务器报告值)。</summary>
     public long Length { get; init; }
 
-    /// <summary>该条目是否为目录。</summary>
+    /// <summary>该条目是否为目录(符号链接时描述的是链接<b>指向的</b>对象)。</summary>
     public bool IsDirectory { get; init; }
+
+    /// <summary>
+    /// 该路径本身是否为符号链接。为 true 时,除名称/路径外的其余字段取自链接目标;
+    /// 断链(目标不存在)时保留链接自身的属性,<see cref="IsDirectory" /> 为 false。
+    /// </summary>
+    public bool IsSymbolicLink { get; init; }
+
+    /// <summary>链接的原始目标文本(readlink 结果,可能是相对路径);非链接或读取失败时为 null。</summary>
+    public string? LinkTarget { get; init; }
 
     /// <summary>最后修改时间。</summary>
     public DateTime LastWriteTime { get; init; }

@@ -101,14 +101,23 @@ public sealed class ScrollbackCapacityTests
             var control = new VelaTerminalControl { ScrollbackLines = 4000 };
             var window = new Window { Width = 640, Height = 360, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
 
-            control.Feed(Encoding.UTF8.GetBytes("\e[?1049h"));
-            Dispatcher.UIThread.RunJobs();
-            Assert.IsTrue(control.IsAlternateScreenActive);
+                control.Feed(Encoding.UTF8.GetBytes("\e[?1049h"));
+                Dispatcher.UIThread.RunJobs();
+                Assert.IsTrue(control.IsAlternateScreenActive);
 
-            // 读回来的若是当前缓冲区,这里会是备用屏的 0 —— 设置页再打开就显示成 0。
-            Assert.AreEqual(4000, control.ScrollbackLines);
+                // 读回来的若是当前缓冲区,这里会是备用屏的 0 —— 设置页再打开就显示成 0。
+                Assert.AreEqual(4000, control.ScrollbackLines);
+            }
+            finally
+            {
+                // 窗口必须关:共享会话的 UI 线程上留着一个开着的窗口,它排队的渲染会在
+                // Dispatcher.ResetForUnitTests() 拆除期间才跑,碰到已释放的对象(CI ubuntu 的 ObjectDisposedException)。
+                window.Close();
+            }
             return Task.CompletedTask;
         }, CancellationToken.None).GetAwaiter().GetResult();
     }
@@ -121,19 +130,27 @@ public sealed class ScrollbackCapacityTests
             var control = new VelaTerminalControl();
             var window = new Window { Width = 640, Height = 360, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
 
-            control.Feed(Encoding.UTF8.GetBytes(Lines(500)));
-            Dispatcher.UIThread.RunJobs();
-            control.ScrollOffset = 300;
-            Assert.AreEqual(300, control.ScrollOffset, "样本要先停在历史里,而不是跟着底部。");
+                control.Feed(Encoding.UTF8.GetBytes(Lines(500)));
+                Dispatcher.UIThread.RunJobs();
+                control.ScrollOffset = 300;
+                Assert.AreEqual(300, control.ScrollOffset, "样本要先停在历史里,而不是跟着底部。");
 
-            control.ScrollbackLines = 50;
+                control.ScrollbackLines = 50;
 
-            Assert.AreEqual(50, control.MaxScrollOffset);
-            Assert.IsLessThanOrEqualTo(
-                control.MaxScrollOffset, control.ScrollOffset,
-                $"裁剪后视图停在了一行不存在的历史上(offset={control.ScrollOffset} > max={control.MaxScrollOffset})。");
+                Assert.AreEqual(50, control.MaxScrollOffset);
+                Assert.IsLessThanOrEqualTo(
+                    control.MaxScrollOffset, control.ScrollOffset,
+                    $"裁剪后视图停在了一行不存在的历史上(offset={control.ScrollOffset} > max={control.MaxScrollOffset})。");
+            }
+            finally
+            {
+                // 同上:不关窗口,它的渲染会拖到会话拆除时才跑。
+                window.Close();
+            }
             return Task.CompletedTask;
         }, CancellationToken.None).GetAwaiter().GetResult();
     }

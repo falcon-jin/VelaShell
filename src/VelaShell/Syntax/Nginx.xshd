@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nginx 配置。形态是"块 { 指令 参数; }",按 Ini 着色会把指令与参数糊成一片。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Nginx" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Section"     foreground="#50FA7B" fontWeight="bold" />
+  <Color name="Key"         foreground="#8BE9FD" />
+  <Color name="Variable"    foreground="#FFB86C" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" begin="#" />
+
+    <Span color="String" multiline="false">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Rule color="Variable">\$\{?[A-Za-z_][A-Za-z0-9_]*\}?</Rule>
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="false">
+      <Begin>'</Begin>
+      <End>'</End>
+    </Span>
+
+    <Rule color="Variable">
+      \$\{?[A-Za-z_][A-Za-z0-9_]*\}?
+    </Rule>
+
+    <!-- 块名只在行首有效;写在前面,与下面的"行首指令"同位时它先赢。 -->
+    <Rule color="Section">
+      ^\s*(http|server|location|upstream|events|stream|mail|map|geo|types|if|limit_except|split_clients)\b
+    </Rule>
+
+    <!-- 指令:行首第一个词(后面跟空白或分号)。 -->
+    <Rule color="Key">
+      ^\s*[a-z_][a-z0-9_]*(?=[\s;])
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>on</Word>
+      <Word>off</Word>
+      <Word>default_server</Word>
+      <Word>ssl</Word>
+      <Word>http2</Word>
+      <Word>proxy_protocol</Word>
+      <Word>permanent</Word>
+      <Word>redirect</Word>
+      <Word>last</Word>
+      <Word>break</Word>
+      <Word>backup</Word>
+      <Word>down</Word>
+      <Word>always</Word>
+      <Word>default</Word>
+    </Keywords>
+
+    <!-- 数字可带单位:10m / 30s / 1d / 500ms。 -->
+    <Rule color="Number">
+      \b\d+(\.\d+)*(ms|[kKmMgGsShHdDwWyY])?\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{};~=^*]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

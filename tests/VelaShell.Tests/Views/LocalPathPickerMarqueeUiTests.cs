@@ -83,7 +83,7 @@ public sealed class LocalPathPickerMarqueeUiTests
             Drag(dialog, list, fromRow: 3, toRow: 1);
 
             Assert.AreSequenceEqual(
-                ["a0.txt", "a1.txt", "a2.txt"], Names(vm), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder, "向上拖应与向下拖选中同一批行。"
+                ["a0.txt", "a1.txt", "a2.txt"], Names(vm), SequenceOrder.InAnyOrder, "向上拖应与向下拖选中同一批行。"
             );
         });
     }
@@ -100,7 +100,7 @@ public sealed class LocalPathPickerMarqueeUiTests
                 entry => entry.IsParentEntry, vm.SelectedEntries,
                 "合成的 \"..\" 行不该被框选选中。"
             );
-            Assert.AreSequenceEqual(["a0.txt", "a1.txt"], Names(vm), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            Assert.AreSequenceEqual(["a0.txt", "a1.txt"], Names(vm), SequenceOrder.InAnyOrder);
         });
     }
 
@@ -115,7 +115,7 @@ public sealed class LocalPathPickerMarqueeUiTests
             dialog.MouseUp(point, MouseButton.Left);
             Pump(dialog);
 
-            Assert.AreSequenceEqual(["a1.txt"], Names(vm), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            Assert.AreSequenceEqual(["a1.txt"], Names(vm), SequenceOrder.InAnyOrder);
         });
     }
 

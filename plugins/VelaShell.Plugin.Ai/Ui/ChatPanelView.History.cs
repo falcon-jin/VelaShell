@@ -168,7 +168,7 @@ public partial class ChatPanelView
         _clearHistoryArmed = false;
         ClearHistoryText.Text = _loc["ClearHistory"];
         ClearHistoryButton.ClearValue(ForegroundProperty);
-        ClearHistoryButton.ClearValue(Avalonia.Controls.Primitives.TemplatedControl.BorderBrushProperty);
+        ClearHistoryButton.ClearValue(BorderBrushProperty);
     }
 
     // ---------- 加载历史会话 ----------

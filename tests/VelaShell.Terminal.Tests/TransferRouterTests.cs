@@ -65,6 +65,70 @@ public class TransferRouterTests
     }
 
     /// <summary>
+    /// 回归:真实 lrzsz 帧头以 <c>CR 0x8A XON</c> 收尾(0x8A = LF|0x80),尾锚定曾只认裸 LF,
+    /// 于是没敲过 <c>rz</c>(放宽窗口未武装)时真 rz 的引导一律不被接管 —— 上传直接失败。
+    /// 字节逐一取自 Debian lrzsz 0.12.21rc 在 PTY 上的真机抓包,不经我们自己的编码器。
+    /// </summary>
+    [TestMethod]
+    public void Detector_RealLrzszRzCapture_WithHighBitLf_TriggersSend()
+    {
+        byte[] captured =
+        [
+            .. "rz waiting to receive."u8.ToArray(),
+            0x2A, 0x2A, 0x18, 0x42,                         // ** ZDLE ZHEX
+            .. "0100000023be50"u8.ToArray(),                // ZRINIT, ZF0=0x23, CRC be50
+            0x0D, 0x8A, 0x11                                // CR LF|0x80 XON
+        ];
+        var detector = new ZModemDetector();
+
+        ZModemDetectResult result = detector.Process(captured);
+
+        Assert.IsTrue(result.Detected, "真 rz 的引导(0x8A 收尾)必须在未武装放宽窗口时就被识别");
+        Assert.AreEqual(ZModemTrigger.Send, result.Trigger);
+        Assert.AreSequenceEqual("rz waiting to receive."u8.ToArray(), result.TerminalBytes);
+    }
+
+    /// <summary>
+    /// 回归:发送端在流式推数据的间隙调 <see cref="IByteDuplex.HasPendingInbound" /> 探测对端插话。
+    /// 生产通道曾建成单消费者通道,其 Reader.Count 不受支持,一读就抛 NotSupportedException ——
+    /// rz 上传发完第一个 8KB 子包即失败。内存替身用的是普通通道,单测从来测不到,故这里直接测生产类型。
+    /// </summary>
+    [TestMethod]
+    public async Task ShellStreamByteDuplex_HasPendingInbound_DoesNotThrowAndTracksQueue()
+    {
+        IShellStreamWrapper shell = Substitute.For<IShellStreamWrapper>();
+        await using var duplex = new ShellStreamByteDuplex(shell);
+
+        Assert.IsFalse(duplex.HasPendingInbound);
+
+        duplex.Push("abc"u8.ToArray());
+        Assert.IsTrue(duplex.HasPendingInbound);
+
+        ReadOnlyMemory<byte> chunk = await duplex.ReadAsync(CancellationToken.None);
+        Assert.AreSequenceEqual("abc"u8.ToArray(), chunk.ToArray());
+        Assert.IsFalse(duplex.HasPendingInbound);
+    }
+
+    /// <summary>真实 lrzsz <c>sz</c> 的启动序列同样以 0x8A 收尾,下载方向也必须能识别。</summary>
+    [TestMethod]
+    public void Detector_RealLrzszSzStartup_WithHighBitLf_TriggersReceive()
+    {
+        byte[] captured =
+        [
+            .. "rz\r"u8.ToArray(),
+            0x2A, 0x2A, 0x18, 0x42,
+            .. "00000000000000"u8.ToArray(),                // ZRQINIT
+            0x0D, 0x8A, 0x11
+        ];
+        var detector = new ZModemDetector();
+
+        ZModemDetectResult result = detector.Process(captured);
+
+        Assert.IsTrue(result.Detected);
+        Assert.AreEqual(ZModemTrigger.Receive, result.Trigger);
+    }
+
+    /// <summary>
     /// 引导被分片切开时仍须识别;而且被切在前半段的字节<b>照常喂进终端</b>(零扣留),
     /// 不再等下一分片 —— 那正是 #291 的根因。
     /// </summary>
@@ -268,8 +332,15 @@ public class TransferRouterTests
         TerminalTransferRouter router = NewRouter();
         try
         {
+            // 提交命令只武装、不启动:此刻回车还没写出去,开会话会把它吞掉(远端 sb 不会执行)。
             Assert.IsTrue(router.NoteCommandSubmitted("sb payload.log"));
+            Assert.IsFalse(router.IsInSession);
+            Assert.IsTrue(router.HasPendingManualSession);
+
+            // 桥在回车落到流上之后才真正启动。
+            Assert.IsTrue(router.StartPendingManualSession());
             Assert.IsTrue(router.IsInSession);
+            Assert.IsFalse(router.HasPendingManualSession, "待启动意图取一次即清空");
 
             // 会话已接管:入站字节全部转交引擎,终端不再喂。
             TransferRouteResult route = router.ProcessIncoming("protocol bytes"u8.ToArray());
@@ -289,6 +360,27 @@ public class TransferRouterTests
 
         Assert.IsFalse(router.NoteCommandSubmitted("rb"));
         Assert.IsFalse(router.IsInSession);
+    }
+
+    /// <summary>
+    /// XMODEM 必须在命令行上给文件名。回归(2026-09-13 真机):敲了不带文件名的 <c>rx</c>,lrzsz 照样发 'C',
+    /// 收到第 1 块却无处可写,发 CAN 以 status=128 退出;<c>sx</c> 不带文件名则只打印用法就退出,
+    /// 而我们开着会话把那行报错吞了、黑屏等握手超时。注定失败的命令一律不接管。
+    /// </summary>
+    [TestMethod]
+    public void Router_XModemWithoutFileName_DoesNotArm()
+    {
+        TerminalTransferRouter router = NewRouter(withUploadPicker: true);
+
+        Assert.IsFalse(router.NoteCommandSubmitted("rx"));
+        Assert.IsFalse(router.NoteCommandSubmitted("rx -y"));
+        Assert.IsFalse(router.NoteCommandSubmitted("sx"));
+        Assert.IsFalse(router.HasPendingManualSession);
+        Assert.IsFalse(router.IsInSession);
+
+        // 带了文件名就照常武装。
+        Assert.IsTrue(router.NoteCommandSubmitted("rx newfile.txt"));
+        Assert.IsTrue(router.HasPendingManualSession);
     }
 
     /// <summary>普通命令不得触发任何东西。</summary>

@@ -35,47 +35,55 @@ public class ContentPaddingTests
             var control = new VelaTerminalControl();
             var window = new Window { Width = 640, Height = 400, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            int baseCols = control.Columns;
-            int baseRows = control.Rows;
-            Rect baseCursor = control.GetCursorRect();
-            double cellWidth = control.CellWidthForTest;
-            double cellHeight = control.CellHeightForTest;
-            Assert.IsGreaterThan(0, cellWidth);
-            Assert.IsGreaterThan(0, cellHeight);
+                int baseCols = control.Columns;
+                int baseRows = control.Rows;
+                Rect baseCursor = control.GetCursorRect();
+                double cellWidth = control.CellWidthForTest;
+                double cellHeight = control.CellHeightForTest;
+                Assert.IsGreaterThan(0, cellWidth);
+                Assert.IsGreaterThan(0, cellHeight);
 
-            const double pad = 16;
-            control.ContentPadding = pad;
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
+                const double pad = 16;
+                control.ContentPadding = pad;
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
 
-            // 左右各扣一份留白 → 少掉的列数就是 2*pad 折算的格子数(边界受取整影响 ±1)。
-            int expectedColLoss = (int)(2 * pad / cellWidth);
-            Assert.AreEqual(
-                (double)(baseCols - expectedColLoss),
-                control.Columns,
-                1,
-                "列数应随左右留白按格宽收缩。"
-            );
-            Assert.AreEqual(
-                (double)(baseRows - (int)(2 * pad / cellHeight)),
-                control.Rows,
-                1,
-                "行数应随上下留白按行高收缩。"
-            );
+                // 左右各扣一份留白 → 少掉的列数就是 2*pad 折算的格子数(边界受取整影响 ±1)。
+                int expectedColLoss = (int)(2 * pad / cellWidth);
+                Assert.AreEqual(
+                    (double)(baseCols - expectedColLoss),
+                    control.Columns,
+                    1,
+                    "列数应随左右留白按格宽收缩。"
+                );
+                Assert.AreEqual(
+                    (double)(baseRows - (int)(2 * pad / cellHeight)),
+                    control.Rows,
+                    1,
+                    "行数应随上下留白按行高收缩。"
+                );
 
-            // 光标矩形是弹层/IME 的锚点:留白是整体平移,它必须原样跟着挪。
-            Rect padded = control.GetCursorRect();
-            Assert.AreEqual(baseCursor.X + pad, padded.X, 0.01);
-            Assert.AreEqual(baseCursor.Y + pad, padded.Y, 0.01);
+                // 光标矩形是弹层/IME 的锚点:留白是整体平移,它必须原样跟着挪。
+                Rect padded = control.GetCursorRect();
+                Assert.AreEqual(baseCursor.X + pad, padded.X, 0.01);
+                Assert.AreEqual(baseCursor.Y + pad, padded.Y, 0.01);
 
-            control.ContentPadding = 0;
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
-            Assert.AreEqual(baseCols, control.Columns, "归零后应回到原网格。");
-            Assert.AreEqual(baseRows, control.Rows, "归零后应回到原网格。");
+                control.ContentPadding = 0;
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
+                Assert.AreEqual(baseCols, control.Columns, "归零后应回到原网格。");
+                Assert.AreEqual(baseRows, control.Rows, "归零后应回到原网格。");
+            }
+            finally
+            {
+                // 窗口必须关:留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+                window.Close();
+            }
         });
     }
 
@@ -111,25 +119,32 @@ public class ContentPaddingTests
 
             var window = new Window { Width = 480, Height = 320, Content = control };
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.CaptureRenderedFrame();
-            Assert.AreEqual(0, control.FoldCountForTest);
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame();
+                Assert.AreEqual(0, control.FoldCountForTest);
 
-            // 侧栏几何以正文坐标表达,真实点击落在「留白 + 折叠列」处才算命中。
-            GutterLayout gutter = control.GutterForTest;
-            var hit = new Point(pad + gutter.FoldLeft + 2, pad + 3 * control.CellHeightForTest + 2);
-            window.MouseDown(hit, MouseButton.Left);
-            window.MouseUp(hit, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
-            Assert.AreEqual(1, control.FoldCountForTest, "扣掉留白后应命中折叠列。");
+                // 侧栏几何以正文坐标表达,真实点击落在「留白 + 折叠列」处才算命中。
+                GutterLayout gutter = control.GutterForTest;
+                var hit = new Point(pad + gutter.FoldLeft + 2, pad + 3 * control.CellHeightForTest + 2);
+                window.MouseDown(hit, MouseButton.Left);
+                window.MouseUp(hit, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
+                Assert.AreEqual(1, control.FoldCountForTest, "扣掉留白后应命中折叠列。");
 
-            // 同一个 x 若不加留白,就落在留白带里 —— 那里不是折叠列,不该再折叠一次。
-            window.CaptureRenderedFrame();
-            var miss = new Point(gutter.FoldLeft + 2, pad + 5 * control.CellHeightForTest + 2);
-            window.MouseDown(miss, MouseButton.Left);
-            window.MouseUp(miss, MouseButton.Left);
-            Dispatcher.UIThread.RunJobs();
-            Assert.AreEqual(1, control.FoldCountForTest, "留白带内的点击不应被当成折叠列命中。");
+                // 同一个 x 若不加留白,就落在留白带里 —— 那里不是折叠列,不该再折叠一次。
+                window.CaptureRenderedFrame();
+                var miss = new Point(gutter.FoldLeft + 2, pad + 5 * control.CellHeightForTest + 2);
+                window.MouseDown(miss, MouseButton.Left);
+                window.MouseUp(miss, MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
+                Assert.AreEqual(1, control.FoldCountForTest, "留白带内的点击不应被当成折叠列命中。");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 }

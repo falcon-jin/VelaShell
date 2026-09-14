@@ -26,10 +26,27 @@ public class TerminalSeamSnapUiTests
     private const double FractionalScale = 1.25;
     private const double Padding = 5;
 
+    /// <summary>
+    /// 本次 <see cref="OnUi" /> 里 <see cref="RenderedControl" /> 开出的窗口,收尾时统一关掉:
+    /// 留在共享 UI 线程上的渲染会拖到会话拆除时才跑(见 HeadlessTestSession)。
+    /// </summary>
+    private static readonly List<Window> OpenWindows = [];
+
     private static void OnUi(Action body) =>
         _session.Dispatch(() =>
         {
-            body();
+            try
+            {
+                body();
+            }
+            finally
+            {
+                foreach (Window window in OpenWindows)
+                {
+                    window.Close();
+                }
+                OpenWindows.Clear();
+            }
             return Task.CompletedTask;
         }, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -44,6 +61,7 @@ public class TerminalSeamSnapUiTests
             )
         );
         var window = new Window { Width = 640, Height = 400, Content = control };
+        OpenWindows.Add(window);
         window.Show();
         Dispatcher.UIThread.RunJobs();
         window.CaptureRenderedFrame(); // 真跑一遍 Render(),顺带确认吸附路径不抛异常

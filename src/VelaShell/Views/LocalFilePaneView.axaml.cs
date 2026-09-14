@@ -56,8 +56,8 @@ public partial class LocalFilePaneView : UserControl
             DragDrop.SetAllowDrop(fileList, true);
             fileList.AddHandler(DragDrop.DragOverEvent, OnLocalDropDragOver);
             fileList.AddHandler(DragDrop.DropEvent, OnLocalDrop);
-            fileList.AddHandler(InputElement.PointerPressedEvent, OnLocalDragPointerPressedTunnel, RoutingStrategies.Tunnel, true);
-            fileList.AddHandler(InputElement.PointerPressedEvent, OnLocalDragPointerPressedBubble, RoutingStrategies.Bubble, true);
+            fileList.AddHandler(PointerPressedEvent, OnLocalDragPointerPressedTunnel, RoutingStrategies.Tunnel, true);
+            fileList.AddHandler(PointerPressedEvent, OnLocalDragPointerPressedBubble, RoutingStrategies.Bubble, true);
             fileList.AddHandler(PointerMovedEvent, OnLocalDragPointerMoved);
             fileList.AddHandler(PointerReleasedEvent, OnLocalDragPointerReleased, RoutingStrategies.Bubble, true);
         }

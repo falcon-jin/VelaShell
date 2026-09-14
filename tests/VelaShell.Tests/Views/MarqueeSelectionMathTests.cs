@@ -21,7 +21,7 @@ public class MarqueeSelectionMathTests
             ["already-selected.txt", "swept.txt"]);
 
         Assert.AreSequenceEqual(
-            ["already-selected.txt", "swept.txt"], [.. result], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            ["already-selected.txt", "swept.txt"], [.. result], SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -36,7 +36,7 @@ public class MarqueeSelectionMathTests
             source,
             item => item == parent);
 
-        Assert.AreSequenceEqual(["a.txt", "b.txt"], [.. result], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(["a.txt", "b.txt"], [.. result], SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -74,7 +74,7 @@ public class MarqueeSelectionMathTests
             "b.txt",
             item => item == "..");
 
-        Assert.AreSequenceEqual(["a.txt", "b.txt"], [.. result], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(["a.txt", "b.txt"], [.. result], SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -100,7 +100,7 @@ public class MarqueeSelectionMathTests
         Assert.AreSequenceEqual(
             dragItems,
             [.. visibleSelection],
-            Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -129,7 +129,7 @@ public class MarqueeSelectionMathTests
         Assert.AreSequenceEqual(
             ["b.txt", "c.txt"],
             [.. result],
-            Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]

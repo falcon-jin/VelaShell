@@ -35,4 +35,21 @@ public class TmdsSftpEntryMappingTests
         Assert.AreEqual(utcInstant.LocalDateTime, entry.LastWriteTime, "墙钟数应为该 UTC 瞬间换算到本机时区的值。");
         Assert.AreEqual(utcInstant.UtcDateTime, entry.LastWriteTime.ToUniversalTime(), "换算不得改变时间瞬间本身。");
     }
+
+    [TestMethod]
+    public void MapEntry_SymbolicLinkType_SetsLinkFlagAndIsNotADirectory()
+    {
+        var attrs = new FileEntryAttributes
+        {
+            FileType = UnixFileType.SymbolicLink,
+            Permissions = UnixFilePermissions.UserRead,
+            LastAccessTime = DateTimeOffset.UnixEpoch,
+            LastWriteTime = DateTimeOffset.UnixEpoch
+        };
+
+        SftpEntry entry = TmdsSftpClientWrapper.MapEntry("/srv/app/current", attrs);
+
+        Assert.IsTrue(entry.IsSymbolicLink);
+        Assert.IsFalse(entry.IsDirectory, "lstat 得来的链接条目在补上目标信息之前不能冒充目录。");
+    }
 }

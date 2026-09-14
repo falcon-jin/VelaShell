@@ -184,7 +184,7 @@ public partial class SettingsView : UserControl
         // 光有那枚小箭头的话,一路用键盘走下来的人在这儿就没辙了。
         // 走<b>隧道</b>而不是 KeyDown 事件:ListBox 自己的类处理器把左右键当成条目导航吃掉了,
         // 冒泡阶段再挂已经晚了(那时 Handled 已经是 true)。
-        ProvidersList.AddHandler(InputElement.KeyDownEvent, OnNavKeyDown, RoutingStrategies.Tunnel);
+        ProvidersList.AddHandler(KeyDownEvent, OnNavKeyDown, RoutingStrategies.Tunnel);
         // 从清单里挑一个:不光填模型 id,连<b>上下文窗口与三档单价</b>一起填好 ——
         // 那几项才是这一页最难填、填错了又不报错的东西(窗口错则占比错,单价错则花费估算错)。
         // _loadingEditor 期间不理会:那是重填表单时的程序性赋值,不是用户在挑。

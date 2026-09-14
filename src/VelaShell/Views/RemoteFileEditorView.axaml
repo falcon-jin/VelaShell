@@ -3,11 +3,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ae="using:AvaloniaEdit"
+        xmlns:aer="using:AvaloniaEdit.Rendering"
         xmlns:pc="using:VelaShell.Controls.Controls"
         xmlns:loc="using:VelaShell.Localization"
-        mc:Ignorable="d" d:DesignWidth="920" d:DesignHeight="640"
+        mc:Ignorable="d" d:DesignWidth="1128" d:DesignHeight="788"
         x:Class="VelaShell.Views.RemoteFileEditorView"
-        Width="928" Height="648"
+        Width="1160" Height="820"
         MinWidth="528" MinHeight="368"
         CanResize="True"
         WindowDecorations="None"
@@ -19,6 +20,11 @@
        Ctrl+S / 保存按钮写盘并上传回服务器。外壳沿用标准弹窗规格。 -->
 
   <Window.Styles>
+    <!-- 网址/邮箱链接:AvaloniaEdit 缺省是纯蓝(#0000FF),压在暗色底上几乎读不出来。
+         改用信息色令牌 —— 随主题切换实时变化(Dracula 青 / Alucard 深青蓝 / 其余主题各自的 Info)。 -->
+    <Style Selector="aer|TextView">
+      <Setter Property="LinkTextForegroundBrush" Value="{DynamicResource VelaInfo}" />
+    </Style>
     <Style Selector="Button.chrome">
       <Setter Property="Width" Value="24" />
       <Setter Property="Height" Value="24" />

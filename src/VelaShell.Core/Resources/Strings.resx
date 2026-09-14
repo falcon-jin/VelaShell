@@ -417,14 +417,8 @@
   <data name="CloseTab" xml:space="preserve">
     <value>Close Tab</value>
   </data>
-  <data name="Search" xml:space="preserve">
-    <value>Search</value>
-  </data>
   <data name="Copy" xml:space="preserve">
     <value>Copy</value>
-  </data>
-  <data name="Split" xml:space="preserve">
-    <value>Split</value>
   </data>
   <data name="Status_Selected" xml:space="preserve">
     <value>{0} chars selected</value>
@@ -511,9 +505,6 @@
   <data name="QuickCmd_Ungrouped" xml:space="preserve"><value>Ungrouped</value></data>
   <data name="QuickCmd_GroupPlaceholder" xml:space="preserve"><value>Group name</value></data>
   <data name="QuickCmd_EditSnippet" xml:space="preserve"><value>Edit snippet</value></data>
-  <data name="AddCommand" xml:space="preserve">
-    <value>Add Command</value>
-  </data>
   <data name="Description" xml:space="preserve">
     <value>Description</value>
   </data>
@@ -596,15 +587,9 @@
   <data name="TerminalType" xml:space="preserve">
     <value>Terminal Type</value>
   </data>
-  <data name="TerminalEncoding" xml:space="preserve">
-    <value>Encoding</value>
-  </data>
   <!-- Auth (7) -->
   <data name="Password" xml:space="preserve">
     <value>Password</value>
-  </data>
-  <data name="PrivateKey" xml:space="preserve">
-    <value>Private Key</value>
   </data>
   <data name="Username" xml:space="preserve">
     <value>Username</value>
@@ -643,9 +628,6 @@
   <data name="KeyType" xml:space="preserve">
     <value>Key Type</value>
   </data>
-  <data name="Reject" xml:space="preserve">
-    <value>Reject</value>
-  </data>
   <data name="TrustPermanently" xml:space="preserve">
     <value>Trust Permanently</value>
   </data>
@@ -657,9 +639,6 @@
   </data>
   <data name="Group" xml:space="preserve">
     <value>Group</value>
-  </data>
-  <data name="Passphrase" xml:space="preserve">
-    <value>Passphrase</value>
   </data>
   <!-- File Browser / SFTP (§6) -->
   <data name="UploadHere" xml:space="preserve">
@@ -769,6 +748,23 @@
   </data>
   <data name="FileType" xml:space="preserve">
     <value>Type</value>
+  </data>
+  <data name="Sftp_NewSymlink" xml:space="preserve">
+    <value>New Symbolic Link</value>
+  </data>
+  <data name="Sftp_SymlinkTargetPrompt" xml:space="preserve">
+    <value>Link target path</value>
+    <comment>新建符号链接第一步:链接指向哪里。相对路径按链接所在目录解析(ln -s 语义)。</comment>
+  </data>
+  <data name="Sftp_SymlinkNamePrompt" xml:space="preserve">
+    <value>Link name</value>
+  </data>
+  <data name="Sftp_SymlinkType" xml:space="preserve">
+    <value>Symbolic Link</value>
+    <comment>文件浏览器“类型”列与属性弹窗。</comment>
+  </data>
+  <data name="Sftp_LinkTarget" xml:space="preserve">
+    <value>Link Target</value>
   </data>
   <data name="Sftp_FileTypeExt" xml:space="preserve">
     <value>{0} File</value>
@@ -3313,9 +3309,6 @@ Overwrite it?</value>
   <data name="Tree_PortForwarding" xml:space="preserve">
     <value>Port Forwarding</value>
   </data>
-  <data name="Tree_SessionSettings" xml:space="preserve">
-    <value>Session Settings</value>
-  </data>
   <data name="Tunnel_AliasLabel" xml:space="preserve">
     <value>Alias (optional)</value>
   </data>
@@ -4045,6 +4038,7 @@ Overwrite it?</value>
   <data name="PluginManager_Disable"><value>Disable</value></data>
   <data name="PluginManager_RevokePermission"><value>Revoke terminal access</value></data>
   <data name="PluginState_Active"><value>Active</value></data>
+  <data name="PluginState_Background"><value>Running in background</value></data>
   <data name="PluginState_Discovered"><value>Idle</value></data>
   <data name="PluginState_Disabled"><value>Disabled</value></data>
   <data name="PluginState_Failed"><value>Failed</value></data>
@@ -4578,5 +4572,260 @@ Choose how much to clean up. Every option rebuilds the store so the space is gen
   </data>
   <data name="SetTransfer_AutoUploadOnEditDesc" xml:space="preserve">
     <value>Off: the local copy is not watched at all and nothing is sent back</value>
+  </data>
+  <data name="Sync_Title" xml:space="preserve">
+    <value>Synchronize Directories</value>
+  </data>
+  <data name="Sync_TitleFormat" xml:space="preserve">
+    <value>Synchronize Directories · {0}</value>
+  </data>
+  <data name="Sync_CompareDirectories" xml:space="preserve">
+    <value>Compare Directories</value>
+  </data>
+  <data name="Sync_CompareDirectoriesTip" xml:space="preserve">
+    <value>Select the items that differ between the two current folders (this level only)</value>
+  </data>
+  <data name="Sync_SynchronizeEllipsis" xml:space="preserve">
+    <value>Synchronize…</value>
+  </data>
+  <data name="Sync_SynchronizeTip" xml:space="preserve">
+    <value>Compare the two directory trees and synchronize them, or keep the remote directory up to date</value>
+  </data>
+  <data name="Sync_CompareSummary" xml:space="preserve">
+    <value>Local: {0} different · Remote: {1} different · {2} identical</value>
+  </data>
+  <data name="Sync_CompareIdentical" xml:space="preserve">
+    <value>Both folders are identical ({0} items)</value>
+  </data>
+  <data name="Sync_LocalDirectory" xml:space="preserve">
+    <value>Local directory</value>
+  </data>
+  <data name="Sync_RemoteDirectory" xml:space="preserve">
+    <value>Remote directory</value>
+  </data>
+  <data name="Sync_Browse" xml:space="preserve">
+    <value>Browse…</value>
+  </data>
+  <data name="Sync_Direction" xml:space="preserve">
+    <value>Direction</value>
+  </data>
+  <data name="Sync_DirectionBoth" xml:space="preserve">
+    <value>Both</value>
+  </data>
+  <data name="Sync_DirectionToRemote" xml:space="preserve">
+    <value>Local → Remote</value>
+  </data>
+  <data name="Sync_DirectionToLocal" xml:space="preserve">
+    <value>Remote → Local</value>
+  </data>
+  <data name="Sync_Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Sync_ModeSynchronize" xml:space="preserve">
+    <value>Synchronize files</value>
+  </data>
+  <data name="Sync_ModeSynchronizeTip" xml:space="preserve">
+    <value>Transfer new files and files that are newer or differ in size; a newer target is never overwritten</value>
+  </data>
+  <data name="Sync_ModeMirror" xml:space="preserve">
+    <value>Mirror files</value>
+  </data>
+  <data name="Sync_ModeMirrorTip" xml:space="preserve">
+    <value>Make the target identical to the source: any difference is overwritten, even when the target is newer</value>
+  </data>
+  <data name="Sync_ModeTimestamps" xml:space="preserve">
+    <value>Synchronize timestamps</value>
+  </data>
+  <data name="Sync_ModeTimestampsTip" xml:space="preserve">
+    <value>Transfer nothing: for files present on both sides with the same size, set the target's modification time to the source's</value>
+  </data>
+  <data name="Sync_Criteria" xml:space="preserve">
+    <value>Compare by</value>
+  </data>
+  <data name="Sync_CriteriaTime" xml:space="preserve">
+    <value>Modification time</value>
+  </data>
+  <data name="Sync_CriteriaSize" xml:space="preserve">
+    <value>File size</value>
+  </data>
+  <data name="Sync_Options" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Sync_DeleteExtraneous" xml:space="preserve">
+    <value>Delete files</value>
+  </data>
+  <data name="Sync_DeleteExtraneousTip" xml:space="preserve">
+    <value>Delete items that exist only on the target side (one-way only)</value>
+  </data>
+  <data name="Sync_ExistingOnly" xml:space="preserve">
+    <value>Existing files only</value>
+  </data>
+  <data name="Sync_ExistingOnlyTip" xml:space="preserve">
+    <value>Only update files that already exist on both sides; create nothing new</value>
+  </data>
+  <data name="Sync_FileMask" xml:space="preserve">
+    <value>File mask</value>
+  </data>
+  <data name="Sync_FileMaskPlaceholder" xml:space="preserve">
+    <value>e.g. *.php; *.js | .git/; *.tmp</value>
+  </data>
+  <data name="Sync_FileMaskTip" xml:space="preserve">
+    <value>Separate masks with ';'. Masks after '|' are exclusions. A trailing '/' matches folders; a mask containing '/' matches the relative path. Excluded folders are not scanned.</value>
+  </data>
+  <data name="Sync_Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Sync_Start" xml:space="preserve">
+    <value>Synchronize</value>
+  </data>
+  <data name="Sync_CheckAll" xml:space="preserve">
+    <value>Select all</value>
+  </data>
+  <data name="Sync_CheckNone" xml:space="preserve">
+    <value>Select none</value>
+  </data>
+  <data name="Sync_ColAction" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="Sync_ColPath" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="Sync_ColLocal" xml:space="preserve">
+    <value>Local</value>
+  </data>
+  <data name="Sync_ColRemote" xml:space="preserve">
+    <value>Remote</value>
+  </data>
+  <data name="Sync_WatchLogHeader" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="Sync_EmptyHint" xml:space="preserve">
+    <value>Choose the directories and options, then click Compare to preview what will change. Nothing is transferred until you click Synchronize.</value>
+  </data>
+  <data name="Sync_KeepUpToDate" xml:space="preserve">
+    <value>Keep remote up to date</value>
+  </data>
+  <data name="Sync_KeepUpToDateTip" xml:space="preserve">
+    <value>Watch the local directory and upload changes as they happen (always Local → Remote; uses the mask, criteria and "Delete files" above)</value>
+  </data>
+  <data name="Sync_StopWatching" xml:space="preserve">
+    <value>Stop watching</value>
+  </data>
+  <data name="Sync_KindUpload" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="Sync_KindDownload" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Sync_KindCreateRemoteDirectory" xml:space="preserve">
+    <value>Create remote folder</value>
+  </data>
+  <data name="Sync_KindCreateLocalDirectory" xml:space="preserve">
+    <value>Create local folder</value>
+  </data>
+  <data name="Sync_KindSetRemoteTime" xml:space="preserve">
+    <value>Set remote time</value>
+  </data>
+  <data name="Sync_KindSetLocalTime" xml:space="preserve">
+    <value>Set local time</value>
+  </data>
+  <data name="Sync_KindDeleteRemote" xml:space="preserve">
+    <value>Delete remote</value>
+  </data>
+  <data name="Sync_KindDeleteLocal" xml:space="preserve">
+    <value>Delete local</value>
+  </data>
+  <data name="Sync_Summary" xml:space="preserve">
+    <value>Upload {0} ({1}) · Download {2} ({3}) · Delete {4} · Other {5}</value>
+  </data>
+  <data name="Sync_ScanningProgress" xml:space="preserve">
+    <value>Scanning… local {0} folders, remote {1} folders</value>
+  </data>
+  <data name="Sync_NothingToDo" xml:space="preserve">
+    <value>No differences — nothing to synchronize</value>
+  </data>
+  <data name="Sync_PreviewReady" xml:space="preserve">
+    <value>{0} operations — uncheck anything you don't want, then click Synchronize</value>
+  </data>
+  <data name="Sync_Cancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="Sync_LocalMissing" xml:space="preserve">
+    <value>Local directory does not exist: {0}</value>
+  </data>
+  <data name="Sync_LocalRequired" xml:space="preserve">
+    <value>Enter a local directory</value>
+  </data>
+  <data name="Sync_RemoteRequired" xml:space="preserve">
+    <value>Enter a remote directory</value>
+  </data>
+  <data name="Sync_InvalidMask" xml:space="preserve">
+    <value>Invalid file mask: use at most one '|', and '/' alone is not a mask</value>
+  </data>
+  <data name="Sync_ConfirmDelete" xml:space="preserve">
+    <value>This synchronization will delete {0} item(s) (folders together with their contents). This cannot be undone. Continue?</value>
+  </data>
+  <data name="Sync_ConfirmWatchDelete" xml:space="preserve">
+    <value>"Delete files" is on: while watching, anything deleted locally will also be deleted on the remote. Continue?</value>
+  </data>
+  <data name="Sync_Running" xml:space="preserve">
+    <value>Synchronizing {0}/{1} · {2}</value>
+  </data>
+  <data name="Sync_DoneVerified" xml:space="preserve">
+    <value>Done: {0} succeeded, {1} failed. Compared again — no differences remain</value>
+  </data>
+  <data name="Sync_DoneRemaining" xml:space="preserve">
+    <value>Done: {0} succeeded, {1} failed. Compared again — {2} operation(s) still pending</value>
+  </data>
+  <data name="Sync_NoteConflicts" xml:space="preserve">
+    <value>{0} conflict(s) left untouched (a file on one side and a folder on the other, or remote names that differ only in case)</value>
+  </data>
+  <data name="Sync_NoteSkippedLinks" xml:space="preserve">
+    <value>{0} folder link(s) were not followed</value>
+  </data>
+  <data name="Sync_TimestampsUnsupported" xml:space="preserve">
+    <value>This server cannot set modification times, so uploaded files will look newer on the remote next time (two-way sync would download them back)</value>
+  </data>
+  <data name="Sync_MoreErrors" xml:space="preserve">
+    <value>…and {0} more</value>
+  </data>
+  <data name="Sync_TransferFailed" xml:space="preserve">
+    <value>Transfer failed (see the transfer panel)</value>
+  </data>
+  <data name="Sync_UnsafeLocalName" xml:space="preserve">
+    <value>"{0}" cannot be written locally: the name is not valid on this system</value>
+  </data>
+  <data name="Sync_WatchStarted" xml:space="preserve">
+    <value>Watching {0} → {1}</value>
+  </data>
+  <data name="Sync_WatchStopped" xml:space="preserve">
+    <value>Stopped watching</value>
+  </data>
+  <data name="Sync_WatchUnavailable" xml:space="preserve">
+    <value>This local directory cannot be watched (network drive, or the system watcher limit was reached)</value>
+  </data>
+  <data name="Sync_WatchError" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="Sync_CriteriaChecksum" xml:space="preserve">
+    <value>SHA-256 checksum</value>
+  </data>
+  <data name="Sync_CriteriaChecksumTip" xml:space="preserve">
+    <value>Files that exist on both sides with the same size are compared by SHA-256 first (SFTP: sha256sum on the server; FTP: HASH / XSHA256). Identical content is never transferred, even if the times differ. Files that cannot be checksummed fall back to size and modification time. Such files are read completely on both sides.</value>
+  </data>
+  <data name="Sync_HashingProgress" xml:space="preserve">
+    <value>Verifying SHA-256… {0}/{1}</value>
+  </data>
+  <data name="Sync_NoteChecksumUnsupported" xml:space="preserve">
+    <value>SHA-256 is not available ({0}); compared by size and modification time instead</value>
+  </data>
+  <data name="Sync_NoteChecksumPartial" xml:space="preserve">
+    <value>{0} of {1} files could not be checksummed and were compared by size and modification time</value>
+  </data>
+  <data name="Sync_CompareHashing" xml:space="preserve">
+    <value>Comparing… verifying SHA-256</value>
+  </data>
+  <data name="Sync_CompareFellBack" xml:space="preserve">
+    <value>(SHA-256 unavailable, compared by size/time)</value>
   </data>
 </root>

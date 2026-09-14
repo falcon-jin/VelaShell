@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace VelaShell.Core.FileTransfer.Diagnostics;
@@ -62,6 +63,56 @@ public static class TransferTrace
     private static bool IsTruthy(string? value) =>
         string.Equals(value, "1", StringComparison.Ordinal) ||
         string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 记录一行诊断信息(插值字符串版)。日志关闭时连字符串都不拼、插值里的表达式也不求值 ——
+    /// 这些调用挂在逐帧 / 逐子包的路径上,默认关闭的日志不该让每个数据块都多一次字符串分配。
+    /// </summary>
+    /// <param name="message">由编译器经 <see cref="MessageHandler" /> 构造的插值消息。</param>
+    public static void Log(ref MessageHandler message)
+    {
+        if (Path is null)
+        {
+            return;
+        }
+        Log(message.ToStringAndClear());
+    }
+
+    /// <summary>
+    /// <see cref="Log(ref MessageHandler)" /> 的插值处理器:构造时就问一次日志是否开启,
+    /// 关闭时经 <c>out bool</c> 告诉编译器跳过全部拼接与求值。
+    /// </summary>
+    [InterpolatedStringHandler]
+    public ref struct MessageHandler
+    {
+        private DefaultInterpolatedStringHandler _inner;
+
+        /// <summary>由编译器调用。</summary>
+        /// <param name="literalLength">字面部分总长。</param>
+        /// <param name="formattedCount">插值洞数量。</param>
+        /// <param name="enabled">日志是否开启;为 false 时编译器不再调用任何 Append。</param>
+        public MessageHandler(int literalLength, int formattedCount, out bool enabled)
+        {
+            enabled = IsEnabled;
+            _inner = enabled
+                ? new DefaultInterpolatedStringHandler(literalLength, formattedCount, CultureInfo.InvariantCulture)
+                : default;
+        }
+
+        /// <summary>由编译器调用。</summary>
+        public void AppendLiteral(string value) => _inner.AppendLiteral(value);
+
+        /// <summary>由编译器调用。</summary>
+        public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);
+
+        /// <summary>由编译器调用。</summary>
+        public void AppendFormatted<T>(T value, string? format) => _inner.AppendFormatted(value, format);
+
+        /// <summary>由编译器调用。</summary>
+        public void AppendFormatted<T>(T value, int alignment) => _inner.AppendFormatted(value, alignment);
+
+        internal string ToStringAndClear() => _inner.ToStringAndClear();
+    }
 
     /// <summary>记录一行诊断信息(带毫秒时间戳与线程号)。</summary>
     /// <param name="message">要记录的信息。</param>

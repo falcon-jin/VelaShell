@@ -282,7 +282,7 @@ public partial class ConnectionProfileView : Window
     /// <summary>把文本写进系统剪贴板;拿不到剪贴板(无 TopLevel)时静默跳过。</summary>
     private async Task CopyToClipboardAsync(string text)
     {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+        if (GetTopLevel(this)?.Clipboard is { } clipboard)
         {
             await clipboard.SetTextAsync(text);
         }

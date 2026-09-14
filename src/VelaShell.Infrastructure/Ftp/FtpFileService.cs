@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using FluentFTP;
+using FluentFTP.Exceptions;
 using FluentFTP.Proxy.AsyncProxy;
 using VelaShell.Core.Ftp;
 using VelaShell.Core.Models;
@@ -83,7 +85,15 @@ public sealed class FtpFileService(IProxyResolver? proxyResolver = null) : ISftp
         try
         {
             FtpListItem[] items = await lease.Client.GetListing(NormalizePath(path), cancellationToken).ConfigureAwait(false);
-            return [.. items.Where(static item => item is not null).Select(Map)];
+            var result = new List<RemoteFileInfo>(items.Length);
+            foreach (FtpListItem item in items)
+            {
+                if (item is not null)
+                {
+                    result.Add(await MapAsync(lease.Client, item, cancellationToken).ConfigureAwait(false));
+                }
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -283,16 +293,135 @@ public sealed class FtpFileService(IProxyResolver? proxyResolver = null) : ISftp
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// 走 FluentFTP 的 <c>GetChecksum</c>:服务器通告了 <c>HASH</c>(draft-bryan-ftpext-hash)且支持 SHA-256 时用它,
+    /// 否则试 <c>XSHA256</c>。指定了 SHA-256 就不会退而求其次去用 MD5 / CRC —— 服务器只有那些时库抛
+    /// <see cref="FtpHashUnsupportedException" />,这里翻译成 <see cref="NotSupportedException" />。
+    /// 单个文件失败(不存在、没权限)只让它回退;连接断了照常上抛,不能把掉线当成「这个文件算不出来」。
+    /// </remarks>
+    public async Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(remotePaths);
+        var result = new Dictionary<string, string?>(StringComparer.Ordinal);
+        if (remotePaths.Count == 0)
+        {
+            return result;
+        }
+        using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        foreach (string path in remotePaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                FtpHash hash = await lease.Client
+                    .GetChecksum(NormalizePath(path), FtpHashAlgorithm.SHA256, cancellationToken)
+                    .ConfigureAwait(false);
+                result[path] = hash.IsValid && hash.Algorithm == FtpHashAlgorithm.SHA256 && hash.Value is { Length: 64 } value
+                    ? value.ToLowerInvariant()
+                    : null;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (FtpHashUnsupportedException ex)
+            {
+                throw new NotSupportedException($"This FTP server does not offer SHA-256 (HASH / XSHA256): {ex.Message}", ex);
+            }
+            catch (FtpCommandException ex) when (ex.CompletionCode is "500" or "501" or "502" or "504")
+            {
+                throw new NotSupportedException($"This FTP server rejected the SHA-256 command: {ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                Exception translated = Fault(sessionId, ex, "hash");
+                if (FluentFtpInterop.IsConnectionLost(translated))
+                {
+                    throw translated;
+                }
+                result[path] = null;
+            }
+        }
+        return result;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 走 <c>MFMT</c>(draft-somers-ftp-mfxx,时间按 UTC 发送)。它不在 RFC 959 里,服务器没通告或回
+    /// 「不认识 / 未实现」时抛 <see cref="NotSupportedException" /> —— 目录同步据此如实提示
+    /// 「这台服务器记不住上传文件的修改时间」,而不是假装对齐了。
+    /// </remarks>
+    public async Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
+        DateTime utc = lastWriteTimeUtc.Kind == DateTimeKind.Utc ? lastWriteTimeUtc : lastWriteTimeUtc.ToUniversalTime();
+        using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        FtpReply reply;
+        try
+        {
+            // 不用 AsyncFtpClient.SetModifiedTime:它按 TimeConversion 配置换算时区,而 MFMT 的时间
+            // 规定就是 UTC;自己拼命令,发出去的值才不会因为某个配置项被悄悄挪几个小时。
+            reply = await lease.Client
+                .Execute($"MFMT {utc.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)} {NormalizePath(remotePath)}", cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            throw Fault(sessionId, ex, "mfmt");
+        }
+        if (!reply.Success)
+        {
+            throw reply.Code is "500" or "501" or "502" or "504"
+                ? new NotSupportedException($"This FTP server does not support MFMT: {reply.Message}")
+                : new VelaFtpOperationException($"FTP MFMT failed: {reply.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// FTP 标准里没有建链接的命令,只有 ProFTPD(mod_site_misc)等少数服务器实现了非标准的
+    /// <c>SITE SYMLINK &lt;目标&gt; &lt;链接&gt;</c>。服务器回「不认识 / 未实现」时抛
+    /// <see cref="NotSupportedException" />,让界面如实说"这台服务器不支持",而不是报一个笼统的失败。
+    /// 这条命令以空格分隔参数、没有转义手段,含空格的路径表达不了,同样直说不支持。
+    /// </remarks>
+    public async Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(linkPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
+        if (linkPath.Contains(' ') || targetPath.Contains(' '))
+        {
+            throw new NotSupportedException("FTP SITE SYMLINK cannot express paths containing spaces.");
+        }
+        using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        FtpReply reply;
+        try
+        {
+            reply = await lease.Client
+                .Execute($"SITE SYMLINK {targetPath.Replace('\\', '/')} {NormalizePath(linkPath)}", cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            throw Fault(sessionId, ex, "symlink");
+        }
+        if (!reply.Success)
+        {
+            throw reply.Code is "500" or "501" or "502" or "504"
+                ? new NotSupportedException($"This FTP server does not support SITE SYMLINK: {reply.Message}")
+                : new VelaFtpOperationException($"FTP symlink failed: {reply.Message}");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default)
     {
         using FtpConnectionPool.Lease lease = await RentAsync(sessionId, cancellationToken).ConfigureAwait(false);
         string path = NormalizePath(remotePath);
         try
         {
-            FtpListItem? item = await lease.Client.GetObjectInfo(path, true, cancellationToken).ConfigureAwait(false);
-            return item is null
-                ? throw new VelaFtpPathNotFoundException($"FTP path not found: {path}")
-                : Map(item);
+            FtpListItem? item = await lease.Client.GetObjectInfo(path, true, cancellationToken).ConfigureAwait(false)
+                                ?? throw new VelaFtpPathNotFoundException($"FTP path not found: {path}");
+            return await MapAsync(lease.Client, item, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -563,18 +692,29 @@ public sealed class FtpFileService(IProxyResolver? proxyResolver = null) : ISftp
     /// 属主/属组直接取服务器给的**名字**(FTP 没有 UID/GID),因此整条绕开了 SFTP 那边
     /// 靠 SSH exec 跑 <c>getent passwd</c> 的身份翻译。服务器不给时留空,由界面自行留白。
     /// </summary>
-    private static RemoteFileInfo Map(FtpListItem item) =>
+    private static RemoteFileInfo Map(FtpListItem item, bool linkIsDirectory = false) =>
         new()
         {
             Name = item.Name ?? string.Empty,
             FullPath = item.FullName ?? string.Empty,
             Size = item.Size < 0 ? 0 : item.Size,
-            IsDirectory = item.Type == FtpObjectType.Directory,
+            IsDirectory = item.Type == FtpObjectType.Directory || (item.Type == FtpObjectType.Link && linkIsDirectory),
+            IsSymbolicLink = item.Type == FtpObjectType.Link,
+            LinkTarget = item.Type == FtpObjectType.Link && !string.IsNullOrEmpty(item.LinkTarget) ? item.LinkTarget : null,
             LastModified = item.Modified,
             Permissions = FormatPermissions(item),
             Owner = item.RawOwner ?? string.Empty,
             Group = item.RawGroup ?? string.Empty,
         };
+
+    /// <summary>
+    /// 带链接解析的 <see cref="Map" />:LIST 只说得出"这是个链接、指向哪里",说不出目标是不是目录
+    /// (FluentFTP 不再提供解引用),于是对链接补一次 <c>DirectoryExists</c>(CWD 探测)。
+    /// 只有链接才多这一趟往返,普通条目零开销。
+    /// </summary>
+    private static async Task<RemoteFileInfo> MapAsync(AsyncFtpClient client, FtpListItem item, CancellationToken cancellationToken) =>
+        Map(item, item.Type == FtpObjectType.Link
+                  && await client.DirectoryExists(item.FullName, cancellationToken).ConfigureAwait(false));
 
     /// <summary>
     /// 权限字符串:优先用服务器原样给的(Unix 风格 LIST 会给 <c>-rw-r--r--</c>),

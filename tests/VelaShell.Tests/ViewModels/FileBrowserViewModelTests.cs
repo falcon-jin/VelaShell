@@ -574,6 +574,143 @@ public class FileBrowserViewModelTests
 
     [TestMethod]
     [TestCategory("FileBrowser")]
+    public async Task NewSymbolicLink_PromptsTargetThenName_AndCreatesUnderCurrentPath()
+    {
+        _vm.CurrentPath = "/srv/app";
+        var prompts = new List<(string Title, string Initial)>();
+        var answers = new Queue<string?>(["/srv/app/releases/42", "current"]);
+        _vm.PromptForText = (title, initial) =>
+        {
+            prompts.Add((title, initial));
+            return Task.FromResult(answers.Dequeue());
+        };
+        _sftpService
+            .ListDirectoryAsync(_sessionId, "/srv/app", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<RemoteFileInfo>()));
+        var row = new RemoteFileInfoViewModel(new()
+        {
+            Name = "42",
+            FullPath = "/srv/app/releases/42",
+            Size = 0,
+            IsDirectory = true,
+            Permissions = "drwxr-xr-x",
+            LastModified = DateTime.UtcNow,
+            Owner = "user",
+            Group = "user"
+        });
+
+        await _vm.NewSymbolicLinkCommand.Execute(row).FirstAsync();
+
+        Assert.AreEqual("/srv/app/releases/42", prompts[0].Initial, "右键某一行时,目标预填该行路径。");
+        Assert.AreEqual("42", prompts[1].Initial, "名称预填目标的最后一段。");
+        await _sftpService
+            .Received(1)
+            .CreateSymbolicLinkAsync(_sessionId, "/srv/app/current", "/srv/app/releases/42", Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>后端不支持链接(插件协议、FTP 服务器没有 SITE SYMLINK)时,错误条如实说出来。</summary>
+    [TestMethod]
+    [TestCategory("FileBrowser")]
+    public async Task NewSymbolicLink_BackendNotSupported_SurfacesTheError()
+    {
+        _vm.CurrentPath = "/bucket";
+        _vm.PromptForText = (_, _) => Task.FromResult<string?>("target");
+        _sftpService
+            .CreateSymbolicLinkAsync(_sessionId, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new NotSupportedException("no links here")));
+
+        await _vm.NewSymbolicLinkCommand.Execute(null).FirstAsync();
+
+        Assert.AreEqual("no links here", _vm.ErrorMessage);
+    }
+
+    /// <summary>文件夹下载不跟进嵌套的目录链接:链接可以指向 / 或指回祖先。</summary>
+    [TestMethod]
+    [TestCategory("FileBrowser")]
+    public async Task DownloadRemoteEntries_DoesNotDescendIntoNestedDirectoryLinks()
+    {
+        string localRoot = Path.Combine(Path.GetTempPath(), $"vela-dl-links-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(localRoot);
+        try
+        {
+            _sftpService
+                .ListDirectoryAsync(_sessionId, "/home/user/proj", Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new List<RemoteFileInfo>
+                {
+                    new()
+                    {
+                        Name = "root",
+                        FullPath = "/home/user/proj/root",
+                        Size = 4096,
+                        IsDirectory = true,
+                        IsSymbolicLink = true,
+                        LinkTarget = "/",
+                        Permissions = "lrwxrwxrwx",
+                        LastModified = DateTime.UtcNow,
+                        Owner = "user",
+                        Group = "user"
+                    },
+                }));
+            var proj = new RemoteFileInfoViewModel(new()
+            {
+                Name = "proj",
+                FullPath = "/home/user/proj",
+                Size = 4096,
+                IsDirectory = true,
+                Permissions = "drwxr-xr-x",
+                LastModified = DateTime.UtcNow,
+                Owner = "user",
+                Group = "user"
+            });
+
+            await _vm.DownloadRemoteEntriesAsync([proj], localRoot);
+
+            await _sftpService
+                .DidNotReceive()
+                .ListDirectoryAsync(_sessionId, "/home/user/proj/root", Arg.Any<CancellationToken>());
+            Assert.IsNull(_vm.ErrorMessage);
+        }
+        finally
+        {
+            Directory.Delete(localRoot, true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("FileBrowser")]
+    public void RemoteFileRow_Symlinks_PickLinkIconsAndSymlinkType()
+    {
+        static RemoteFileInfoViewModel Row(bool directory, bool link) => new(new()
+        {
+            Name = "x",
+            FullPath = "/x",
+            Size = 0,
+            IsDirectory = directory,
+            IsSymbolicLink = link,
+            LinkTarget = link ? "/t" : null,
+            Permissions = string.Empty,
+            LastModified = DateTime.UtcNow,
+            Owner = string.Empty,
+            Group = string.Empty
+        });
+
+        RemoteFileInfoViewModel directoryLink = Row(true, true);
+        RemoteFileInfoViewModel fileLink = Row(false, true);
+
+        Assert.IsTrue(directoryLink.IsDirectoryLink);
+        Assert.IsFalse(directoryLink.ShowsFolderIcon);
+        Assert.IsTrue(directoryLink.IsRegularDirectory, "指向目录的链接仍可进入、仍用目录名配色。");
+        Assert.IsTrue(fileLink.IsFileLink);
+        Assert.IsFalse(fileLink.ShowsFileIcon);
+        Assert.IsTrue(Row(true, false).ShowsFolderIcon);
+        Assert.IsTrue(Row(false, false).ShowsFileIcon);
+        Assert.AreEqual(Strings.Get("Sftp_SymlinkType"), directoryLink.FileTypeDisplay);
+        Assert.AreEqual("→ /t", directoryLink.LinkTargetTip);
+        Assert.IsNull(Row(false, false).LinkTargetTip);
+    }
+
+    [TestMethod]
+    [TestCategory("FileBrowser")]
     public async Task NewFolder_Cancelled_DoesNothing()
     {
         _vm.PromptForText = (_, _) => Task.FromResult<string?>(null);
@@ -1957,7 +2094,7 @@ public class FileBrowserViewModelTests
         );
 
         // nested 已经被 root 包住,再单列一次就会把同一个文件传两遍、写同一个远端路径。
-        Assert.AreSequenceEqual([root, sibling], [.. kept], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual([root, sibling], [.. kept], SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -1970,7 +2107,7 @@ public class FileBrowserViewModelTests
 
         IReadOnlyList<string> kept = FileBrowserViewModel.NormalizeUploadRoots([a, b]);
 
-        Assert.AreSequenceEqual([a, b], [.. kept], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual([a, b], [.. kept], SequenceOrder.InAnyOrder);
     }
 
     // ---- 手动输入路径(#226)-------------------------------------------------

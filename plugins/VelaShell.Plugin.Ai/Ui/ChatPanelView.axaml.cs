@@ -2479,7 +2479,7 @@ public partial class ChatPanelView : UserControl
                 Spacing = 2,
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            var copyIcon = new Decorator { Child = ChatPanelView.MakeIcon("Icon.copy", "VelaTextMuted", 12) };
+            var copyIcon = new Decorator { Child = MakeIcon("Icon.copy", "VelaTextMuted", 12) };
             var copy = new Button { Content = copyIcon };
             _owner.ApplyThemeResource(copy, "AiGhostIconButtonTheme");
             ToolTip.SetTip(copy, _owner._loc["CopyReply"]);
@@ -2620,7 +2620,7 @@ public partial class ChatPanelView : UserControl
             {
                 var iconBox = new Decorator
                 {
-                    Child = ChatPanelView.MakeIcon(iconKey, iconBrushKey ?? "VelaTextMuted", 11),
+                    Child = MakeIcon(iconKey, iconBrushKey ?? "VelaTextMuted", 11),
                     Margin = new Thickness(0, 0, 5, 0),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
@@ -2634,7 +2634,7 @@ public partial class ChatPanelView : UserControl
             {
                 var trailing = new Decorator
                 {
-                    Child = ChatPanelView.MakeIcon(trailingIconKey, "VelaTextMuted", 11),
+                    Child = MakeIcon(trailingIconKey, "VelaTextMuted", 11),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 Grid.SetColumn(trailing, 3);
@@ -2735,7 +2735,7 @@ public partial class ChatPanelView : UserControl
             };
             _statusIconHost = new Decorator
             {
-                Child = ChatPanelView.MakeIcon("Icon.ellipsis", "VelaAccent", 11),
+                Child = MakeIcon("Icon.ellipsis", "VelaAccent", 11),
                 Margin = new Thickness(0, 0, 6, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
@@ -2794,7 +2794,7 @@ public partial class ChatPanelView : UserControl
         public void Complete(string result)
         {
             _result = result;
-            _statusIconHost.Child = ChatPanelView.MakeIcon("Icon.circle-check", "VelaStatusConnected", 11);
+            _statusIconHost.Child = MakeIcon("Icon.circle-check", "VelaStatusConnected", 11);
             ToolTip.SetTip(_statusIconHost, _owner._loc["ToolDone"]);
         }
 

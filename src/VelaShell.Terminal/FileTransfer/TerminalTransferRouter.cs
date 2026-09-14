@@ -76,6 +76,15 @@ public sealed class TerminalTransferRouter(
 
     private DateTime _relaxDetectorUntil = DateTime.MinValue;
 
+    /// <summary>
+    /// 命令行武装的 X/YMODEM 会话等待回车写出的最长时间。正常只差一次写队列排空(毫秒级),
+    /// 给宽是为了扛住写循环偶发的积压;过期不启,免得一条早就作废的意图在很久以后突然接管终端。
+    /// </summary>
+    private static readonly TimeSpan PendingManualWindow = TimeSpan.FromSeconds(2);
+
+    private TransferCommandIntent? _pendingManual;
+    private DateTime _pendingManualUntil = DateTime.MinValue;
+
     private TransferRoutingState _state = TransferRoutingState.Normal;
     private ShellStreamByteDuplex? _duplex;
     private CancellationTokenSource? _sessionCts;
@@ -132,8 +141,14 @@ public sealed class TerminalTransferRouter(
             if (_state == TransferRoutingState.InSession)
             {
                 // 会话进行中:全部转交引擎,终端不喂。
-                TransferTrace.LogBytes("RX->engine", data.Span);
-                _duplex?.Push(data);
+                // 256 字节:够看清一个数据子包的结尾符 + CRC 与下一帧帧头的衔接(排查接收端丢字节时要的就是这段)。
+                TransferTrace.LogBytes("RX->engine", data.Span, max: 256);
+                // 必须拷贝:调用方(桥的读循环)的缓冲租自 ArrayPool,本方法一返回就还回池里,
+                // 下一次网络读立刻会租到同一块数组并覆写。引擎在另一条线程上异步消费,
+                // 忙着弹保存目录框时通道里的块可能好几秒没人取 —— 不拷贝,排队的协议字节就被后面的分片改写:
+                // sb 下载看到重复的 0 号块、ACK 错位后被我们发 CAN 中止;sz 第一轮 ZDATA 帧头被抹掉整段丢弃
+                // (2026-09-13 真机日志)。管道测试替身自带拷贝,所以从来测不到。
+                _duplex?.Push(data.ToArray());
                 return new([], false);
             }
 
@@ -174,10 +189,15 @@ public sealed class TerminalTransferRouter(
     /// </summary>
     /// <param name="protocol">要使用的协议变体。</param>
     /// <param name="direction">传输方向(接收 = 远端发给我们,发送 = 我们上传)。</param>
+    /// <param name="remoteFileName">
+    /// 已知的远端文件名(来自 <c>sx abc.txt</c> 这样的命令行)。XMODEM 接收时用它落地,
+    /// 否则只能退回默认名 —— 用户下载 txt 却得到 <c>xmodem-received.bin</c>。
+    /// </param>
     /// <returns><see cref="TransferStartFailure.None" /> 表示已启动。</returns>
     public TransferStartFailure StartManualSession(
         TerminalTransferProtocol protocol,
-        FileTransferDirection direction)
+        FileTransferDirection direction,
+        string? remoteFileName = null)
     {
         lock (_gate)
         {
@@ -191,7 +211,7 @@ public sealed class TerminalTransferRouter(
             }
             // 检测器的跨分片匹配状态属于上一段输出,与本次会话无关,清掉重来。
             _detector.Reset();
-            StartSession(protocol, direction, []);
+            StartSession(protocol, direction, [], remoteFileName);
             return TransferStartFailure.None;
         }
     }
@@ -210,7 +230,14 @@ public sealed class TerminalTransferRouter(
     /// </para>
     /// </summary>
     /// <param name="commandLine">用户提交的整行命令。</param>
-    /// <returns>据此启动了会话时为 true(仅 X/YMODEM 会启动)。</returns>
+    /// <returns>据此武装了一个待启动的 X/YMODEM 会话时为 true(需再经 <see cref="StartPendingManualSession" /> 真正启动)。</returns>
+    /// <remarks>
+    /// X/YMODEM 在这里<b>只武装、不启动</b>。调用时机是「用户刚按下 Enter、回车字节还没写出去」:
+    /// 终端控件先抛 TypedInput(跟踪器据此识别出命令)、后抛 UserInput(桥把字节写进 PTY)。
+    /// 旧实现在前者里就把会话开了,桥在后者里看到会话已开,把这个回车当成「传输期间的击键」丢掉 ——
+    /// 远端的 sb/sx/rb/rx 根本没执行,我们发出去的 'C' 被 shell 原样回显,表现为「敲完命令毫无反应」
+    /// (2026-09-13 真机日志)。现在由桥在回车真正落到流上之后再调 <see cref="StartPendingManualSession" />。
+    /// </remarks>
     public bool NoteCommandSubmitted(string? commandLine)
     {
         if (TransferCommandParser.Parse(commandLine) is not { } intent)
@@ -218,21 +245,69 @@ public sealed class TerminalTransferRouter(
             return false;
         }
         TransferTrace.Log($"COMMAND intent protocol={intent.Protocol} direction={intent.Direction}");
-        if (intent.Protocol == TerminalTransferProtocol.ZModem)
+        lock (_gate)
+        {
+            if (intent.Protocol == TerminalTransferProtocol.ZModem)
+            {
+                _relaxDetectorUntil = DateTime.UtcNow + CommandArmWindow;
+                return false;
+            }
+            if (intent.Direction == FileTransferDirection.Send && _sourceFactory is null)
+            {
+                return false; // 没接线上传能力:武装了也启动不了,不如不武装。
+            }
+            if (intent.Protocol == TerminalTransferProtocol.XModem && intent.FileName is null)
+            {
+                // XMODEM 不传文件名,lrzsz 的 rx/sx 必须在命令行上给文件名。没给时:sx 打印
+                // 「need at least one file to send」直接退出;rx 照样吐「rx waiting to receive.」和 'C',
+                // 收到第 1 块却无处可写,发 CAN 以 status=128 退出(2026-09-13 真机日志两次,WSL 实测字节一致)。
+                // 这两种都注定失败 —— 不接管,让 lrzsz 自己的报错显示在终端里,而不是黑屏干等握手超时。
+                return false;
+            }
+            _pendingManual = intent;
+            _pendingManualUntil = DateTime.UtcNow + PendingManualWindow;
+            return true;
+        }
+    }
+
+    /// <summary>是否有一个由命令行武装、尚未启动且未过期的 X/YMODEM 会话。</summary>
+    public bool HasPendingManualSession
+    {
+        get
         {
             lock (_gate)
             {
-                _relaxDetectorUntil = DateTime.UtcNow + CommandArmWindow;
+                return _pendingManual is not null && DateTime.UtcNow < _pendingManualUntil;
             }
-            return false;
         }
-        return StartManualSession(intent.Protocol, intent.Direction) == TransferStartFailure.None;
+    }
+
+    /// <summary>
+    /// 启动由 <see cref="NoteCommandSubmitted" /> 武装的 X/YMODEM 会话(取一次即清空)。
+    /// 必须在触发它的回车字节已经写入传输之后调用,否则回车会被会话吞掉、远端命令不会执行。
+    /// </summary>
+    /// <returns>确实启动了会话时为 true;没有待启动的、已过期或已有会话在跑时为 false。</returns>
+    public bool StartPendingManualSession()
+    {
+        lock (_gate)
+        {
+            TransferCommandIntent? pending = _pendingManual;
+            _pendingManual = null;
+            if (pending is not { } intent || DateTime.UtcNow >= _pendingManualUntil)
+            {
+                return false;
+            }
+            TransferStartFailure result = StartManualSession(intent.Protocol, intent.Direction, intent.FileName);
+            TransferTrace.Log($"COMMAND session start protocol={intent.Protocol} direction={intent.Direction} result={result}");
+            return result == TransferStartFailure.None;
+        }
     }
 
     private void StartSession(
         TerminalTransferProtocol protocol,
         FileTransferDirection direction,
-        byte[] initialBytes)
+        byte[] initialBytes,
+        string? remoteFileName = null)
     {
         // 调用方已持有 _gate。
         _state = TransferRoutingState.InSession;
@@ -252,7 +327,7 @@ public sealed class TerminalTransferRouter(
             FileTransferSession session;
             try
             {
-                session = await RunEngineAsync(protocol, direction, duplex, cts.Token).ConfigureAwait(false);
+                session = await RunEngineAsync(protocol, direction, duplex, remoteFileName, cts.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -279,6 +354,7 @@ public sealed class TerminalTransferRouter(
         TerminalTransferProtocol protocol,
         FileTransferDirection direction,
         ShellStreamByteDuplex duplex,
+        string? remoteFileName,
         CancellationToken ct)
     {
         if (protocol == TerminalTransferProtocol.ZModem)
@@ -288,7 +364,10 @@ public sealed class TerminalTransferRouter(
                 : new ZModemSender(duplex, _sourceFactory!(), _options, _observer).SendAsync(ct);
         }
 
-        var xyOptions = new XYModemOptions { Protocol = protocol };
+        // XMODEM 不传文件名:命令行里给过(sx abc.txt)就用它,否则退回默认名。YMODEM 会被 0 号块里的真名覆盖。
+        var xyOptions = string.IsNullOrWhiteSpace(remoteFileName)
+            ? new XYModemOptions { Protocol = protocol }
+            : new XYModemOptions { Protocol = protocol, DefaultReceiveFileName = remoteFileName };
         return direction == FileTransferDirection.Receive
             ? new XYModemReceiver(duplex, _sinkFactory(), xyOptions, _observer).ReceiveAsync(ct)
             : new XYModemSender(duplex, _sourceFactory!(), xyOptions, _observer).SendAsync(ct);

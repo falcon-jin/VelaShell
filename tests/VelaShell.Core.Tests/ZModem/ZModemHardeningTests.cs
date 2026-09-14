@@ -245,6 +245,61 @@ public class ZModemHardeningTests
         Assert.IsEmpty(sink.OfferedNames, "超限文件根本不该被提供给对端");
     }
 
+    /// <summary>
+    /// 真实 rz 在有损链路上会隔一段就要一次 ZRPOS,只要回退点一次比一次靠后,传输就是在前进。
+    /// 回归:发送端曾把每次 ZRPOS 都计入 MaxRetries 且永不清零,大文件上传攒满次数就判失败
+    /// —— 用户看到的是「rz 上传失败」。这里让对端连续要 5 次前进式回退(远超 MaxRetries=2),必须照样传完。
+    /// </summary>
+    [TestMethod]
+    [Timeout(20000, CooperativeCancellation = true)]
+    public async Task Sender_ProgressingZrposBeyondMaxRetries_StillCompletes()
+    {
+        (InMemoryByteDuplex ours, InMemoryByteDuplex peer) = InMemoryByteDuplex.CreatePair();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        byte[] data = Encoding.ASCII.GetBytes(new string('x', 1000));
+
+        Task<FileTransferSession> sending = new ZModemSender(
+            ours, new InMemoryFileSource([("progress.bin", data)]), FastOptions).SendAsync(cts.Token);
+
+        var reader = new ZModemFrameReader(peer);
+        await WriteHeaderAsync(peer, ZModemHeader.Empty(ZModemFrameType.ZRINIT), ZModemHeaderFormat.Hex, cts.Token);
+        int rewinds = 0;
+        while (true)
+        {
+            ZModemHeaderResult frame = await reader.ReadHeaderAsync(cts.Token);
+            if (frame.Status != ZModemReadStatus.Header)
+            {
+                continue; // 子包负载被当噪声跳过时可能读到半截帧,继续找下一个帧头。
+            }
+            switch (frame.Header.Type)
+            {
+                case ZModemFrameType.ZFILE:
+                    await ZModemSubpacket.ReadAsync(reader, useCrc32: false, cts.Token);
+                    await WriteHeaderAsync(peer, ZModemHeader.WithPosition(ZModemFrameType.ZRPOS, 0), ZModemHeaderFormat.Hex, cts.Token);
+                    continue;
+                case ZModemFrameType.ZEOF when rewinds < 5:
+                    rewinds++;
+                    await WriteHeaderAsync(
+                        peer, ZModemHeader.WithPosition(ZModemFrameType.ZRPOS, (uint)(rewinds * 100)), ZModemHeaderFormat.Hex, cts.Token);
+                    continue;
+                case ZModemFrameType.ZEOF:
+                    await WriteHeaderAsync(peer, ZModemHeader.Empty(ZModemFrameType.ZRINIT), ZModemHeaderFormat.Hex, cts.Token);
+                    continue;
+                case ZModemFrameType.ZFIN:
+                    await WriteHeaderAsync(peer, ZModemHeader.Empty(ZModemFrameType.ZFIN), ZModemHeaderFormat.Hex, cts.Token);
+                    break;
+                default:
+                    continue;
+            }
+            break;
+        }
+
+        FileTransferSession session = await sending;
+        Assert.AreEqual(5, rewinds);
+        Assert.AreEqual(FileTransferState.Completed, session.Status, "回退点一直在前进,不应被当成原地重试判失败");
+        Assert.AreEqual(FileTransferState.Completed, session.Items.Single().Status);
+    }
+
     /// <summary>谎称自己有 5 GiB 的文件来源(不会真的被读取,发送端应在打开前就拦下)。</summary>
     private sealed class OversizedFileSource : IFileTransferSource
     {

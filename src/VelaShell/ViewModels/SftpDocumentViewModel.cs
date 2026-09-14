@@ -1,6 +1,9 @@
+using System.ComponentModel;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using VelaShell.Core.DirectorySync;
 using VelaShell.Core.Models;
+using VelaShell.Core.Resources;
 using VelaShell.Core.Sftp;
 using VelaShell.Presentation.Services;
 
@@ -97,7 +100,189 @@ public sealed class SftpDocumentViewModel : ReactiveObject, IAsyncDisposable
         DownloadSelectedCommand = ReactiveCommand.CreateFromTask(DownloadSelectedAsync);
         DeleteLocalSelectedCommand = LocalFiles.DeleteSelectedCommand;
         LocalFiles.ConfirmDelete = message => ConfirmLocalDelete?.Invoke(message) ?? Task.FromResult(false);
+        CompareDirectoriesCommand = ReactiveCommand.CreateFromTask(CompareDirectoriesAsync);
+        OpenSyncCommand = ReactiveCommand.CreateFromTask(OpenSyncAsync);
+        LocalFiles.PropertyChanged += OnPanePropertyChanged;
+        RemoteFiles.PropertyChanged += OnPanePropertyChanged;
         InitialLoadTask = LoadAsync();
+    }
+
+    /// <summary>「比较目录」:把两栏当前目录里不同的条目在各自一栏里选中(不递归,WinSCP 同名命令的口径)。</summary>
+    public ReactiveCommand<RxVoid, RxVoid> CompareDirectoriesCommand { get; }
+
+    /// <summary>打开目录同步窗口(同一文档只开一个,再点就把它提到前面)。</summary>
+    public ReactiveCommand<RxVoid, RxVoid> OpenSyncCommand { get; }
+
+    /// <summary>上次「比较目录」的结论;任一栏换了目录就清掉,免得它描述的已经不是眼前这两个目录。</summary>
+    public string? CompareSummary
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>本文档里上次用过的同步选项。</summary>
+    public DirectorySyncSettings SyncSettings { get; } = new();
+
+    /// <summary>当前开着的同步窗口的视图模型;没开时为 null。</summary>
+    public DirectorySyncViewModel? ActiveSync { get; private set; }
+
+    /// <summary>由视图设置:显示(或激活)同步窗口。</summary>
+    public Func<DirectorySyncViewModel, Task>? ShowSyncWindow { get; set; }
+
+    /// <summary>
+    /// 远端时间是否可能粗于秒。FTP 的 LIST 只到分钟、插件协议没有保证;SFTP 的 mtime 恒为秒级,
+    /// 不能被一个恰好落在整分上的时间降级成「只精确到分钟」。
+    /// </summary>
+    internal bool RemoteTimesMayBeCoarse => Profile.ConnectionType is not (ConnectionType.SFTP or ConnectionType.SSH);
+
+    /// <summary>「比较目录」与同步窗口共用的摘要缓存。</summary>
+    private readonly SyncChecksumCache _checksumCache = new();
+
+    /// <summary>
+    /// 比较两栏当前目录(一层),选中各自一侧较新或独有的条目,并给出一句结论。
+    /// 勾着 SHA-256 时(默认)大小相同的文件先比摘要,算不出来的回退到大小与修改时间。
+    /// </summary>
+    public async Task CompareDirectoriesAsync()
+    {
+        var options = new SyncOptions
+        {
+            Criteria = SyncSettings.Criteria == SyncCriteria.None ? SyncCriteria.Time | SyncCriteria.Size : SyncSettings.Criteria,
+        };
+        string localPath = LocalFiles.CurrentPath;
+        string remotePath = RemoteFiles.CurrentPath;
+        // 远端栏隐藏了点文件时,本地栏的点文件也不参与 —— 否则每个 .git、.env 都会被标成「只有本地有」。
+        bool includeHidden = RemoteFiles.ShowHiddenFiles;
+        LocalFileEntry[] localEntries = [.. LocalFiles.Entries.Where(e => !e.IsParentEntry && (includeHidden || !e.Name.StartsWith('.')))];
+        RemoteFileInfoViewModel[] remoteEntries = [.. RemoteFiles.Files.Where(static f => !f.IsParentEntry && !f.IsDirectoryLink)];
+        bool coarse = RemoteTimesMayBeCoarse;
+        IReadOnlyList<SyncItem> localItems = [.. localEntries.Select(static e => new SyncItem(
+            e.Name, e.FullPath, e.IsDirectory, e.IsDirectory ? 0 : e.SizeBytes, SyncTime.ToUtc(e.LastModified)))];
+        IReadOnlyList<SyncItem> remoteItems = [.. remoteEntries.Select(f => new SyncItem(
+            f.Name, f.FullPath, f.IsDirectory, f.IsDirectory ? 0 : f.SizeBytes, SyncTime.ToUtc(f.LastModified),
+            coarse ? SyncTime.InferPrecision(f.LastModified) : SyncTimePrecision.Second))];
+
+        string? fellBack = null;
+        if (options.Criteria.HasFlag(SyncCriteria.Checksum))
+        {
+            CompareSummary = Strings.Get("Sync_CompareHashing");
+            SyncChecksumOutcome outcome;
+            try
+            {
+                outcome = await SyncChecksums.ApplyAsync(
+                    localItems, remoteItems, options, _serializedSftp, SessionId, _checksumCache, cancellationToken: _lifetime.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                CompareSummary = null;
+                return;
+            }
+            // 算摘要期间用户换了目录:结论描述的已经不是眼前这两个目录,选中也会落到错的行上。
+            if (!string.Equals(localPath, LocalFiles.CurrentPath, StringComparison.Ordinal)
+                || !string.Equals(remotePath, RemoteFiles.CurrentPath, StringComparison.Ordinal))
+            {
+                CompareSummary = null;
+                return;
+            }
+            localItems = outcome.Local;
+            remoteItems = outcome.Remote;
+            if (outcome.RemoteFailure is not null || outcome.FellBack > 0)
+            {
+                fellBack = Strings.Get("Sync_CompareFellBack");
+            }
+        }
+        IReadOnlyList<SyncComparison> comparisons = DirectoryComparer.Compare(localItems, remoteItems, options);
+
+        StringComparer comparer = options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var localMarked = new HashSet<string>(comparer);
+        var remoteMarked = new HashSet<string>(comparer);
+        int identical = 0;
+        foreach (SyncComparison comparison in comparisons)
+        {
+            switch (comparison.State)
+            {
+                case SyncComparisonState.LocalOnly or SyncComparisonState.LocalNewer:
+                    localMarked.Add(comparison.RelativePath);
+                    break;
+                case SyncComparisonState.RemoteOnly or SyncComparisonState.RemoteNewer:
+                    remoteMarked.Add(comparison.RelativePath);
+                    break;
+                case SyncComparisonState.Differs or SyncComparisonState.Conflict:
+                    localMarked.Add(comparison.RelativePath);
+                    remoteMarked.Add(comparison.RelativePath);
+                    break;
+                default:
+                    identical++;
+                    break;
+            }
+        }
+
+        LocalFiles.SelectedEntries.Clear();
+        foreach (LocalFileEntry entry in localEntries.Where(e => localMarked.Contains(e.Name)))
+        {
+            LocalFiles.SelectedEntries.Add(entry);
+        }
+        RemoteFiles.SelectedFiles.Clear();
+        foreach (RemoteFileInfoViewModel entry in remoteEntries.Where(f => remoteMarked.Contains(f.Name)))
+        {
+            RemoteFiles.SelectedFiles.Add(entry);
+        }
+        string summary = localMarked.Count + remoteMarked.Count == 0
+            ? Strings.Format("Sync_CompareIdentical", identical)
+            : Strings.Format("Sync_CompareSummary", localMarked.Count, remoteMarked.Count, identical);
+        CompareSummary = fellBack is null ? summary : summary + " " + fellBack;
+    }
+
+    private async Task OpenSyncAsync()
+    {
+        if (ShowSyncWindow is null)
+        {
+            return;
+        }
+        if (ActiveSync is null)
+        {
+            var sync = new DirectorySyncViewModel(
+                _serializedSftp,
+                SessionId,
+                RemoteFiles,
+                SyncSettings,
+                LocalFiles.CurrentPath,
+                RemoteFiles.CurrentPath,
+                RemoteTimesMayBeCoarse,
+                Title)
+            {
+                RefreshPanesAsync = RefreshPanesAsync,
+                ChecksumCache = _checksumCache,
+            };
+            sync.Disposed += OnSyncDisposed;
+            ActiveSync = sync;
+        }
+        await ShowSyncWindow(ActiveSync);
+    }
+
+    private void OnSyncDisposed(object? sender, EventArgs e)
+    {
+        if (sender is DirectorySyncViewModel sync)
+        {
+            sync.Disposed -= OnSyncDisposed;
+            if (ReferenceEquals(ActiveSync, sync))
+            {
+                ActiveSync = null;
+            }
+        }
+    }
+
+    private async Task RefreshPanesAsync()
+    {
+        await LocalFiles.RefreshAsync(_lifetime.Token);
+        await RemoteFiles.RefreshSilentlyAsync();
+    }
+
+    private void OnPanePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(LocalFilePaneViewModel.CurrentPath) or nameof(FileBrowserViewModel.CurrentPath))
+        {
+            CompareSummary = null;
+        }
     }
 
     /// <summary>用于建立连接的会话配置。</summary>
@@ -172,6 +357,10 @@ public sealed class SftpDocumentViewModel : ReactiveObject, IAsyncDisposable
     public void Detach()
     {
         _lifetime.Cancel();
+        // 同步窗口与「保持远端最新」的监视都挂在这条连接上:连接要走了,它们得先停。
+        ActiveSync?.Dispose();
+        LocalFiles.PropertyChanged -= OnPanePropertyChanged;
+        RemoteFiles.PropertyChanged -= OnPanePropertyChanged;
         if (Session is { } session)
         {
             session.PropertyChanged -= OnSessionPropertyChanged;

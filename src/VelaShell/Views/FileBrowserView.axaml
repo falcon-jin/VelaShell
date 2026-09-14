@@ -515,6 +515,12 @@
                                  Foreground="{DynamicResource VelaTextTertiary}" />
                 </MenuItem.Icon>
               </MenuItem>
+              <MenuItem Header="{loc:Localize Sftp_NewSymlink}" Command="{Binding NewSymbolicLinkCommand}">
+                <MenuItem.Icon>
+                  <pc:LucideIcon Width="13" Height="13" Data="{StaticResource Icon.link-2}"
+                                 Foreground="{DynamicResource VelaTextTertiary}" />
+                </MenuItem.Icon>
+              </MenuItem>
               <Separator />
               <!-- 复制「当前所在目录」的路径。条目菜单里的「复制路径」需要先选中某一行,
                    拿当前目录的路径就得先退回上级再右键它;这一项省掉那趟往返。 -->
@@ -683,6 +689,15 @@
                                          Foreground="{DynamicResource VelaTextTertiary}" />
                         </MenuItem.Icon>
                       </MenuItem>
+                      <!-- 在当前目录新建链接;在某一行上右键时预填该行路径为链接目标。 -->
+                      <MenuItem Header="{loc:Localize Sftp_NewSymlink}"
+                                Command="{Binding $parent[ListBox].((vm:FileBrowserViewModel)DataContext).NewSymbolicLinkCommand}"
+                                CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                          <pc:LucideIcon Width="13" Height="13" Data="{StaticResource Icon.link-2}"
+                                         Foreground="{DynamicResource VelaTextTertiary}" />
+                        </MenuItem.Icon>
+                      </MenuItem>
                       <Separator />
                       <MenuItem Header="{loc:Localize Delete}"
                                 Command="{Binding $parent[ListBox].((vm:FileBrowserViewModel)DataContext).DeleteSelectedCommand}"
@@ -729,14 +744,25 @@
                       <!-- 设计 dyuii 图标:琥珀色文件夹、素色文件、".." 用 corner-left-up。 -->
                       <pc:LucideIcon Classes="dnd-surface" Width="13" Height="13"
                                      Foreground="{DynamicResource VelaFileFolderIcon}"
-                                     IsVisible="{Binding IsRegularDirectory}"
+                                     IsVisible="{Binding ShowsFolderIcon}"
                                      Margin="0,0,7,0"
                                      Data="{StaticResource Icon.folder}" />
                       <pc:LucideIcon Classes="dnd-surface" Width="13" Height="13"
                                      Foreground="{DynamicResource VelaTextTertiary}"
-                                     IsVisible="{Binding !IsDirectory}"
+                                     IsVisible="{Binding ShowsFileIcon}"
                                      Margin="0,0,7,0"
                                      Data="{StaticResource Icon.file}" />
+                      <!-- 符号链接:同色系换成带箭头的字形,颜色仍答「能不能进去」,箭头答「这是个链接」。 -->
+                      <pc:LucideIcon Classes="dnd-surface" Width="13" Height="13"
+                                     Foreground="{DynamicResource VelaFileFolderIcon}"
+                                     IsVisible="{Binding IsDirectoryLink}"
+                                     Margin="0,0,7,0"
+                                     Data="{StaticResource Icon.folder-symlink}" />
+                      <pc:LucideIcon Classes="dnd-surface" Width="13" Height="13"
+                                     Foreground="{DynamicResource VelaTextTertiary}"
+                                     IsVisible="{Binding IsFileLink}"
+                                     Margin="0,0,7,0"
+                                     Data="{StaticResource Icon.file-symlink}" />
                       <pc:LucideIcon Classes="dnd-surface" Width="13" Height="13"
                                      Foreground="{DynamicResource VelaTextTertiary}"
                                      IsVisible="{Binding IsParentEntry}"
@@ -750,6 +776,7 @@
                                  VerticalAlignment="Center"
                                  HorizontalAlignment="Left"
                                  TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding LinkTargetTip}"
                                  Classes.dir="{Binding IsRegularDirectory}">
                         <TextBlock.Styles>
                           <Style Selector="TextBlock.dir">

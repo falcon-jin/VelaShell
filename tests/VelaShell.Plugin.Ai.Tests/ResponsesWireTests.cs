@@ -81,7 +81,7 @@ public sealed class ResponsesWireTests
         ];
         var options = new ChatOptions
         {
-            Instructions = VelaShell.Plugin.Ai.Chat.ContextBuilder.MoveSystemPromptOut(messages)
+            Instructions = Chat.ContextBuilder.MoveSystemPromptOut(messages)
         };
 
         string body = await WireBodyAsync(messages, options);
@@ -103,7 +103,7 @@ public sealed class ResponsesWireTests
             new ChatMessage(ChatRole.System, "历史里的")
         ];
 
-        string? moved = VelaShell.Plugin.Ai.Chat.ContextBuilder.MoveSystemPromptOut(messages);
+        string? moved = Chat.ContextBuilder.MoveSystemPromptOut(messages);
 
         Assert.AreEqual("头一条", moved);
         Assert.HasCount(2, messages);
@@ -115,7 +115,7 @@ public sealed class ResponsesWireTests
     {
         List<ChatMessage> messages = [new ChatMessage(ChatRole.User, "问题")];
 
-        Assert.IsNull(VelaShell.Plugin.Ai.Chat.ContextBuilder.MoveSystemPromptOut(messages));
+        Assert.IsNull(Chat.ContextBuilder.MoveSystemPromptOut(messages));
         Assert.HasCount(1, messages);
     }
 
@@ -160,7 +160,7 @@ public sealed class ResponsesWireTests
         AiSettingsStore.ApplyEndpointQuirks(options, resolved);
         if (!EndpointQuirks.Of(codex).AllowSystemMessages)
         {
-            options.Instructions = VelaShell.Plugin.Ai.Chat.ContextBuilder.MoveSystemPromptOut(messages);
+            options.Instructions = Chat.ContextBuilder.MoveSystemPromptOut(messages);
         }
 
         string body = await WireBodyAsync(messages, options);
@@ -193,7 +193,7 @@ public sealed class ResponsesWireTests
         AiSettingsStore.ApplyEndpointQuirks(options, resolved);
         if (!codex.AllowSystemMessages)
         {
-            options.Instructions = VelaShell.Plugin.Ai.Chat.ContextBuilder.MoveSystemPromptOut(messages);
+            options.Instructions = Chat.ContextBuilder.MoveSystemPromptOut(messages);
         }
 
         string body = await WireBodyAsync(messages, options);

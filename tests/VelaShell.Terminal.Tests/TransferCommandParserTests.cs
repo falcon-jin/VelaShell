@@ -81,4 +81,19 @@ public class TransferCommandParserTests
 
     [TestMethod]
     public void NullInput_IsRejected() => Assert.IsNull(TransferCommandParser.Parse(null));
+
+    /// <summary>
+    /// XMODEM 不传文件名:<c>sx abc.txt</c> 下载时命令行是唯一的真名来源。回归(2026-09-13):
+    /// 用户下载 txt,磁盘上落的却是 <c>xmodem-received (1).bin</c>。开关与 <c>--</c> 要跳过,路径只取基名。
+    /// </summary>
+    [TestMethod]
+    public void FileOperand_IsCapturedAsBaseName()
+    {
+        Assert.AreEqual("abc.txt", TransferCommandParser.Parse("sx abc.txt")?.FileName);
+        Assert.AreEqual("abc.txt", TransferCommandParser.Parse("sx -k /var/log/abc.txt")?.FileName);
+        Assert.AreEqual("-odd.txt", TransferCommandParser.Parse("sx -- -odd.txt")?.FileName);
+        Assert.AreEqual("abc.txt", TransferCommandParser.Parse("sx 'abc.txt'")?.FileName, "简单引号应被剥掉");
+        Assert.IsNull(TransferCommandParser.Parse("rb")?.FileName);
+        Assert.IsNull(TransferCommandParser.Parse("sx -k")?.FileName);
+    }
 }

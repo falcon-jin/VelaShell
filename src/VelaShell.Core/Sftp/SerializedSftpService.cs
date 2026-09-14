@@ -66,6 +66,15 @@ public sealed class SerializedSftpService(ISftpService inner, Guid sessionId) : 
     /// <summary>设置远端文件权限的串行化透传。</summary>
     public Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.SetPermissionsAsync(sessionId, remotePath, octalMode, token), cancellationToken);
 
+    /// <summary>设置远端修改时间的串行化透传。</summary>
+    public Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.SetLastWriteTimeAsync(sessionId, remotePath, lastWriteTimeUtc, token), cancellationToken);
+
+    /// <summary>远端批量算 SHA-256 的串行化透传。</summary>
+    public Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.ComputeSha256Async(sessionId, remotePaths, token), cancellationToken);
+
+    /// <summary>创建符号链接的串行化透传。</summary>
+    public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.CreateSymbolicLinkAsync(sessionId, linkPath, targetPath, token), cancellationToken);
+
     /// <summary>获取远端文件元数据的串行化透传。</summary>
     public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => ExecuteAsync(sessionId, token => _inner.GetFileInfoAsync(sessionId, remotePath, token), cancellationToken);
 

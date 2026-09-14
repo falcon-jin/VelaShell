@@ -67,8 +67,8 @@ public sealed class RemoteFileSortTests
         // 按文本排的话 "9" 会排在 "10" 前面 —— 这正是大小列最容易出的错。
         RemoteFileInfoViewModel[] items = [Entry("a", size: 10), Entry("b", size: 9)];
 
-        Assert.AreSequenceEqual(new[] { "b", "a" }, Names(RemoteFileSort.Sort(items, "size", descending: false)));
-        Assert.AreSequenceEqual(new[] { "a", "b" }, Names(RemoteFileSort.Sort(items, "size", descending: true)));
+        Assert.AreSequenceEqual(["b", "a"], Names(RemoteFileSort.Sort(items, "size", descending: false)));
+        Assert.AreSequenceEqual(["a", "b"], Names(RemoteFileSort.Sort(items, "size", descending: true)));
     }
 
     [TestMethod]
@@ -77,7 +77,7 @@ public sealed class RemoteFileSortTests
         // 列名来自视图绑定,重构时打错一个字不该让列表变成随机顺序。
         RemoteFileInfoViewModel[] items = [Entry("b"), Entry("a")];
 
-        Assert.AreSequenceEqual(new[] { "a", "b" }, Names(RemoteFileSort.Sort(items, "打错的列名", descending: false)));
+        Assert.AreSequenceEqual(["a", "b"], Names(RemoteFileSort.Sort(items, "打错的列名", descending: false)));
     }
 
     [TestMethod]
@@ -86,7 +86,7 @@ public sealed class RemoteFileSortTests
         // 区分大小写会把 Z 排在 a 前面(序数比较),而用户看到的是"乱序"。
         RemoteFileInfoViewModel[] items = [Entry("Zebra"), Entry("apple")];
 
-        Assert.AreSequenceEqual(new[] { "apple", "Zebra" }, Names(RemoteFileSort.Sort(items, "name", descending: false)));
+        Assert.AreSequenceEqual(["apple", "Zebra"], Names(RemoteFileSort.Sort(items, "name", descending: false)));
     }
 
     [TestMethod]
@@ -94,7 +94,7 @@ public sealed class RemoteFileSortTests
     {
         RemoteFileInfoViewModel[] items = [Entry(".bashrc"), Entry("app.log")];
 
-        Assert.AreSequenceEqual(new[] { "app.log" }, Names(RemoteFileSort.ApplyHiddenFilter(items, showHidden: false)));
+        Assert.AreSequenceEqual(["app.log"], Names(RemoteFileSort.ApplyHiddenFilter(items, showHidden: false)));
         Assert.HasCount(2, RemoteFileSort.ApplyHiddenFilter(items, showHidden: true));
     }
 

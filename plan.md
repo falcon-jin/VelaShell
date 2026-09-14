@@ -4265,3 +4265,286 @@ AI 插件把聊天标签、协作窗口、模型配置/MCP 那一组对话框统
 **旧代码 3/3 挂,新代码同样压力下 3/3 过**(单轮耗时从 4 秒拉到 23 秒,压力是真的)。
 不做这一步的话,“改完本机还是绿的”证明不了任何事情 —— 它本来就是绿的。
 
+## ✅ 72. 2026-09-12 远端符号链接:认得出、进得去、建得了,以及删链接会删光目标目录那个洞(用户需求)
+
+> 「为我 SFTP,FTP 等文件操作添加符号链接支持。」
+
+`feature-plan.md` 路线图 C 组原话是「`ISftpService` 现在**没有任何 symlink 面**,远端一个软链目录当场就走不进去」。
+摸下去发现"走不进去"说轻了:SFTP 这边其实**一直在跟随链接**(`EnumerationOptions` 与 `GetEntryAsync` 都默认跟随),
+所以链接目录能进,只是认不出来是链接;真正的问题是**跟随这件事被用在了删除上**。
+
+### 一、先说那个洞
+
+`SftpService.DeleteAsync` 用一次 stat 判「是不是目录」,而那次 stat 跟随链接。
+对一个指向目录的链接(`current -> releases/42`),它被判成目录,于是列举"链接下的"子项逐个删掉,
+最后 `rmdir` 链接本身失败或成功 —— **不管哪种,`releases/42` 里的东西已经没了**。
+递归删除途中遇到子目录里的链接同理;链接要是指向 `/`,那就是一场事故。
+
+修法:单条查询改为先 lstat,是链接再补跟随的 stat 与 readlink;删除与计数只进 `IsDirectory && !IsSymbolicLink` 的条目,
+链接一律当叶子走 `SSH_FXP_REMOVE`(删的是链接本身)。FTP 侧原本就是 `Type != Directory` 走 `DELE`,链接天然是叶子,不用改。
+
+### 二、模型:两个字段,一条口径
+
+`RemoteFileInfo` / `SftpEntry` 各加 `IsSymbolicLink` 与 `LinkTarget`(readlink 原文,可能是相对路径)。
+**`IsDirectory` 描述链接指向的对象** —— 这是刻意的:文件浏览器、排序、双击、AI 插件的文件选择器
+全都只认 `IsDirectory`,指向目录的链接因此零改动就能进;真正需要区分"链接本身"的只有删除、复制、递归下载三处。
+断链(目标不存在)保留链接自身属性、`IsDirectory = false`,而且 `GetEntryAsync` **返回条目而不是 null** ——
+链接确实存在,删它不能先报「找不到」。
+
+| 后端 | 列举 / stat | 建链接 |
+| --- | --- | --- |
+| SFTP(Tmds.Ssh) | 列举改为不跟随(否则 `SymbolicLink` 类型位被抹掉),链接再并发补 stat + readlink;非链接零额外往返 | `CreateSymbolicLinkAsync` |
+| FTP(FluentFTP) | LIST 给得出 `Link` 与目标文本,给不出目标是不是目录(库已不提供解引用),对链接补一次 `DirectoryExists` | 非标 `SITE SYMLINK`(ProFTPD 类);回 500/501/502/504 或路径含空格 → `NotSupportedException` |
+| 插件协议 | SDK 的 `RemoteFileEntry` 没有链接字段,不变 | 抛 `NotSupportedException`。要支持得先发 SDK 契约,**没在宿主这边编** |
+
+**OpenSSH 的参数顺序坑**:服务端把 `SSH_FXP_SYMLINK` 的两个参数实现反了(bugzilla #861)。
+动手前去 Tmds.Ssh 源码核过,它已按 OpenSSH 顺序发包,包装层照常传「链接、目标」,**不能再自己对调一次**。
+这一条单测测不到(替身不在乎顺序),所以写了真实服务端用例钉住。
+
+### 三、复制与下载:各选一个现成口径
+
+- **复制链接得到链接**(`cp -P`):同一台服务器上目标文本依旧有效,也不会因为链接指回祖先而无限展开。
+  读不到目标文本的链接才退回按内容复制,由原有的环检测与 64 层深度上限兜底。
+- **文件夹下载不跟进嵌套的目录链接**(`rsync -r` 不带 `-L`):本地是 Windows,建不了等价的链接;
+  跟进去又可能指向 `/` 把整台机器拖下来。用户**显式选中**的那一个链接照常跟随,指向文件的链接照常下载内容。
+  代价是嵌套的目录链接在本地副本里缺席 —— 这是有意的取舍,已登记进文档待同步。
+
+### 四、界面
+
+行首图标换成 lucide 的 `folder-symlink` / `file-symlink`(颜色不变,仍答「能不能进去」),名称悬停显示「→ 目标」,
+类型列「符号链接」,权限列首位 `l`(与 `ls -l` 一致),属性弹窗多一行「链接目标」。
+右键(空白处与行上都有)「新建符号链接」:先问目标(在行上右键时预填该行路径),再问名称(预填目标最后一段)。
+五份 resx 各加 5 个键。
+
+### 五、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3381 通过 / 47 跳过 / 0 失败**。
+
+- **反证**:把 `DeleteAsync` 里的 `IsTraversableDirectory(entry)` 退回 `entry.IsDirectory`,
+  `DeleteAsync_OnSymlinkToDirectory_RemovesOnlyTheLink` 当场红(没收到对链接的 `DeleteFileAsync`,走进了递归);改回即绿。
+- **真实服务端**:新增 `Core.Tests/Ssh/SftpSymlinkIntegrationTests`(`DockerIntegration`),对容器里的 OpenSSH
+  验证列举认得出链接与断链、断链 stat 不返回 null、`CreateSymbolicLinkAsync` 建出来 `readlink` 读回的是目标、
+  删链接后目标文件仍在 —— **本机实跑通过**,不是跳过。
+- **顺带记一个坑**:这台机器上 `TransferRealChannelIntegrationTests` 那组 Docker 用例**一直在跳过**,容器明明 healthy。
+  原因是 `localhost` 先解析到 `::1`,而 Docker Desktop 的端口转发只在 IPv4 上应答,探测与登录都连空。
+  新用例写死 `127.0.0.1`;旧用例本次**未改**(不在范围内),但「全绿」里那几条从来没跑过这件事值得知道。
+- FTP 的 `SITE SYMLINK` 与链接目录探测**没有真实服务端验证**:测试容器里没有 ProFTPD。
+
+## ✅ 73. 2026-09-12 内置编辑器:链接看得清、配色跟着具名主题走、语言补一轮、窗口加大(用户反馈)
+
+> 「网址邮箱这类链接在深色模式下的蓝色就看不清,浅色模式下还未验证,是否可以换个颜色,
+> 同时支持更多类型的语法高亮,同时可以适当的加大一些内置编辑器的默认大小。」
+
+### 一、那个蓝不是语法定义给的
+
+编辑器里的网址/邮箱是 AvaloniaEdit 的 `LinkElementGenerator` 画的,颜色取 `TextView.LinkTextForegroundBrush`,
+缺省纯蓝 `#0000FF`。它**不经过**任何 xshd,所以 `SyntaxHighlightingService` 的重着色从来管不到它。
+量了一下:纯蓝压在 Dracula 底 `#282A36` 上约 **1.7:1**,确实读不出来。
+
+修法是在 `RemoteFileEditorView.axaml` 里给 `aer|TextView` 设样式,值取 `{DynamicResource VelaInfo}`:
+Dracula 青 `#8BE9FD`、Alucard 深青蓝 `#036A96`,其余主题取各自的 Info。走 DynamicResource,主题切换实时生效。
+「浅色下未验证」这件事改成了**逐主题量**:`LinkToken_IsReadableOnTheEditorBackground_InEveryTheme`
+对十二套主题的 Info 与 BgTerminal 算 WCAG 对比度,全部 ≥ 3:1,并用纯蓝做对照组证明它本来过不了线。
+**肉眼没在真窗口里看过**,这是数字上的验证。
+
+### 二、顺着查出来的:配色只认明暗,不认具名主题
+
+`SyntaxPalette.For(ThemeVariant)` 只有 Dracula / Alucard 两套写死的色值,而应用早已有十二套主题 ——
+Nord、Gruvbox、GitHub Light 下编辑器底色跟着主题走,代码却还是 Dracula 那一套。
+DESIGN.md 本来就规定颜色只活在主题目录与令牌派生里,这两套字面量属于漏网之鱼。
+
+改为 `SyntaxPalette.From(UiTheme)` 从种子色派生:字符串 Yellow、关键字 Magenta、数字 Accent、函数 Success、
+类型/链接 Info、注释 TextTertiary、错误 Error、变量 Warning。这套取法对 VelaDark **逐色还原** Dracula
+(注释 `#6272A4` 恰好压线 3.02:1,用例钉住它没被提亮改掉);VelaLight 除变量色外逐色还原 Alucard ——
+亮色主题的 Warning 与 Yellow 是同一个值,照搬会让字符串与变量撞色,于是变量取橙与红的中点。
+任一角色对底色不足 3:1 时向正文色混合到够为止。
+
+编辑器通过 `IThemeService` 解析当前主题,订阅 `EffectiveThemeChanged` 实时重着色
+(原先的已知限制「打开后切主题不更新」随之消失)。重着色后必须**先置空再赋值**
+`SyntaxHighlighting`:定义是全局单例,同一实例重复赋值是空操作,已缓存的着色行不会重画。
+
+### 三、内置定义的颜色名:以前一半没归类
+
+把 AvaloniaEdit 12 的 21 份内置 xshd 的命名颜色全部导出来对了一遍,`ForRole` 只收录了约一半。
+没收录的走"太接近背景才改"的兜底,于是 CSS 选择器 `DarkBlue`、HTML 标签 `#8B008B`、Markdown 链接 `Blue`、
+Patch 的增删行在暗色下顶着浅色配色 —— 用户说的"蓝色看不清"在 Markdown/HTML 文件里也有这一份。
+现已全部归类(顺带让 Log 的 Warning 取橙、Info 取青,原先分别是红和绿)。
+`EveryNamedColour_InEveryDefinition_HasAPaletteRole` 逐个核对,第一次跑就抓出三个漏掉的
+(`Patch.UnchangedText`、`XmlDoc.KnownDocTags`、`XmlDoc.XmlPunctuation`)。
+
+### 四、语言补一轮
+
+新增自带 xshd:nginx、TOML、Makefile、Go、Rust、Lua、Ruby、Perl、通用 SQL、HCL/Terraform。
+- `.sql` 原先走内置 TSQL(只认 SQL Server 方言),服务器上的 dump 与迁移脚本绝大多数是 MySQL/PostgreSQL。
+- nginx.conf、Makefile、`.toml` 原先分别借 Ini / Shell / Ini 着色,块、目标、多行字符串都认不出来。
+- **nginx 按目录认**:判定改用远端完整路径,`/etc/nginx/conf.d/*.conf` 与 `sites-available/` 下按 nginx,
+  别处的 `.conf` 仍按 Ini。
+- 另补一批扩展名(`.tsx`/`.jsx`、`.scss`/`.less`、`.axaml`/`.resx`、`.jsonl`、systemd `.timer`/`.socket`……)
+  与 shebang(ruby / perl / lua5.4 / `make -f`)。
+
+测试不止"能加载、产生了区段"——一条过宽的正则能把整行染成一个颜色也照样满足。
+`BundledDefinitions_ColourTheRightTokens` 对每种新语言断言**具体的词染成具体的类别**(26 组)。
+
+### 五、两个坑
+
+- **XML 注释里不能有 `--`**:Lua.xshd 的注释里照写了 Lua 的注释符,整份定义解析失败;服务把异常吞了,
+  编辑器静默退化成纯文本。是 `BundledDefinitions_Load` 那条"静默失败守门人"抓出来的,
+  定位时临时加了一条不吞异常的诊断用例,查清后删掉。
+- **AvaloniaEdit 12 内置的 TeX 定义自身是坏的**(延迟加载即抛 "Could not find main RuleSet")。
+  `.tex` 原先映射过去,一直在静默退化。现在不再映射;新增 `EveryDetectedType_ResolvesToALoadableDefinition`,
+  判定器能返回的每个定义名都必须真能加载。写这条用例时自己又踩一脚:`KnownDefinitionNames` 写成静态初始化器、
+  排在两张表之前,按源码顺序初始化时表还是 null,整个类型初始化器抛出 —— 改成按需计算的 getter。
+
+### 六、窗口
+
+默认 928×648 → 1160×820。小屏(1366×768、150% 缩放)放不下,`OnOpened` 按屏幕工作区收缩并摆回中央,
+写法与设置窗口的 `FitIntoWorkArea` 一致。
+
+### 七、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3449 通过 / 47 跳过 / 0 失败**(`SyntaxHighlightingTests` + `RemoteFileEditorDirtyStateTests` 共 112 条全过)。
+
+- 链接色、语法色的「浅色下是否看得清」是**按对比度逐主题量**的,不是在真窗口里肉眼看过的。
+- 窗口加大与工作区收缩没有自动化用例(依赖真实屏幕),未在小屏上实机验证。
+
+文档:`velashell-docs` 的 `{zh,en}/host/SFTP双栏与WinSCP差距分析.md` 附录已补 2026-09-12 一节,
+见 [velashell-docs#34](https://github.com/VelaShellLabs/velashell-docs/pull/34)。
+
+## ✅ 74. 2026-09-12 目录比较与同步:对标 WinSCP 的三件套,难的不是比较,是时间(用户需求)
+
+> 「为我实现(SFTP,FTP,FTPS)目录比较同步的功能」「让其能对标 WinSCP 等软件的功能。」
+
+`SFTP双栏与WinSCP差距分析.md` 把它记作 C1「与 WinSCP 最本质的差距」,WinSCP 那边是三样东西:
+**比较目录**、**同步**(单向 / 双向 / 镜像,预览后执行)、**保持远程目录最新**。三样都做了,SFTP / FTP / FTPS 共用一套
+—— 双栏文档只认 `ISftpService` + 会话标识,插件协议的文件文档顺带也能用。
+
+### 一、入口与交互
+
+双栏文档顶部加一条 32px 工具条(`SftpDocumentView`),两个「图标 + 文字」按钮:
+
+- **比较目录**:两栏当前目录这一层(不递归,与 WinSCP 同名命令同口径),在各自一栏里**选中**不同的条目 ——
+  本地栏选本地独有 / 本地较新,远端栏选远端独有 / 远端较新,大小不同与冲突两边都选。工具条右侧一句结论,任一栏换目录即清。
+  远端栏隐藏点文件时本地点文件也不参与,否则每个 `.git` 都是「只有本地有」。
+- **同步…**:独立窗口 `DirectorySyncWindow`(窗体规格照链路追踪),同一文档只开一个。选项:方向(本地→远端 / 远端→本地 / 双向)、
+  模式(同步 / 镜像 / 仅时间戳)、比较依据(时间、大小)、删除多余文件、仅已存在的文件、文件掩码(WinSCP 写法 `包含 | 排除`)。
+  比较 → 预览(每步一行,可逐项取消)→ 同步 → **自动复查**。改任何选项都作废预览;有删除先二次确认。
+- **保持远端最新**:同一窗口的按钮。开始时完整对齐一次,之后监视本地目录树,防抖 1 秒只重对变化的那一层;
+  新目录整棵对,监视缓冲溢出整棵重对。列表区换成活动记录。关窗 / 关文档即停。
+
+### 二、分层
+
+| 层 | 内容 | 为什么在这 |
+| --- | --- | --- |
+| `Core/DirectorySync` | `SyncFileMask`、`DirectoryComparer`、`SyncPlanner`、`DirectoryTreeScanner`、模型与 `SyncTime` | 纯逻辑,同一份比较结果 + 选项永远得到同一份计划;单测不碰 UI |
+| `ISftpService.SetLastWriteTimeAsync` | SFTP 走 setstat,FTP 走 `MFMT`,插件协议如实抛 `NotSupportedException` | 见第三节 |
+| `ViewModels/DirectorySyncRunner` | 建目录 → 改时间 → 传文件 → 删除 | 传输复用 `FileBrowserViewModel` 的管道 |
+| `ViewModels/DirectorySyncViewModel` | 窗口状态、预览、保持最新 | — |
+
+传输管道只抽了一刀:`RunTransferBatchAsync` 拆出 `ExecuteResolvedBatchAsync`(登记批次、并发上限、收尾通知),
+`RunTransferAsync` 改为返回最终状态;新增 `RunSyncTransfersAsync` 直接进执行段。**跳过冲突策略**(预览就是确认,
+「文件已存在时:询问」会对每个要覆盖的文件再弹一次)与**续传探测**(目标比源小正是「内容不同」的常态,当成半截文件续传会拼出错文件)。
+进度浮窗、全窗口并发名额、取消、传输日志与普通传输完全共用。
+
+### 三、时间:这件事真正的难点
+
+同步靠修改时间判新旧,于是三处必须同时对:
+
+1. **传完回写时间,不看「保留时间戳」设置**。不回写,刚上传的文件在远端的时间是「现在」,下一次比较就是「远端较新」,
+   双向同步还会把它下载回来。SFTP 上传原本就按设置 setstat,但 FTP 上传从来不写时间 —— 于是给 `ISftpService` 加了
+   `SetLastWriteTimeAsync`,执行器每传完一个就调一次(SFTP 在开着「保留时间戳」时会多一次 setstat,可以接受)。
+2. **FTP 的 `MFMT` 必须按 UTC 发**,而且**不能用 FluentFTP 的 `SetModifiedTime`**:它按 `TimeConversion` 配置换算时区,
+   发出去的值会被一个配置项悄悄挪几个小时。自己拼 `MFMT yyyyMMddHHmmss path`,回 500/501/502/504 视为不支持。
+3. **精度**:FTP 的 Unix LIST 只到分钟,半年前的文件只到日期。拿秒级本地时间去比,几乎每个文件都「不同」。
+   `SyncItem` 带精度,比较时两边截到较粗的一级(在本地时区里截,LIST 的日期是按服务器日历给的),容差 1 秒。
+   精度只对 FTP / 插件协议按原始值推断;SFTP 恒为秒,不能被一个恰好落在整分的时间降级。
+
+`FtpFileServiceIntegrationTests` 对环回 FTP 服务器(新增 `MFMT` 支持,可关)实跑整条链:上传 → MFMT → LIST 读回 →
+比较器判「相同」,再把本地改晚一分钟必须判「本地较新」;另一条验不支持 MFMT 的服务器报 `NotSupportedException`。
+
+### 四、几条安全口径
+
+- **删除放在最后,取消后不删**。计划里删目录时其下条目不再单列(目录整棵删)。
+- **冲突不动**:一边文件一边目录,或远端有只差大小写的两个名字而本地(Windows / macOS)区分不了 —— 谁覆盖谁都是替用户做决定。
+  冲突目录下的子项不再比较,否则勾上删除会去删一棵没打算动的树。
+- **不跟随指向目录的链接**(两边都是,与文件夹下载同口径);本地只认真正的符号链接 / 目录联接 —— OneDrive 占位文件也带
+  `ReparsePoint` 属性,按属性一刀切会让同步盘里的文件整片「消失」。
+- **远端名字拼本地路径逐段过 `LocalPathSafety`**:`a:b`、`CON` 报错跳过,不写到别处。
+- 被掩码排除的目录不扫描,也就不会被「删除多余文件」删到;保持最新时变化落在被排除目录里同样不同步。
+
+### 五、一个自己埋的坑:进度回调覆盖结论
+
+VM 用例单跑全绿、混跑偶发红:状态栏最后应是「同步完成…」,实际是「正在同步 2/2…」。`Progress<T>` 的回调是异步投递的,
+执行结束后才到的那几条把结论覆盖了 —— 真窗口里 UI 线程排队顺序通常救得回来,但不是保证。
+修法:状态文字带代次(`_statusEpoch`),写结论时进一代,旧代的进度回调一律作废。
+
+### 六、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3513 通过 / 21 跳过 / 0 失败**。第一次全量跑红了一条 `WindowMoveDragUsageTests`:新窗口标题栏直接调了 `BeginMoveDrag`,
+改走 `BeginWindowMoveDrag`(#264 的幽灵弹起纠正)后转绿 —— 约定测试拦住的正是它该拦的东西。
+
+- 新增用例:`Core.Tests/DirectorySync` 四个类(掩码、比较器、计划器、扫描器),`VelaShell.Tests/ViewModels/DirectorySyncViewModelTests`
+  (比较 → 同步 → 复查无剩余、未勾选不执行、下载进新目录并对齐时间、Windows 非法名字拒写、改选项作废预览、双向收紧选项、
+  保持最新的启动对齐与新目录上传、取消后不删),`FtpFileServiceIntegrationTests` 两条 MFMT 真协议用例。
+- **没有自动化覆盖、也没有实机看过的**:窗口布局与主题下的观感;真实 FileSystemWatcher 的事件节奏(用例替换了监视工厂);
+  FTPS 与真实 FTP 服务器(vsftpd / ProFTPD / IIS)对 `MFMT` 的实际支持;服务器与本机不同时区时的时间偏移(已知限制,见差距分析 7.5)。
+
+文档:`velashell-docs` 的 `{zh,en}/host/SFTP双栏与WinSCP差距分析.md`(C1 改为已实现,新增第七节)与
+`{zh,en}/host/交互与界面规格.md` §6 已同步(含 §75 的 SHA-256 口径),见
+[velashell-docs#35](https://github.com/VelaShellLabs/velashell-docs/pull/35)(待合入)。
+
+## ✅ 75. 2026-09-13 同步比较:先比 SHA-256,不支持或出错再回退到大小与修改时间(用户需求)
+
+> 「是否可以先按照 SHA256 校验做比较,若是不支持或者出错再回退到按照文件大小和修改时间作比较。」
+
+§74 的比较只看大小与时间,两类情况处理不好:`git checkout` / 解压 / `touch` 之后时间全变、内容没变,整片重传;
+大小与时间都没变、内容却变了,永远看不出来。现在默认先比内容。
+
+### 一、口径
+
+- **只算两边都有、大小相同的文件**:大小不同已经证明内容不同,读两边整份文件只为再证明一次是纯浪费。
+- 摘要相同 → `Same`,**时间不同也不传**;摘要不同 → 内容确实变了,由时间判断哪边较新,时间也相同时为 `Differs`
+  (原 `SizeDiffers` 改名,含义扩成「内容不同而看不出哪边新」)。
+- **回退分两级**:远端整体不支持或出错 → 余下全部回退、附注写明原因,不再一批批撞同一堵墙;单个文件读不了 → 只有它回退,
+  附注写「N 个中有 M 个」。只勾了 SHA-256 而没勾时间与大小时,回退按两样都比 —— 回退不能退成「什么都不比」。
+- **先远端、后本地**:服务器不支持时本地一个字节都不读。
+- 时间戳模式也用上:算出摘要而不同的文件不改时间,免得把差异掩盖掉。
+- 「比较目录」(一层)同样先比摘要;算摘要期间任一栏换了目录,结论作废,不把选中落到错的行上。
+
+### 二、远端怎么算
+
+| 后端 | 做法 | 判为「不支持」的情形 |
+| --- | --- | --- |
+| SFTP | SSH exec 通道跑 `sh -c '…' vela-sha256 路径…`:有 `sha256sum` 用它,否则 `shasum -a 256`,都没有打印标记;每批 ≤200 个路径、≤16 000 字符 | 会话没有 SSH 客户端、exec 被拒(`ForceCommand internal-sftp`)、打印了标记、一行摘要都认不出且标准错误不是工具自己的逐文件报错 |
+| FTP / FTPS | FluentFTP `GetChecksum(path, SHA256)`:服务器通告 `HASH` 且含 SHA-256 用它,否则 `XSHA256`;指定了 SHA-256 就不会退去用 MD5 / CRC | `FtpHashUnsupportedException`、命令回 500/501/502/504;连接断开照常上抛,不当成「这个文件算不出来」 |
+| 插件协议 | — | SDK 没有这一面,恒为不支持 |
+
+命令与解析拆成纯函数 `Core/Sftp/RemoteSha256`:
+
+- 用 `sh -c`,是因为登录 shell 可能是 fish / csh,直接写 `if … fi` 会语法错。
+- 路径逐个单引号转义,再经 `"$@"` 原样传给工具。
+- GNU `sha256sum` 遇到名字里有反斜杠或换行时,会在行首加 `\` 并转义名字,解析时反转义。
+- `sha256sum` 有文件失败时退出码为 1,但其余文件照常输出。所以用 `RunCommandDetailedAsync` 同时拿标准错误与退出码,才分得清「有个文件读不了」和「这台主机跑不了」。
+
+### 三、缓存
+
+`SyncChecksumCache` 以「哪一边 + 完整路径 + 大小 + 修改时间」为键,挂在双栏文档上,与同步窗口共用,关文档即丢。
+同步后的自动复查只重算刚传过去的文件(它们的远端时间被改过,键对不上)——**顺带就是一次传输后校验**。
+代价是同一窗口内「内容变了而大小与时间都没变」(刻意 `touch -r`)会用到旧摘要,已写进差距分析 7.5。
+
+### 四、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3541 通过 / 21 跳过 / 0 失败**。途中红过一条自己写的 `NoSshClientForTheSession_IsNotSupported`:NSubstitute 对接口返回值
+默认给自动替身而不是 null,用例根本没走到「没有 SSH 客户端」那条路,显式返回 null 后转绿。
+
+- 新增用例:`RemoteSha256Tests`(引号、两种输出格式、转义名字、逐文件失败、整体不支持)、`SftpServiceSha256Tests`、
+  `SyncChecksumsTests`(只算同大小、远端不支持只问一次、单文件回退、缓存命中、分批)、`ChecksumComparisonTests`、
+  VM 用例三条(内容相同时间不同不传并以关掉校验作对照、大小时间相同内容不同照传、不支持时回退且附注写明)、
+  FTP 环回服务器新增 `XSHA256`(可关)的两条真协议用例。
+- `RemoteSha256IntegrationTests`(`DockerIntegration`)对真实 OpenSSH 验证空格、单引号、反斜杠、`$`、换行文件名的摘要与本地一致。
+- **没有验证的**:真实 FTP 服务器(FileZilla Server、ProFTPD `mod_digest`、IIS)对 `HASH` / `XSHA256` 的实际应答格式;
+  大目录首次比较的耗时(没有做基准)。
+

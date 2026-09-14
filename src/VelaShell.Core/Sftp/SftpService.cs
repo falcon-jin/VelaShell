@@ -245,7 +245,8 @@ public class SftpService : ISftpService
         // 一次 stat 同时回答"存在吗"和"是不是目录";旧实现是 Exists + 列举整个父目录两趟。
         SftpEntry entry = await client.GetEntryAsync(remotePath, cancellationToken).ConfigureAwait(false)
                           ?? throw new FileNotFoundException($"Remote path not found: {remotePath}");
-        bool isDirectory = entry.IsDirectory;
+        // 链接一律当叶子删(只删链接本身):沿链接递归,删掉的会是链接**指向的**那棵树。
+        bool isDirectory = IsTraversableDirectory(entry);
         int total = await CountEntriesAsync(client, remotePath, isDirectory, cancellationToken).ConfigureAwait(false);
 
         // 先发出一个 "0 / total" 的进度点,使 UI 能立即切换到确定型进度。
@@ -338,6 +339,14 @@ public class SftpService : ISftpService
 
         // 通过 stat 判断源是否为目录(旧实现名为 stat 实为列举整个父目录)。
         SftpEntry? entry = await client.GetEntryAsync(sourcePath, cancellationToken).ConfigureAwait(false);
+
+        // 复制一个链接得到的是一个链接(cp -P 口径):同一台服务器上目标文本依旧有效,
+        // 也不会因为链接指回祖先目录而无限展开。
+        if (entry is { IsSymbolicLink: true, LinkTarget: { Length: > 0 } linkTarget })
+        {
+            await client.CreateSymbolicLinkAsync(destPath, linkTarget, cancellationToken).ConfigureAwait(false);
+            return;
+        }
         bool isDir = entry is { IsDirectory: true };
 
         if (!isDir)
@@ -418,6 +427,14 @@ public class SftpService : ISftpService
             string childSource = CombineUnixPath(sourcePath, child.Name);
             string childDest = CombineUnixPath(destPath, child.Name);
 
+            // 子项里的链接原样重建为链接,不展开(理由同 CopyAsync 顶层)。
+            // 读不到目标文本的链接才退回旧行为按内容复制,由上面的环检测与深度上限兜底。
+            if (child is { IsSymbolicLink: true, LinkTarget: { Length: > 0 } linkTarget })
+            {
+                await client.CreateSymbolicLinkAsync(childDest, linkTarget, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
             if (child.IsDirectory)
             {
                 await CopyDirectoryAsync(sessionId, childSource, childDest, visited, depth + 1, progress, cancellationToken)
@@ -440,6 +457,54 @@ public class SftpService : ISftpService
         }
         ISftpClientWrapper client = await GetOrCreateSftpClientAsync(sessionId, cancellationToken).ConfigureAwait(false);
         await client.ChangePermissionsAsync(remotePath, octalMode, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>设置远端条目的修改时间(SFTP setstat,与上传收尾的「保留时间戳」同一条路)。</summary>
+    public async Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
+        ISftpClientWrapper client = await GetOrCreateSftpClientAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        DateTime utc = lastWriteTimeUtc.Kind == DateTimeKind.Utc ? lastWriteTimeUtc : lastWriteTimeUtc.ToUniversalTime();
+        await client.SetLastWriteTimeAsync(remotePath, new DateTimeOffset(utc), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 经 SSH exec 通道在服务器上跑 <c>sha256sum</c>(或 <c>shasum -a 256</c>)批量算摘要。
+    /// exec 被禁(<c>ForceCommand internal-sftp</c> 的纯 SFTP 账号)、主机不是 POSIX、两个工具都没有时抛
+    /// <see cref="NotSupportedException" />;命令与输出的细节见 <see cref="RemoteSha256" />。
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(remotePaths);
+        if (remotePaths.Count == 0)
+        {
+            return new Dictionary<string, string?>();
+        }
+        ISshClientWrapper client = _connectionService.GetClient(sessionId)
+                                   ?? throw new NotSupportedException("This session has no SSH exec channel.");
+        RemoteCommandResult result;
+        try
+        {
+            result = await client.RunCommandDetailedAsync(RemoteSha256.BuildCommand(remotePaths), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new NotSupportedException($"Remote SHA-256 is unavailable: {ex.Message}", ex);
+        }
+        return RemoteSha256.Parse(result.StandardOutput, result.StandardError, result.ExitCode, remotePaths);
+    }
+
+    /// <summary>在远端创建符号链接;目标文本原样写入(ln -s 语义)。</summary>
+    public async Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(linkPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
+        ISftpClientWrapper client = await GetOrCreateSftpClientAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        await client.CreateSymbolicLinkAsync(linkPath, targetPath, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>打开远端文件的只读流(顺序读取,调用方负责释放)。</summary>
@@ -723,7 +788,7 @@ public class SftpService : ISftpService
             {
                 continue;
             }
-            total += await CountEntriesAsync(client, child.FullName, child.IsDirectory, cancellationToken).ConfigureAwait(false);
+            total += await CountEntriesAsync(client, child.FullName, IsTraversableDirectory(child), cancellationToken).ConfigureAwait(false);
         }
         return total;
     }
@@ -746,17 +811,24 @@ public class SftpService : ISftpService
                 {
                     continue;
                 }
-                await DeleteEntryAsync(client, child.FullName, child.IsDirectory, total, counter, progress, cancellationToken).ConfigureAwait(false);
+                await DeleteEntryAsync(client, child.FullName, IsTraversableDirectory(child), total, counter, progress, cancellationToken).ConfigureAwait(false);
             }
             await client.DeleteDirectoryAsync(path, cancellationToken).ConfigureAwait(false);
         }
         else
         {
+            // 链接也走这里:SSH_FXP_REMOVE 删的是链接本身,不碰目标。
             await client.DeleteFileAsync(path, cancellationToken).ConfigureAwait(false);
         }
         counter.Deleted++;
         progress?.Report(new(counter.Deleted, total, path));
     }
+
+    /// <summary>
+    /// 递归删除/计数时是否要进入该条目:真目录才进,指向目录的链接当叶子
+    /// —— 链接可以指回祖先(无限递归),更要命的是进去删掉的是链接目标里的东西。
+    /// </summary>
+    private static bool IsTraversableDirectory(SftpEntry entry) => entry.IsDirectory && !entry.IsSymbolicLink;
 
     private async Task<ISftpClientWrapper> GetOrCreateSftpClientAsync(Guid sessionId, CancellationToken cancellationToken)
     {
@@ -828,6 +900,8 @@ public class SftpService : ISftpService
             Size = file.Length,
             Permissions = FormatPermissions(file),
             IsDirectory = file.IsDirectory,
+            IsSymbolicLink = file.IsSymbolicLink,
+            LinkTarget = file.LinkTarget,
             LastModified = file.LastWriteTime,
             Owner = identities.UserName(file.UserId),
             Group = identities.GroupName(file.GroupId)
@@ -845,7 +919,8 @@ public class SftpService : ISftpService
 
     private static string FormatPermissions(SftpEntry file)
     {
-        string perms = file.IsDirectory ? "d" : "-";
+        // 类型位与 ls -l 一致:链接标 l(其后的 rwx 取自目标 —— chmod 本来就作用在目标上)。
+        string perms = file.IsSymbolicLink ? "l" : file.IsDirectory ? "d" : "-";
         perms += file.OwnerCanRead ? "r" : "-";
         perms += file.OwnerCanWrite ? "w" : "-";
         perms += file.OwnerCanExecute ? "x" : "-";

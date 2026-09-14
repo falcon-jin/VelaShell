@@ -119,6 +119,7 @@ public class FileBrowserViewModel : ReactiveObject
         UploadCommand = ReactiveCommand.CreateFromTask(UploadAsync);
         NewFolderCommand = ReactiveCommand.CreateFromTask(NewFolderAsync);
         NewFileCommand = ReactiveCommand.CreateFromTask(NewFileAsync);
+        NewSymbolicLinkCommand = ReactiveCommand.CreateFromTask<RemoteFileInfoViewModel?>(NewSymbolicLinkAsync);
         DownloadItemCommand = ReactiveCommand.CreateFromTask<RemoteFileInfoViewModel>(
             DownloadItemAsync
         );
@@ -250,6 +251,8 @@ public class FileBrowserViewModel : ReactiveObject
                 || a.FullPath != b.FullPath
                 || a.Size != b.Size
                 || a.IsDirectory != b.IsDirectory
+                || a.IsSymbolicLink != b.IsSymbolicLink
+                || a.LinkTarget != b.LinkTarget
                 || a.Permissions != b.Permissions
                 || a.LastModified != b.LastModified
                 || a.Owner != b.Owner
@@ -916,6 +919,9 @@ public class FileBrowserViewModel : ReactiveObject
 
     /// <summary>在当前目录下新建空文件(提示输入名称)。</summary>
     public ReactiveCommand<RxVoid, RxVoid> NewFileCommand { get; }
+
+    /// <summary>在当前目录下新建符号链接(依次提示目标与名称;参数为右键所在行,用来预填目标)。</summary>
+    public ReactiveCommand<RemoteFileInfoViewModel?, RxVoid> NewSymbolicLinkCommand { get; }
 
     /// <summary>下载选中的单个文件或目录到本地(目录递归)。</summary>
     public ReactiveCommand<RemoteFileInfoViewModel, RxVoid> DownloadItemCommand { get; }
@@ -1914,6 +1920,13 @@ public class FileBrowserViewModel : ReactiveObject
             );
             foreach (RemoteFileInfo child in children)
             {
+                // 目录里嵌套的「指向目录的链接」不跟进去(rsync -r 不带 -L 的口径):链接可以指回祖先
+                // 形成无限展开,也可以指向 / 把整台机器拖下来。用户显式选中的那一个链接照常跟随;
+                // 指向文件的链接照常下载其内容(Windows 本地建不了链接,内容才是有用的那份)。
+                if (child is { IsSymbolicLink: true, IsDirectory: true })
+                {
+                    continue;
+                }
                 await BuildDownloadPlanAsync(
                     child.FullPath,
                     child.Name,
@@ -2070,6 +2083,20 @@ public class FileBrowserViewModel : ReactiveObject
                 resolved.Add(settled);
             }
         }
+        return await ExecuteResolvedBatchAsync(resolved, conflictDecision, settled: null, ct);
+    }
+
+    /// <summary>
+    /// 执行一批已经过冲突与续传处理的传输:登记批次、按全窗口并发上限分派、收尾通知。
+    /// <paramref name="settled" /> 在每一项落定(完成/失败/跳过)后回调,取消时不回调。
+    /// </summary>
+    private async Task<bool> ExecuteResolvedBatchAsync(
+        IReadOnlyList<PlannedFileTransfer> resolved,
+        BatchConflictDecision conflictDecision,
+        Func<PlannedFileTransfer, TransferStatus, Task>? settled,
+        CancellationToken ct
+    )
+    {
         if (resolved.Count == 0)
         {
             return true;
@@ -2090,9 +2117,16 @@ public class FileBrowserViewModel : ReactiveObject
                 foreach (PlannedFileTransfer item in resolved)
                 {
                     // 顺序路径同样要过闸:否则"上限 1"的两个批次会各跑各的,合起来是 2。
-                    using IDisposable slot = await AcquireTransferSlotAsync(maxConcurrent, cts.Token);
-                    await RunTransferAsync(item.Type, item.LocalPath, item.RemotePath, item.ResumeOffset, cts.Token, conflictDecision);
+                    TransferStatus status;
+                    using (await AcquireTransferSlotAsync(maxConcurrent, cts.Token))
+                    {
+                        status = await RunTransferAsync(item.Type, item.LocalPath, item.RemotePath, item.ResumeOffset, cts.Token, conflictDecision);
+                    }
                     TransferSink?.NotifyBatchItemSettled(batchId);
+                    if (settled is not null)
+                    {
+                        await settled(item, status);
+                    }
                 }
             }
             else
@@ -2130,9 +2164,10 @@ public class FileBrowserViewModel : ReactiveObject
                         }
                         // 名额在**每个文件**上取放,不是一个工作任务霸着一个:这样上限
                         // 才是"同时在传几个文件",而不是"起了几个工作任务"。
+                        TransferStatus status;
                         using (await AcquireTransferSlotAsync(maxConcurrent, cts.Token))
                         {
-                            await RunTransferAsync(
+                            status = await RunTransferAsync(
                                 item.Type,
                                 item.LocalPath,
                                 item.RemotePath,
@@ -2142,6 +2177,10 @@ public class FileBrowserViewModel : ReactiveObject
                             );
                         }
                         TransferSink?.NotifyBatchItemSettled(batchId);
+                        if (settled is not null)
+                        {
+                            await settled(item, status);
+                        }
                     }
                 }
             }
@@ -2493,7 +2532,7 @@ public class FileBrowserViewModel : ReactiveObject
     /// 并落定最终状态。失败将行标红并返回;取消将行标为取消、清理本地部分文件,
     /// 并传播取消使批量任务中止。
     /// </summary>
-    private async Task RunTransferAsync(
+    private async Task<TransferStatus> RunTransferAsync(
         TransferType type,
         string localPath,
         string remotePath,
@@ -2613,7 +2652,7 @@ public class FileBrowserViewModel : ReactiveObject
         {
             await RunTransferAsync(fresh.Type, fresh.LocalPath, fresh.RemotePath, 0, ct, conflictDecision);
         }
-        return;
+        return finalStatus;
 
         Task TransferOnceAsync(long startAt) => type switch
         {
@@ -2858,6 +2897,54 @@ public class FileBrowserViewModel : ReactiveObject
             await _sftpService.CreateFileAsync(
                 _sessionId,
                 RemotePath.Combine(CurrentPath, trimmedName),
+                ct
+            );
+            await RefreshAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 在当前目录新建符号链接:先问指向哪里(右键某一行时预填该行路径),再问链接叫什么
+    /// (预填目标的最后一段)。目标原样写入,相对路径按链接所在目录解析(ln -s 语义)。
+    /// 后端不支持时由服务抛 NotSupportedException,错误条如实说出来。
+    /// </summary>
+    private async Task NewSymbolicLinkAsync(RemoteFileInfoViewModel? source, CancellationToken ct = default)
+    {
+        if (PromptForText is null)
+        {
+            return;
+        }
+        string suggestedTarget = source is { IsParentEntry: false } ? source.FullPath : string.Empty;
+        string? target = await PromptForText(Strings.Get("Sftp_SymlinkTargetPrompt"), suggestedTarget);
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return;
+        }
+        string trimmedTarget = target.Trim();
+        string targetLeaf = trimmedTarget.TrimEnd('/');
+        targetLeaf = targetLeaf[(targetLeaf.LastIndexOf('/') + 1)..];
+        string? name = await PromptForText(Strings.Get("Sftp_SymlinkNamePrompt"), targetLeaf);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+        string trimmedName = name.Trim();
+        if (!LocalPathSafety.IsSafeLeafName(trimmedName))
+        {
+            ErrorMessage = Strings.Get("KeySvc_InvalidName");
+            return;
+        }
+        try
+        {
+            ErrorMessage = null;
+            await _sftpService.CreateSymbolicLinkAsync(
+                _sessionId,
+                RemotePath.Combine(CurrentPath, trimmedName),
+                trimmedTarget,
                 ct
             );
             await RefreshAsync(ct);
@@ -3254,6 +3341,32 @@ public class FileBrowserViewModel : ReactiveObject
     private void ToggleVisibility() => IsVisible = !IsVisible;
 
     /// <summary>
+    /// 目录同步专用的传输入口:计划已经由用户在预览里逐条确认过,所以<b>不走</b>冲突策略
+    /// (否则「文件已存在时:询问」会对每个要覆盖的文件再弹一次窗),也<b>不做</b>续传探测
+    /// (目标比源小正是「内容不同」的常态,当成半截文件去续传会拼出一个错的文件)。
+    /// 进度、并发上限、取消、传输日志与普通传输完全共用。
+    /// </summary>
+    /// <param name="requests">要执行的传输(目标父目录须已存在)。</param>
+    /// <param name="settled">每项落定后回调,用于回写修改时间;取消时不回调。</param>
+    /// <param name="ct">取消令牌。</param>
+    /// <returns>false 表示被取消。</returns>
+    internal Task<bool> RunSyncTransfersAsync(
+        IReadOnlyList<SyncTransferRequest> requests,
+        Func<SyncTransferRequest, TransferStatus, Task>? settled,
+        CancellationToken ct
+    )
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        PlannedFileTransfer[] plan = [.. requests.Select(r => new PlannedFileTransfer(r.Type, r.LocalPath, r.RemotePath))];
+        return ExecuteResolvedBatchAsync(
+            plan,
+            new BatchConflictDecision { OverwriteAll = true },
+            settled is null ? null : (item, status) => settled(new(item.Type, item.LocalPath, item.RemotePath), status),
+            ct
+        );
+    }
+
+    /// <summary>
     /// A single file scheduled for transfer, resolved up front so the whole batch can be
     /// counted and cancelled as one unit.
     /// For Copy: LocalPath = remote source, RemotePath = remote destination.
@@ -3266,3 +3379,6 @@ public class FileBrowserViewModel : ReactiveObject
         long ResumeOffset = 0
     );
 }
+
+/// <summary>目录同步交给传输管道的一项:方向、本地路径、远端路径。</summary>
+internal readonly record struct SyncTransferRequest(TransferType Type, string LocalPath, string RemotePath);

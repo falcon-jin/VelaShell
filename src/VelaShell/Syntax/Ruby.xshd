@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ruby。Gemfile、Vagrantfile、Rakefile 与 Chef/Puppet 周边的脚本。
+     颜色见 Shell.xshd 顶部说明。 -->
+<SyntaxDefinition name="Ruby" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Comment"     foreground="#6272A4" />
+  <Color name="String"      foreground="#F1FA8C" />
+  <Color name="Keyword"     foreground="#FF79C6" />
+  <Color name="Function"    foreground="#50FA7B" />
+  <Color name="Type"        foreground="#8BE9FD" />
+  <Color name="Variable"    foreground="#FFB86C" />
+  <Color name="Constant"    foreground="#BD93F9" />
+  <Color name="Number"      foreground="#BD93F9" />
+  <Color name="Punctuation" foreground="#F8F8F2" />
+
+  <RuleSet ignoreCase="false">
+
+    <Span color="Comment" multiline="true">
+      <Begin>^=begin</Begin>
+      <End>^=end</End>
+    </Span>
+
+    <Span color="Comment" begin="#" />
+
+    <!-- 双引号内插值 #{...}。 -->
+    <Span color="String" multiline="true">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Rule color="Variable">\#\{[^}]*\}</Rule>
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>'</Begin>
+      <End>'</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <!-- 实例变量 @x / 类变量 @@x / 全局变量 $x。 -->
+    <Rule color="Variable">
+      @@?[A-Za-z_][A-Za-z0-9_]*|\$[A-Za-z_][A-Za-z0-9_]*
+    </Rule>
+
+    <!-- 符号 :name(排除 :: 作用域运算符)。 -->
+    <Rule color="Constant">
+      (?&lt;!:):[A-Za-z_][A-Za-z0-9_]*[?!]?
+    </Rule>
+
+    <Keywords color="Keyword">
+      <Word>alias</Word>
+      <Word>and</Word>
+      <Word>begin</Word>
+      <Word>break</Word>
+      <Word>case</Word>
+      <Word>class</Word>
+      <Word>def</Word>
+      <Word>do</Word>
+      <Word>else</Word>
+      <Word>elsif</Word>
+      <Word>end</Word>
+      <Word>ensure</Word>
+      <Word>for</Word>
+      <Word>if</Word>
+      <Word>in</Word>
+      <Word>module</Word>
+      <Word>next</Word>
+      <Word>not</Word>
+      <Word>or</Word>
+      <Word>redo</Word>
+      <Word>rescue</Word>
+      <Word>retry</Word>
+      <Word>return</Word>
+      <Word>self</Word>
+      <Word>super</Word>
+      <Word>then</Word>
+      <Word>undef</Word>
+      <Word>unless</Word>
+      <Word>until</Word>
+      <Word>when</Word>
+      <Word>while</Word>
+      <Word>yield</Word>
+    </Keywords>
+
+    <Keywords color="Constant">
+      <Word>true</Word>
+      <Word>false</Word>
+      <Word>nil</Word>
+    </Keywords>
+
+    <Keywords color="Function">
+      <Word>puts</Word>
+      <Word>print</Word>
+      <Word>require</Word>
+      <Word>require_relative</Word>
+      <Word>attr_accessor</Word>
+      <Word>attr_reader</Word>
+      <Word>attr_writer</Word>
+      <Word>include</Word>
+      <Word>extend</Word>
+      <Word>raise</Word>
+      <Word>lambda</Word>
+      <Word>proc</Word>
+    </Keywords>
+
+    <!-- 常量与类名:大写开头。 -->
+    <Rule color="Type">
+      \b[A-Z][A-Za-z0-9_]*
+    </Rule>
+
+    <Rule color="Number">
+      \b(0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?)\b
+    </Rule>
+
+    <Rule color="Punctuation">
+      [{}()\[\];,.=&lt;&gt;!&amp;|+\-*/%^?]
+    </Rule>
+
+  </RuleSet>
+</SyntaxDefinition>

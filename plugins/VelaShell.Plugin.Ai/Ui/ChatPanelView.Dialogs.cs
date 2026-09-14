@@ -289,9 +289,9 @@ public partial class ChatPanelView
             {
                 return;
             }
-            top.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Bubble);
+            top.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Bubble);
             view.DetachedFromVisualTree += (_, _) =>
-                top.RemoveHandler(InputElement.KeyDownEvent, OnKeyDown);
+                top.RemoveHandler(KeyDownEvent, OnKeyDown);
         }
 
         // ShowPanelAsync 返回时内容可能已经装进窗口了(那就直接挂),也可能还没(等装上再挂)

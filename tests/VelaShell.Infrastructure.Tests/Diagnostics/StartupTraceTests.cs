@@ -31,7 +31,7 @@ public sealed class StartupTraceTests
         (string Name, TimeSpan At)[] mine =
             [.. StartupTrace.Marks.Where(m => m.Name.StartsWith(tag, StringComparison.Ordinal))];
 
-        Assert.AreSequenceEqual(new[] { $"{tag}-a", $"{tag}-b", $"{tag}-c" }, mine.Select(m => m.Name).ToArray());
+        Assert.AreSequenceEqual([$"{tag}-a", $"{tag}-b", $"{tag}-c"], mine.Select(m => m.Name).ToArray());
         Assert.IsTrue(mine[0].At <= mine[1].At && mine[1].At <= mine[2].At,
             $"打点时刻应单调不减,实际:{string.Join(", ", mine.Select(m => m.At.TotalMilliseconds))}");
     }
@@ -71,9 +71,9 @@ public sealed class StartupTraceTests
 
         string table = StartupTrace.Format();
 
-        StringAssert.Contains(table, tag);
-        StringAssert.Contains(table, "ms");
-        StringAssert.Contains(table, "(+");
+        Assert.Contains(tag, table);
+        Assert.Contains("ms", table);
+        Assert.Contains("(+", table);
     }
 
     [TestMethod]
