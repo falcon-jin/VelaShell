@@ -4,6 +4,8 @@
 
 [简体中文](README.md) · **English**
 
+<p align="center"><img src="mascot/chibi.png" alt="VelaShell mascot" width="720"></p>
+
 VelaShell is a desktop terminal application built with .NET 11 and Avalonia, running on Windows, Linux and macOS. It ships its own VT terminal engine, SSH/SFTP/FTP connectivity, local shell tabs, jump hosts (ProxyJump) and network proxies (HTTP / SOCKS5 / follow-system), two-step authentication with host fingerprint verification, port-forwarding tunnels, grouped session management, the in-house VelaDock split/dock workspace, remote resource monitoring and traceroute, a command palette and a twelve-page settings centre; it can also be launched externally by bastion hosts and SSO portals using Xshell's calling convention. On top of that sits a **dual-mode plugin system** (in-process / isolated process) and a first-party **AI assistant plugin**. Everything is persisted, encrypted, into an embedded SonnetDB database. The goal is a **keyboard-first, information-dense, snappy** experience for heavy remote work.
 
 ---
