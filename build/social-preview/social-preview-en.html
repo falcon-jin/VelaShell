@@ -1,0 +1,246 @@
+<!doctype html>
+<!--
+  社交预览候选:英文版。版式同浅色主版,立绘换成 mascot/chibi-wave.png(伸手招呼那只),
+  手伸向左侧文案。面向国际访客 / 英文社区转发。
+  渲染:Build-SocialPreview.ps1(渲染本目录全部 .html)。
+-->
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <title>VelaShell social preview · en</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1280px;
+        height: 640px;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+        background: linear-gradient(135deg, #FCFEFD 0%, #F5FBF9 55%, #EDF8F4 100%);
+        color: #10302A;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .blush {
+        position: absolute;
+        right: -120px;
+        top: -160px;
+        width: 620px;
+        height: 520px;
+        background: radial-gradient(circle, rgba(255, 170, 180, .14), transparent 65%);
+      }
+
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(30, 150, 120, .16) 1.3px, transparent 1.4px);
+        background-size: 26px 26px;
+        mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .5) 50%, transparent 80%);
+      }
+
+      .brand {
+        position: absolute;
+        left: 68px;
+        top: 74px;
+        width: 700px;
+      }
+
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .lockup img {
+        width: 96px;
+        height: 96px;
+        filter: drop-shadow(0 12px 24px rgba(0, 170, 128, .30));
+      }
+
+      .wordmark {
+        font-size: 76px;
+        font-weight: 700;
+        letter-spacing: -1.4px;
+        line-height: 1;
+        color: #0E2622;
+      }
+
+      .wordmark b {
+        font-weight: 700;
+        color: #0FB08B;
+      }
+
+      .pronounce {
+        margin-top: 8px;
+        font-size: 18px;
+        color: #5F8C82;
+      }
+
+      .tagline {
+        margin-top: 34px;
+        font-size: 40px;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -.4px;
+        color: #14332D;
+      }
+
+      .tagline em {
+        font-style: normal;
+        color: #0FA985;
+      }
+
+      .stack {
+        margin-top: 12px;
+        font-size: 20px;
+        color: #5F8C82;
+      }
+
+      .chips {
+        margin-top: 26px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 660px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 15px 7px 12px;
+        border-radius: 999px;
+        font-size: 18px;
+        color: #135F50;
+        background: #FFFFFF;
+        border: 1.5px solid rgba(19, 180, 142, .40);
+        box-shadow: 0 3px 10px rgba(16, 120, 96, .08);
+      }
+
+      .chip svg {
+        width: 13px;
+        height: 13px;
+        fill: #19C39A;
+      }
+
+      /* chibi-wave.png 678×793,按 610 高缩放。 */
+      .mascot {
+        position: absolute;
+        right: 40px;
+        bottom: 0;
+        height: 610px;
+        mix-blend-mode: multiply;
+        /* 左缘带着邻图残笔、底色也非纯白,渐隐掉。 */
+        mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 94%, transparent 100%);
+      }
+
+      .note {
+        position: absolute;
+        left: 72px;
+        top: 500px;
+        font-family: "Segoe Print", "Ink Free", cursive;
+        font-size: 24px;
+        color: #12A583;
+        transform: rotate(-3deg);
+        transform-origin: left center;
+        white-space: nowrap;
+      }
+
+      .note .kao {
+        margin-left: 8px;
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 19px;
+        color: #E0A92E;
+      }
+
+      .deco {
+        position: absolute;
+      }
+
+      .paw {
+        fill: #19C39A;
+      }
+
+      .heart {
+        fill: #F28A8A;
+      }
+
+      .footer {
+        position: absolute;
+        left: 68px;
+        bottom: 36px;
+        display: flex;
+        gap: 14px;
+        font-size: 17px;
+        color: #54857A;
+      }
+
+      .footer .sep {
+        color: #A9CFC5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <symbol id="paw" viewBox="0 0 64 64">
+          <ellipse cx="32" cy="42" rx="15" ry="13" />
+          <ellipse cx="13" cy="26" rx="6.5" ry="8" transform="rotate(-18 13 26)" />
+          <ellipse cx="25" cy="15" rx="6.5" ry="8.5" transform="rotate(-6 25 15)" />
+          <ellipse cx="39" cy="15" rx="6.5" ry="8.5" transform="rotate(6 39 15)" />
+          <ellipse cx="51" cy="26" rx="6.5" ry="8" transform="rotate(18 51 26)" />
+        </symbol>
+        <symbol id="heart" viewBox="0 0 64 64">
+          <path d="M32 58C12 44 2 32 2 20 2 10 10 3 19 3c6 0 10 3 13 8 3-5 7-8 13-8 9 0 17 7 17 17 0 12-10 24-30 38Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="blush"></div>
+    <div class="dots"></div>
+
+    <section class="brand">
+      <div class="lockup">
+        <img src="../../src/VelaShell/Assets/velashell.png" alt="">
+        <div>
+          <div class="wordmark">Vela<b>Shell</b></div>
+          <div class="pronounce">/ˈveɪlə ʃɛl/ · a terminal as your sail</div>
+        </div>
+      </div>
+      <h1 class="tagline">A modern cross-platform<br><em>SSH / SFTP / FTP terminal</em></h1>
+      <div class="stack">.NET 11 · Avalonia · Windows / Linux / macOS · x64 &amp; arm64</div>
+      <div class="chips">
+        <span class="chip"><svg><use href="#paw" /></svg>Own VT engine</span>
+        <span class="chip"><svg><use href="#paw" /></svg>ProxyJump</span>
+        <span class="chip"><svg><use href="#paw" /></svg>Port forwarding</span>
+        <span class="chip"><svg><use href="#paw" /></svg>Resumable SFTP</span>
+        <span class="chip"><svg><use href="#paw" /></svg>Plugins</span>
+        <span class="chip"><svg><use href="#paw" /></svg>AI assistant</span>
+      </div>
+    </section>
+
+    <img class="mascot" src="../../mascot/chibi-wave.png" alt="">
+
+    <div class="note">Let's connect to a bigger world together!<span class="kao">=^･ω･^=</span></div>
+    <svg class="deco heart" style="left:760px;top:420px;width:22px;height:22px;transform:rotate(-12deg)"><use href="#heart" /></svg>
+    <svg class="deco paw" style="left:720px;top:64px;width:28px;height:28px;opacity:.45;transform:rotate(-14deg)"><use href="#paw" /></svg>
+
+    <div class="footer">
+      <span>github.com/joesdu/VelaShell</span>
+      <span class="sep">|</span>
+      <span>AGPL-3.0 / Commercial</span>
+    </div>
+  </body>
+
+</html>

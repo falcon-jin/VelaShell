@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+  社交预览候选:三连 Q 版。字标居中在上,mascot/chibi.png 三只并排铺满下半幅,multiply 融进浅底。
+  渲染:Build-SocialPreview.ps1(渲染本目录全部 .html)。
+-->
+<html lang="zh-CN">
+
+  <head>
+    <meta charset="utf-8">
+    <title>VelaShell social preview · trio</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1280px;
+        height: 640px;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F5FBF9 60%, #EAF7F2 100%);
+        color: #10302A;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(30, 150, 120, .15) 1.3px, transparent 1.4px);
+        background-size: 26px 26px;
+        mask-image: linear-gradient(180deg, #000 0%, transparent 45%);
+      }
+
+      .head {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 34px;
+        text-align: center;
+      }
+
+      .lockup {
+        display: inline-flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .lockup img {
+        width: 70px;
+        height: 70px;
+        filter: drop-shadow(0 10px 20px rgba(0, 170, 128, .28));
+      }
+
+      .wordmark {
+        font-size: 62px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        line-height: 1;
+        color: #0E2622;
+      }
+
+      .wordmark b {
+        font-weight: 700;
+        color: #0FB08B;
+      }
+
+      .tagline {
+        margin-top: 14px;
+        font-size: 24px;
+        font-weight: 600;
+        color: #1C4A41;
+      }
+
+      .tagline em {
+        font-style: normal;
+        color: #0FA985;
+      }
+
+      .sub {
+        margin-top: 6px;
+        font-size: 16px;
+        color: #6A958B;
+        letter-spacing: .3px;
+      }
+
+      /* 1983×793 → 宽 1120,高 448,贴底居中。 */
+      .trio {
+        position: absolute;
+        left: 80px;
+        bottom: -6px;
+        width: 1120px;
+        mix-blend-mode: multiply;
+        /* 原图底色 #FDFDFD 不是纯白,四边渐隐免得露出矩形边。 */
+        mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      }
+
+      .note {
+        position: absolute;
+        font-family: "KaiTi", "楷体", "Microsoft YaHei UI", serif;
+        font-size: 26px;
+        color: #12A583;
+        white-space: nowrap;
+      }
+
+      .deco {
+        position: absolute;
+        fill: #19C39A;
+      }
+    </style>
+  </head>
+
+  <body>
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <symbol id="paw" viewBox="0 0 64 64">
+          <ellipse cx="32" cy="42" rx="15" ry="13" />
+          <ellipse cx="13" cy="26" rx="6.5" ry="8" transform="rotate(-18 13 26)" />
+          <ellipse cx="25" cy="15" rx="6.5" ry="8.5" transform="rotate(-6 25 15)" />
+          <ellipse cx="39" cy="15" rx="6.5" ry="8.5" transform="rotate(6 39 15)" />
+          <ellipse cx="51" cy="26" rx="6.5" ry="8" transform="rotate(18 51 26)" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="dots"></div>
+
+    <header class="head">
+      <div class="lockup">
+        <img src="../../src/VelaShell/Assets/velashell.png" alt="">
+        <div class="wordmark">Vela<b>Shell</b></div>
+      </div>
+      <div class="tagline">现代化跨平台 <em>SSH / SFTP / FTP</em> 终端客户端</div>
+      <div class="sub">Windows · Linux · macOS &nbsp;|&nbsp; github.com/joesdu/VelaShell</div>
+    </header>
+
+    <img class="trio" src="../../mascot/chibi.png" alt="">
+
+    <div class="note" style="left:56px;top:60px;transform:rotate(-8deg)">小小终端,</div>
+    <div class="note" style="left:86px;top:98px;transform:rotate(-8deg)">大大世界!</div>
+    <svg class="deco" style="left:230px;top:108px;width:28px;height:28px;transform:rotate(16deg)"><use href="#paw" /></svg>
+    <svg class="deco" style="right:70px;top:70px;width:34px;height:34px;transform:rotate(-14deg)"><use href="#paw" /></svg>
+    <svg class="deco" style="right:118px;top:118px;width:22px;height:22px;opacity:.5;transform:rotate(-24deg)"><use href="#paw" /></svg>
+  </body>
+
+</html>

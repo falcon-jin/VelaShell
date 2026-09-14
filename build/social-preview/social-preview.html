@@ -3,7 +3,8 @@
   GitHub 社交预览图(Settings → Social preview,建议 1280×640)的可重生成源。
   渲染:build/social-preview/Build-SocialPreview.ps1 —— 用 Edge headless 截图,产出同目录的
   social-preview.png。改文案/配色只改本文件,重跑脚本即可。
-  设计取自应用图标:青绿渐变 + 深墨绿 `>_`,底色沿用终端暗色,保证缩略图尺寸下仍能认出品牌。
+  设计取自看板娘设定(mascot/):奶白底 + 青绿 / 墨黑,猫爪、铃铛金、心形与星芒点缀,手写批注。
+  立绘直接裁 mascot/chibi.png 中间那只(抱笔记本),白底用 multiply 融进浅色背景,不必抠图。
 -->
 <html lang="zh-CN">
 
@@ -27,75 +28,72 @@
       body {
         position: relative;
         font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
-        background: #05100E;
-        color: #E9FBF4;
+        background: linear-gradient(135deg, #FCFEFD 0%, #F5FBF9 55%, #EDF8F4 100%);
+        color: #10302A;
         -webkit-font-smoothing: antialiased;
       }
 
-      /* 背景:左上角的品牌辉光 + 右下角的冷色补光,避免大面积死黑。 */
-      .glow-brand {
+      /* 背景:右侧立绘身后的青绿柔光圈(立绘是 multiply 叠上去的,光圈一浓皮肤和白发就发绿,保持很淡) + 左上一抹淡粉,呼应设定图的配色卡。 */
+      .halo {
         position: absolute;
-        left: -180px;
-        top: -220px;
-        width: 900px;
-        height: 760px;
-        background: radial-gradient(circle at 35% 40%, rgba(16, 214, 164, .30), transparent 62%);
-      }
-
-      .glow-cool {
-        position: absolute;
-        right: -220px;
-        bottom: -260px;
-        width: 820px;
+        right: -60px;
+        top: 40px;
+        width: 700px;
         height: 700px;
-        background: radial-gradient(circle at 60% 60%, rgba(20, 128, 160, .22), transparent 60%);
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(40, 214, 170, .09) 0%, rgba(40, 214, 170, .04) 45%, transparent 70%);
       }
 
-      /* 极淡的网格,给暗底一点材质感,缩略图下会自然融掉。 */
-      .grid {
+      .blush {
+        position: absolute;
+        left: -160px;
+        top: -200px;
+        width: 620px;
+        height: 520px;
+        background: radial-gradient(circle, rgba(255, 170, 180, .16), transparent 65%);
+      }
+
+      /* 极淡的点阵,像便签纸;往右渐隐,不和立绘抢。 */
+      .dots {
         position: absolute;
         inset: 0;
-        background-image:
-          linear-gradient(rgba(120, 235, 205, .045) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(120, 235, 205, .045) 1px, transparent 1px);
-        background-size: 40px 40px;
-        mask-image: radial-gradient(circle at 30% 45%, #000 0%, transparent 78%);
-      }
-
-      .stage {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 56px;
-        height: 100%;
-        padding: 0 68px;
+        background-image: radial-gradient(rgba(30, 150, 120, .16) 1.3px, transparent 1.4px);
+        background-size: 26px 26px;
+        mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .5) 50%, transparent 80%);
       }
 
       /* ---- 左:品牌区 ---------------------------------------------------- */
       .brand {
-        width: 604px;
-        flex: none;
+        position: absolute;
+        left: 68px;
+        top: 70px;
+        width: 700px;
       }
 
       .lockup {
         display: flex;
         align-items: center;
-        gap: 26px;
+        gap: 24px;
       }
 
       .lockup img {
-        width: 104px;
-        height: 104px;
+        width: 96px;
+        height: 96px;
         flex: none;
-        filter: drop-shadow(0 14px 34px rgba(0, 196, 148, .42));
+        filter: drop-shadow(0 12px 24px rgba(0, 170, 128, .30));
       }
 
       .wordmark {
-        font-size: 76px;
+        font-size: 74px;
         font-weight: 700;
         letter-spacing: -1.2px;
         line-height: 1;
-        background: linear-gradient(120deg, #F2FFFA 12%, #4BE9C0 92%);
+        color: #0E2622;
+      }
+
+      .wordmark b {
+        font-weight: 700;
+        background: linear-gradient(120deg, #13C49A 10%, #0B9C80 90%);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -105,209 +103,212 @@
         margin-top: 10px;
         font-size: 17px;
         letter-spacing: .4px;
-        color: #59897E;
+        color: #5F8C82;
       }
 
       .tagline {
-        margin-top: 30px;
-        font-size: 34px;
-        font-weight: 600;
+        margin-top: 34px;
+        font-size: 36px;
+        font-weight: 700;
         line-height: 1.34;
-        color: #DCF7EE;
+        color: #14332D;
       }
 
       .tagline em {
         font-style: normal;
-        color: #35DDAF;
+        color: #0FA985;
       }
 
       .stack {
-        margin-top: 16px;
+        margin-top: 12px;
         font-size: 19px;
         letter-spacing: .2px;
-        color: #6FA598;
+        color: #5F8C82;
       }
 
       .chips {
-        margin-top: 30px;
+        margin-top: 28px;
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        /* 比品牌列(604)略宽:让八枚芯片排成齐整的 4+4 而不是留一枚孤儿在第三行。
-           右侧终端从 728px 起,这里最远到 688px,仍留 40px 净空。 */
-        width: 620px;
+        width: 640px;
       }
 
       .chip {
-        padding: 7px 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 15px 7px 12px;
         border-radius: 999px;
         font-size: 17px;
         line-height: 1.2;
-        color: #A8EBD8;
-        background: rgba(18, 195, 150, .10);
-        border: 1px solid rgba(56, 219, 175, .34);
+        color: #135F50;
+        background: #FFFFFF;
+        border: 1.5px solid rgba(19, 180, 142, .40);
+        box-shadow: 0 3px 10px rgba(16, 120, 96, .08);
       }
 
-      /* ---- 右:终端窗口 -------------------------------------------------- */
-      .term {
+      .chip svg {
+        width: 13px;
+        height: 13px;
+        fill: #19C39A;
         flex: none;
-        width: 512px;
-        border-radius: 16px;
+      }
+
+      /* ---- 右:看板娘 ---------------------------------------------------- */
+      /* chibi.png 1983×793,中间人物约在 x 665–1325;按 600px 高缩放后左移裁出。 */
+      .mascot {
+        position: absolute;
+        right: 58px;
+        bottom: 6px;
+        width: 500px;
+        height: 600px;
         overflow: hidden;
-        background: #071A16;
-        border: 1px solid rgba(70, 214, 175, .26);
-        box-shadow: 0 28px 70px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .03) inset;
+        mix-blend-mode: multiply;
+        /* 左右两侧紧挨相邻人物,渐隐掉硬裁切边。 */
+        mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 88%, transparent 100%);
       }
 
-      .term-bar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 42px;
-        padding: 0 16px;
-        background: rgba(255, 255, 255, .045);
-        border-bottom: 1px solid rgba(70, 214, 175, .16);
+      .mascot img {
+        position: absolute;
+        height: 600px;
+        left: -503px;
+        top: 0;
+        max-width: none;
       }
 
-      .dot {
-        width: 11px;
-        height: 11px;
-        border-radius: 50%;
-      }
-
-      .term-title {
-        margin-left: 10px;
-        font-family: "Cascadia Mono", Consolas, monospace;
-        font-size: 15px;
-        color: #7FB6A8;
-      }
-
-      .term-body {
-        padding: 20px 22px 24px;
-        font-family: "Cascadia Mono", Consolas, monospace;
-        font-size: 17.5px;
-        line-height: 1.85;
-      }
-
-      .ln {
+      /* ---- 手写批注与点缀 ------------------------------------------------ */
+      .note {
+        position: absolute;
+        font-family: "KaiTi", "楷体", "STKaiti", "Microsoft YaHei UI", serif;
+        color: #12A583;
         white-space: nowrap;
       }
 
-      .ps {
-        color: #2FD8AB;
+      /* 手写句放在胶囊下方的留白里,不压立绘的头和耳朵。 */
+      .note-cn {
+        left: 76px;
+        top: 488px;
+        font-size: 30px;
+        transform: rotate(-3deg);
+        transform-origin: left center;
       }
 
-      /* 提示符 */
-      .cmd {
-        color: #E6FBF4;
+      .note-cn .kao {
+        margin-left: 10px;
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 20px;
+        color: #E0A92E;
       }
 
-      /* 命令 */
-      .out {
-        color: #7FB6A8;
+      .note-en {
+        right: 40px;
+        bottom: 22px;
+        font-family: "Segoe Print", "Ink Free", cursive;
+        font-size: 19px;
+        color: #0F9C7C;
+        transform: rotate(-4deg);
       }
 
-      /* 输出 */
-      .ok {
-        color: #46E39B;
+      .deco {
+        position: absolute;
       }
 
-      /* 状态点/成功 */
-      .hl {
-        /* Alt 矩形块选的视觉暗示 */
-        background: rgba(56, 219, 175, .26);
-        box-shadow: 0 0 0 1px rgba(56, 219, 175, .45);
-        border-radius: 2px;
+      .paw {
+        fill: #19C39A;
       }
 
-      .caret {
-        display: inline-block;
-        width: 10px;
-        height: 21px;
-        vertical-align: -4px;
-        background: #2FD8AB;
-        margin-left: 3px;
+      .star {
+        fill: #F4C44E;
+      }
+
+      .heart {
+        fill: #F28A8A;
       }
 
       /* ---- 页脚 ---------------------------------------------------------- */
       .footer {
         position: absolute;
         left: 68px;
-        bottom: 40px;
+        bottom: 38px;
         display: flex;
         align-items: center;
         gap: 14px;
         font-size: 17px;
-        color: #4F7D73;
+        color: #54857A;
         letter-spacing: .3px;
       }
 
       .footer .sep {
-        color: #2B4E47;
-      }
-
-      .license {
-        color: #5E8B80;
+        color: #A9CFC5;
       }
     </style>
   </head>
 
   <body>
-    <div class="glow-brand"></div>
-    <div class="glow-cool"></div>
-    <div class="grid"></div>
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <symbol id="paw" viewBox="0 0 64 64">
+          <ellipse cx="32" cy="42" rx="15" ry="13" />
+          <ellipse cx="13" cy="26" rx="6.5" ry="8" transform="rotate(-18 13 26)" />
+          <ellipse cx="25" cy="15" rx="6.5" ry="8.5" transform="rotate(-6 25 15)" />
+          <ellipse cx="39" cy="15" rx="6.5" ry="8.5" transform="rotate(6 39 15)" />
+          <ellipse cx="51" cy="26" rx="6.5" ry="8" transform="rotate(18 51 26)" />
+        </symbol>
+        <symbol id="star" viewBox="0 0 64 64">
+          <path d="M32 2C34 22 42 30 62 32 42 34 34 42 32 62 30 42 22 34 2 32 22 30 30 22 32 2Z" />
+        </symbol>
+        <symbol id="heart" viewBox="0 0 64 64">
+          <path d="M32 58C12 44 2 32 2 20 2 10 10 3 19 3c6 0 10 3 13 8 3-5 7-8 13-8 9 0 17 7 17 17 0 12-10 24-30 38Z" />
+        </symbol>
+      </defs>
+    </svg>
 
-    <div class="stage">
-      <section class="brand">
-        <div class="lockup">
-          <img src="../../src/VelaShell/Assets/velashell.png" alt="">
-          <div>
-            <div class="wordmark">VelaShell</div>
-            <div class="pronounce">/ˈveɪlə ʃɛl/ · 以终端为帆,驶向远方主机</div>
-          </div>
-        </div>
+    <div class="blush"></div>
+    <div class="halo"></div>
+    <div class="dots"></div>
 
-        <h1 class="tagline">现代化跨平台<br><em>SSH / SFTP / FTP 终端客户端</em></h1>
-        <div class="stack">.NET 11 · Avalonia · Windows / Linux / macOS · x64 &amp; arm64</div>
+    <section class="brand">
+      <div class="lockup">
+        <img src="../../src/VelaShell/Assets/velashell.png" alt="">
+        <div>
+          <div class="wordmark">Vela<b>Shell</b></div>
+          <div class="pronounce">/ˈveɪlə ʃɛl/ · 以终端为帆,驶向远方主机</div>
+        </div>
+      </div>
 
-        <div class="chips">
-          <span class="chip">自研 VT 引擎</span>
-          <span class="chip">跳板机 ProxyJump</span>
-          <span class="chip">端口转发隧道</span>
-          <span class="chip">SFTP 断点续传</span>
-          <span class="chip">可拖拽分屏</span>
-          <span class="chip">插件系统</span>
-          <span class="chip">AI 助手</span>
-          <span class="chip">加密会话存储</span>
-        </div>
-      </section>
+      <h1 class="tagline">现代化跨平台<br><em>SSH / SFTP / FTP 终端客户端</em></h1>
+      <div class="stack">.NET 11 · Avalonia · Windows / Linux / macOS · x64 &amp; arm64</div>
 
-      <section class="term">
-        <div class="term-bar">
-          <span class="dot" style="background:#FF5F57"></span>
-          <span class="dot" style="background:#FEBC2E"></span>
-          <span class="dot" style="background:#28C840"></span>
-          <span class="term-title">vela@web-prod-01: ~</span>
-        </div>
-        <div class="term-body">
-          <div class="ln"><span class="ps">$</span> <span class="cmd">ssh web-prod-01</span></div>
-          <div class="ln"><span class="ok">●</span> <span class="out">已连接 · ProxyJump bastion · 12 ms</span></div>
-          <div class="ln"><span class="ps">$</span> <span class="cmd">systemctl status nginx</span></div>
-          <div class="ln"><span class="out"> Active: </span><span class="ok">active (running)</span><span class="out">
-              42d</span></div>
-          <div class="ln"><span class="out"> Memory: </span><span class="hl">128.4M</span><span class="out"> / 8G</span>
-          </div>
-          <div class="ln"><span class="out"> Tasks: </span><span class="hl"> 9</span><span class="out"> (limit
-              4915)</span></div>
-          <div class="ln"><span class="ps">$</span><span class="caret"></span></div>
-        </div>
-      </section>
-    </div>
+      <div class="chips">
+        <span class="chip"><svg><use href="#paw" /></svg>自研 VT 引擎</span>
+        <span class="chip"><svg><use href="#paw" /></svg>跳板机 ProxyJump</span>
+        <span class="chip"><svg><use href="#paw" /></svg>端口转发隧道</span>
+        <span class="chip"><svg><use href="#paw" /></svg>SFTP 断点续传</span>
+        <span class="chip"><svg><use href="#paw" /></svg>可拖拽分屏</span>
+        <span class="chip"><svg><use href="#paw" /></svg>插件系统</span>
+        <span class="chip"><svg><use href="#paw" /></svg>AI 助手</span>
+      </div>
+    </section>
+
+    <div class="mascot"><img src="../../mascot/chibi.png" alt=""></div>
+
+    <div class="note note-cn">和我一起,连接更广阔的世界吧!<span class="kao">=^･ω･^=</span></div>
+    <div class="note note-en">A More Connected World ♡</div>
+
+    <svg class="deco paw" style="right:28px;top:112px;width:34px;height:34px;transform:rotate(18deg)"><use href="#paw" /></svg>
+    <svg class="deco paw" style="left:1010px;top:560px;width:22px;height:22px;opacity:.55;transform:rotate(-20deg)"><use href="#paw" /></svg>
+    <svg class="deco paw" style="left:640px;top:36px;width:26px;height:26px;opacity:.35;transform:rotate(-14deg)"><use href="#paw" /></svg>
+    <svg class="deco star" style="left:712px;top:180px;width:34px;height:34px"><use href="#star" /></svg>
+    <svg class="deco star" style="left:752px;top:222px;width:18px;height:18px"><use href="#star" /></svg>
+    <svg class="deco star" style="right:34px;top:300px;width:28px;height:28px"><use href="#star" /></svg>
+    <svg class="deco heart" style="right:40px;top:240px;width:24px;height:24px;transform:rotate(12deg)"><use href="#heart" /></svg>
+    <svg class="deco heart" style="left:604px;top:120px;width:18px;height:18px;opacity:.8;transform:rotate(-14deg)"><use href="#heart" /></svg>
 
     <div class="footer">
       <span>github.com/joesdu/VelaShell</span>
       <span class="sep">|</span>
-      <span class="license">AGPL-3.0 / 商业双许可</span>
+      <span>AGPL-3.0 / 商业双许可</span>
     </div>
   </body>
 
