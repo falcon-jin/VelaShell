@@ -696,12 +696,12 @@ public class SettingsViewModel : ReactiveObject
     public static string AboutConfigPath => new VelaShellStoragePaths().RootDirectory;
 
     /// <summary>
-    /// 关于页贡献者(设计 kGwqX;数据来自仓库真实提交者,新增贡献者在此追加)。
+    /// 关于页贡献者(设计 kGwqX;数据来自仓库真实提交者,新增贡献者在此追加,排名部分先后,按照参与贡献的时间依次添加)。
     /// 头像在 LoadAsync 时后台拉取。
     /// </summary>
     public ContributorViewModel[] Contributors { get; } =
         [
-            new("joesdu"), new("tsaiggo"), new("pengqian089"), new("Cyaim")
+            new("joesdu"), new("tsaiggo"), new("pengqian089"), new("Cyaim"), new("Aecric")
         ];
 
     /// <summary>开源依赖(真实技术栈)。</summary>
