@@ -1915,7 +1915,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
     private void RevealActiveSessionInSidebar(TerminalTabViewModel? tab = null)
     {
-        if ((_latestSettings?.General.FollowActiveTerminalInExplorer ?? true) != true)
+        if (!(_latestSettings?.General.FollowActiveTerminalInExplorer ?? true))
         {
             return;
         }
@@ -3054,7 +3054,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     /// 走 <c>RequestCloseMany</c>:一次确认放行全部,而不是逐个弹框;
     /// 也先取了快照,免得边遍历边关漏掉一半。
     /// </remarks>
-    private void CloseAllTabs() => Layout.RequestCloseMany(Layout.AllDocuments().ToArray());
+    private void CloseAllTabs() => Layout.RequestCloseMany([.. Layout.AllDocuments()]);
 
     /// <summary>
     /// 关闭前的确认闸:标签的会话还连着,并且用户没关掉这个开关时,先问一句。
@@ -3374,9 +3374,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
             MainWindowViewModel owner,
             SessionProfile profile,
             string typeLabel,
-            CancellationToken outer,
             ConnectingDocument? reuse,
-            Func<ConnectingDocument, Task> retry)
+            Func<ConnectingDocument, Task> retry,
+            CancellationToken outer)
         {
             _owner = owner;
             _cancellation = CancellationTokenSource.CreateLinkedTokenSource(outer);
@@ -3488,8 +3488,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
         // 三次认证都没过时的最后一条原因:循环走完就没人再报了,要写进占位标签的失败卡片。
         Exception? lastAuthFailure = null;
         using var ui = new DocumentConnectUi(
-            this, profile, "SFTP", cancellationToken, reuse,
-            document => OpenSftpDocumentForProfileAsync(profile, document, CancellationToken.None));
+            this, profile, "SFTP", reuse,
+            document => OpenSftpDocumentForProfileAsync(profile, document, CancellationToken.None),
+            cancellationToken);
         for (int attempt = 0; attempt < 3; attempt++)
         {
             if (attempt > 0 || RequiresCredentials(current))
@@ -3602,7 +3603,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
     /// 要处理的事;卡片上的「重新连接」也才有地方放。
     /// </para>
     /// <para>
-    /// 刻意**不**走 <see cref="ReportConnectionFailureAsync" /> —— 那条会再弹一扇模态框。
     /// 终端标签早就把连接失败从全局对话框改成了标签页内的覆盖层(设计 yxjmg),
     /// 文档型标签有了自己的失败卡片之后同理:失败留在它所属的那个标签里,
     /// 而不是拿一扇模态框挡住用户手上正在做的别的事。
@@ -3653,8 +3653,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
         // 三次认证都没过时的最后一条原因:循环走完就没人再报了,要写进占位标签的失败卡片。
         Exception? lastAuthFailure = null;
         using var ui = new DocumentConnectUi(
-            this, profile, FtpTypeLabel(profile), cancellationToken, reuse,
-            document => OpenFtpDocumentForProfileAsync(profile, document, CancellationToken.None));
+            this, profile, FtpTypeLabel(profile), reuse,
+            document => OpenFtpDocumentForProfileAsync(profile, document, CancellationToken.None),
+            cancellationToken);
         for (int attempt = 0; attempt < 3; attempt++)
         {
             if (attempt > 0 || RequiresFtpCredentials(current))
@@ -3782,8 +3783,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
         // 那往往就是这条路上最慢的一步 —— 等它完再建标签,慢的那段照样没有任何回执。
         // 类型名此刻还问不到,先挂协议 id,解析出来再换成展示名。
         using var ui = new DocumentConnectUi(
-            this, profile, profile.PluginProtocolId ?? string.Empty, cancellationToken, reuse,
-            document => OpenPluginDocumentForProfileAsync(profile, document, CancellationToken.None));
+            this, profile, profile.PluginProtocolId ?? string.Empty, reuse,
+            document => OpenPluginDocumentForProfileAsync(profile, document, CancellationToken.None),
+            cancellationToken);
         ui.BeginAttempt();
 
         ProtocolDescriptor? descriptor = null;
@@ -4063,8 +4065,9 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
 
         // 同插件协议那条路径:占位标签建在解析之前 —— 惰性激活插件往往是最慢的一步。
         using var ui = new DocumentConnectUi(
-            this, profile, profile.PluginProtocolId ?? string.Empty, cancellationToken, reuse,
-            document => OpenWorkspaceDocumentForProfileAsync(profile, document, CancellationToken.None));
+            this, profile, profile.PluginProtocolId ?? string.Empty, reuse,
+            document => OpenWorkspaceDocumentForProfileAsync(profile, document, CancellationToken.None),
+            cancellationToken);
         ui.BeginAttempt();
 
         bool allowsAnonymous = false;
@@ -4555,36 +4558,6 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
         return await TryConnectProfileAsync(profile, cancellationToken);
     }
 
-    /// <summary>
-    /// 文档型连接的失败上报:状态栏 + 一扇提示弹窗。
-    /// <para>
-    /// 弹窗是这里的重点。SFTP / FTP / 插件文件系统 / 工作台连不上时**不会留下任何标签页**,
-    /// 只写状态栏等于没提示 —— 用户看到的是"点了连接,什么都没发生"。
-    /// </para>
-    /// </summary>
-    /// <param name="profile">这次连的配置(弹窗按它描述目标)。</param>
-    /// <param name="ex">失败原因。</param>
-    private async Task ReportConnectionFailureAsync(SessionProfile profile, Exception ex)
-    {
-        string message = DescribeConnectionError(ex, profile);
-        LastConnectionError = message;
-        Toasts.Error(message);
-        if (ConnectionFailureReporter is not { } report)
-        {
-            return;
-        }
-        try
-        {
-            await report(profile, message).ConfigureAwait(true);
-        }
-        catch (Exception dialogFailure)
-        {
-            // 提示弹窗自己出问题不该盖掉真正的连接错误 —— 那条已经在状态栏上了。
-            System.Diagnostics.Trace.WriteLine(
-                $"[Connect] Reporting the failure of '{profile.Name}' threw: {dialogFailure.Message}");
-        }
-    }
-
     private static string DescribeConnectionError(Exception ex, SessionProfile profile)
     {
         // 用户名为空是一条正当路径(匿名 S3 桶、没设 requirepass 的 Redis),
@@ -4673,7 +4646,7 @@ public class MainWindowViewModel : ReactiveObject, Services.Plugins.ITerminalRes
             _fontSizePersistDebounce = new() { Interval = TimeSpan.FromMilliseconds(400) };
             _fontSizePersistDebounce.Tick += (_, _) =>
             {
-                _fontSizePersistDebounce!.Stop();
+                _fontSizePersistDebounce.Stop();
                 PersistTerminalFontSize(_pendingFontSize);
             };
         }

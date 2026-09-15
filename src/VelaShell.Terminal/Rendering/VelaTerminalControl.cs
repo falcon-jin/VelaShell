@@ -158,12 +158,13 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     private readonly CursorOverlay _overlay;
 
     /// <summary>
-    /// 失效整个终端(正文 + 光标/幽灵叠加层)。
+    /// 失效整个终端(正文 + 光标/幽灵/组字叠加层)。
     /// </summary>
     /// <remarks>
     /// <b>本类内部一律用它,不要直接写 <c>InvalidateVisual()</c></b>:光标与幽灵住在独立的
     /// <see cref="CursorOverlay" /> 里,只失效正文会让光标停在旧位置(输入时光标不跟手)。
-    /// 唯一的例外是光标闪烁计时器 —— 它只失效叠加层,这正是拆层的意义。
+    /// 例外只有两处 —— 光标闪烁计时器与 IME 组字串更新(<see cref="SetPreedit" />):
+    /// 两者都不改变正文一个像素,只失效叠加层,这正是拆层的意义。
     /// 外部宿主强制重绘时同样应当调本方法(见 <c>TerminalTabView.ForceFullRepaint</c>)。
     /// </remarks>
     public void InvalidateTerminal()
@@ -476,7 +477,20 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     /// <summary>
     /// 启用操作系统输入法(中文/日文/韩文组字)。关闭 = 终端从不提供 IME 客户端。
     /// </summary>
-    public bool ImeEnabled { get; set; } = true;
+    public bool ImeEnabled
+    {
+        get;
+        set
+        {
+            field = value;
+            // 关掉输入法时若正卡在组字中,平台不会再回调 SetPreeditText 来收尾 ——
+            // 不在这里清,那段拼音就永远停在光标上。
+            if (!value)
+            {
+                SetPreedit(null, null);
+            }
+        }
+    } = true;
 
     /// <summary>可向上滚动的最大行数(回滚历史的大小)。</summary>
     public int MaxScrollOffset => Emulator.Screen.ScrollbackCount;
@@ -1198,6 +1212,133 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
         );
     }
 
+    // ---- IME 预编辑(组字串)----------------------------------------------------
+    //
+    // 输入法尚未提交的那一段(拼音 / 罗马字 / 谚文字母)不进屏幕缓冲、一个字节都不发往 PTY ——
+    // 它还没定下来。和幽灵文本一样是纯视觉叠画,因此同住 CursorOverlay:每敲一个拼音字母只重
+    // 记录叠加层,正文的绘制记录原样复用。
+    //
+    // 列布局用的是正文那套 CharWidth,不是 FormattedText 的比例排版:组字串一旦提交就变成屏幕
+    // 缓冲里的单元格,两套度量对不齐的话,候选一上屏文字就横向跳一下。
+
+    private int _preeditCaretIndex;
+    private int _preeditColumns;
+    private (string Text, int Column)[]? _preeditRuns;
+    private FormattedText[]? _preeditGlyphs;
+    private uint _preeditGlyphColor;
+
+    /// <summary>
+    /// 走一遍平台索要 IME 客户端的那条路,拿到的正是输入法后端会拿到的那个对象。
+    /// 仅供测试:经它喂组字串,才能连 <c>SupportsPreedit</c> 一起锁住 —— 报 false 时
+    /// 平台(<c>Imm32InputMethod.CompositionChanged</c>)会把组字串静默丢掉,而这正是本来的故障。
+    /// </summary>
+    internal TextInputMethodClient? ImeClientForTest
+    {
+        get
+        {
+            var args = new TextInputMethodClientRequestedEventArgs
+            {
+                RoutedEvent = TextInputMethodClientRequestedEvent,
+            };
+            RaiseEvent(args);
+            return args.Client;
+        }
+    }
+
+    /// <summary>当前组字串(输入法未提交的文本),未在组字时为 null。</summary>
+    internal string? PreeditTextForTest { get; private set; }
+
+    /// <summary>组字串内插入点所在的列偏移(自光标列起算)。</summary>
+    internal int PreeditCaretColumnForTest { get; private set; }
+
+    /// <summary>
+    /// 接收输入法尚未提交的组字串并原地显示在光标处。
+    /// </summary>
+    /// <param name="text">组字串;null 或空表示组字结束(提交或取消)。</param>
+    /// <param name="caret">
+    /// 组字串内的插入点,UTF-16 索引(Win32 取自 IMM32 的 <c>GCS_CURSORPOS</c>);
+    /// 后端不提供时为 null,按"插在末尾"处理。
+    /// </param>
+    private void SetPreedit(string? text, int? caret)
+    {
+        string? next = string.IsNullOrEmpty(text) ? null : text;
+        int caretIndex = next is null ? 0 : Math.Clamp(caret ?? next.Length, 0, next.Length);
+        if (PreeditTextForTest == next && _preeditCaretIndex == caretIndex)
+        {
+            return;
+        }
+        bool wasComposing = PreeditTextForTest is not null;
+        PreeditTextForTest = next;
+        _preeditCaretIndex = caretIndex;
+        _preeditGlyphs = null; // 文本变了,缓存的逐字形塑形随之作废。
+        MeasurePreedit();
+
+        // 组字开始时把视口拉回底部:叠加层在回滚态整层不画(与光标同一可见性条件),
+        // 不拉回来的话,用户翻着历史打中文就是在对着一片空白敲。
+        if (!wasComposing && next is not null && ScrollOnKeystroke && _scrollOffset != 0)
+        {
+            _scrollOffset = 0;
+            ScrollChanged?.Invoke();
+            InvalidateTerminal();
+        }
+        else
+        {
+            _overlay.InvalidateVisual();
+        }
+
+        // 候选窗的排除矩形要盖住整条组字串才不会压在拼音上,而它取自 CursorRectangle ——
+        // 组字串一长一短,都得重新报一次。见 GetImeCompositionRect。
+        _imeClient?.NotifyCursorMoved();
+    }
+
+    /// <summary>
+    /// 把组字串切成"每个标量值一个起始列"的布局,并算出插入点落在第几列。
+    /// 零宽字符(组合标记)不占列,叠画在前一格上,与正文的宽度约定一致。
+    /// </summary>
+    private void MeasurePreedit()
+    {
+        if (PreeditTextForTest is not { Length: > 0 } text)
+        {
+            _preeditRuns = null;
+            _preeditColumns = 0;
+            PreeditCaretColumnForTest = 0;
+            return;
+        }
+        var runs = new List<(string, int)>(text.Length);
+        int column = 0;
+        int caretColumn = -1;
+        for (int i = 0; i < text.Length;)
+        {
+            if (caretColumn < 0 && i >= _preeditCaretIndex)
+            {
+                caretColumn = column;
+            }
+            // 解码失败时 DecodeFromUtf16 已把 rune 置为 U+FFFD,状态码无须再判。
+            _ = Rune.DecodeFromUtf16(text.AsSpan(i), out Rune rune, out int consumed);
+            runs.Add((rune.ToString(), column));
+            column += Math.Max(0, CharWidth.Of(rune.Value));
+            i += consumed;
+        }
+        _preeditRuns = [.. runs];
+        _preeditColumns = column;
+        PreeditCaretColumnForTest = caretColumn < 0 ? column : caretColumn;
+    }
+
+    /// <summary>
+    /// 报给输入法的光标矩形:组字期间<b>横跨整条组字串</b>。
+    /// </summary>
+    /// <remarks>
+    /// Avalonia 把这个矩形直接当作候选窗的 <c>CFS_EXCLUDE</c> 排除区
+    /// (<c>Imm32InputMethod</c> 里 <c>CANDIDATEFORM.rcArea</c> 就取自它)。只报光标那一格的话,
+    /// 候选窗只躲开一个格子 —— 拼音一长就被它压在下面,等于白显示。
+    /// 命令补全弹层用的 <see cref="GetCursorRect()" /> 仍取单格,不受影响。
+    /// </remarks>
+    private Rect GetImeCompositionRect()
+    {
+        Rect cell = GetImeCursorRect();
+        return _preeditColumns > 1 ? cell.WithWidth(_preeditColumns * CellWidthForTest) : cell;
+    }
+
     // ---- Palette ------------------------------------------------------------
 
     /// <summary>
@@ -1399,6 +1540,7 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
         _gutterTextCache.Clear();
         _gutterTextCacheBrush = null;
         _ghostFormatted = null;
+        _preeditGlyphs = null;
         _styleTypefacesReady = false;
     }
 
@@ -1819,7 +1961,7 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     }
 
     /// <summary>
-    /// 光标 + 幽灵文本的叠加层:一个独立的可视子元素,画在正文之上。
+    /// 光标 + 幽灵文本 + IME 组字串的叠加层:一个独立的可视子元素,画在正文之上。
     /// </summary>
     /// <remarks>
     /// <b>为什么要单独一层</b>:光标闪烁每 530ms 翻一次相位,而 Avalonia 没有"局部失效"——
@@ -1833,7 +1975,13 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     /// <para>
     /// <b>失效必须成对</b>:本层的内容(光标位置、幽灵剩余)由屏幕状态现算,正文一变它就过期。
     /// 因此正文的每一次失效都要连带失效本层 —— 全走 <see cref="InvalidateTerminal" />,
-    /// 不要在本类里直接写 <c>InvalidateVisual()</c>(唯一的例外是闪烁计时器,它只失效本层)。
+    /// 不要在本类里直接写 <c>InvalidateVisual()</c>(例外只有闪烁计时器与组字串更新,
+    /// 两者都只改本层)。
+    /// </para>
+    /// <para>
+    /// <b>组字期间本层换一套内容</b>:IME 的组字串(未提交的拼音/假名)同样是不进屏幕缓冲的
+    /// 纯叠画,于是也住这里。它在时,光标与幽灵都让位 —— 光标移进组字串里(仍是用户配的那种
+    /// 长相),幽灵藏起来,因为它按"光标左侧已回显文本"现算,和未提交的组字串叠在一起就是重影。
     /// </para>
     /// </remarks>
     private sealed class CursorOverlay(VelaTerminalControl owner) : Control
@@ -1852,8 +2000,18 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
             using (context.PushTransform(
                        Matrix.CreateTranslation(owner.ContentPadding + owner.GutterWidth(), owner.ContentPadding)))
             {
-                owner.RenderCursor(context, screen, palette);
-                owner.RenderGhostText(context, screen, palette, screen.Columns);
+                if (owner._preeditRuns is { Length: > 0 })
+                {
+                    // 组字期间块状光标与幽灵都让位:前者落在组字串底下,只会把第一个拼音字母涂没;
+                    // 后者是按"光标左侧已回显文本"现算的,与尚未提交的组字串叠在一起就是重影。
+                    // 光标的职责改由组字插入符承担(见 RenderPreedit)。
+                    owner.RenderPreedit(context, screen, palette, screen.Columns);
+                }
+                else
+                {
+                    owner.RenderCursor(context, screen, palette);
+                    owner.RenderGhostText(context, screen, palette, screen.Columns);
+                }
             }
         }
     }
@@ -1913,6 +2071,129 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     private FormattedText? _ghostFormatted;
     private string? _ghostFormattedText;
     private uint _ghostFormattedColor;
+
+    /// <summary>
+    /// 在光标处绘制输入法尚未提交的组字串:逐字形按终端列网格摆放(与提交后的回显同一套度量,
+    /// 因此上屏那一刻不会横向跳位),下方一条下划线标出"这段还没定",插入点处一根竖插入符
+    /// 代替此时不画的块状光标。只在未回滚时绘制,与光标同一可见性条件。
+    /// </summary>
+    private void RenderPreedit(
+        DrawingContext context,
+        TerminalScreen screen,
+        TerminalPalette palette,
+        int cols
+    )
+    {
+        if (_preeditRuns is not { Length: > 0 } runs || screen.CursorX >= cols)
+        {
+            return;
+        }
+        int cursorAbsolute = screen.TotalRows - screen.Rows + screen.CursorY;
+        int screenRow = ScreenRowForAbsolute(cursorAbsolute);
+        if (screenRow < 0)
+        {
+            return;
+        }
+        double x = screen.CursorX * CellWidthForTest;
+        double y = screenRow * CellHeightForTest;
+        // 行尾放不下的部分裁掉(与幽灵同样的处理)。组字串只有几个字母,极少撞到行尾。
+        int visibleCols = Math.Min(_preeditColumns, cols - screen.CursorX);
+
+        // 组字期间光标闪烁每 ~530ms 重绘一帧本层;逐字形塑形按前景色缓存,
+        // 只在组字内容 / 主题 / 字体度量变化时重建。
+        Rgba fg = palette.DefaultForeground;
+        if (_preeditGlyphs is null || _preeditGlyphColor != fg.Packed)
+        {
+            var typeface = new Typeface(FontFamily);
+            ImmutableSolidColorBrush brush = BrushFor(fg);
+            var glyphs = new FormattedText[runs.Length];
+            for (int i = 0; i < runs.Length; i++)
+            {
+                glyphs[i] = new(
+                    runs[i].Text,
+                    CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    typeface,
+                    FontSize,
+                    brush
+                );
+            }
+            _preeditGlyphs = glyphs;
+            _preeditGlyphColor = fg.Packed;
+        }
+
+        using (
+            context.PushClip(
+                new Rect(x, y, (cols - screen.CursorX) * CellWidthForTest, CellHeightForTest)
+            )
+        )
+        {
+            // 组字底不透明(不走 DefaultBackgroundBrush 的整屏不透明度):本层压在正文之上,
+            // 行中改词时光标右侧还留着旧文字,让它透出来就是一片重影。半透明终端下这几格会比周围
+            // 实一点,但组字只持续一瞬,读不清才是真问题。语义上它等同于"这几格有显式背景色",
+            // 正文里那样的格子同样是照 BrushFor 不透明地填。
+            context.FillRectangle(
+                BrushFor(palette.DefaultBackground),
+                CellRect(screen.CursorX, Math.Max(1, visibleCols), y)
+            );
+            for (int i = 0; i < runs.Length; i++)
+            {
+                context.DrawText(
+                    _preeditGlyphs[i],
+                    new(x + runs[i].Column * CellWidthForTest, y + _glyphYOffset)
+                );
+            }
+            // 下划线 = "这段还没提交":这是各家编辑器与 Windows 终端一致的组字标记,
+            // 取前景色(而非光标色)—— 它属于文字,不属于光标。
+            context.FillRectangle(
+                BrushFor(fg),
+                _pixels.Snap(
+                    new(
+                        x,
+                        y + CellHeightForTest - 2,
+                        Math.Max(1, visibleCols) * CellWidthForTest,
+                        2
+                    )
+                )
+            );
+
+            // 光标移进组字串里,停在输入法报的插入点上(IMM32 的 GCS_CURSORPOS),
+            // 长相仍是用户配的那一种 —— 见 DrawCursorShape。程序自己隐了光标(DECTCEM)就不画。
+            if (!Emulator.Modes.CursorVisible || screen.CursorX + PreeditCaretColumnForTest >= cols)
+            {
+                return;
+            }
+            double caretX = x + PreeditCaretColumnForTest * CellWidthForTest;
+            bool block = DrawCursorShape(
+                context,
+                CellRect(screen.CursorX + PreeditCaretColumnForTest, 1, y),
+                BrushFor(palette.CursorColor)
+            );
+            if (!block)
+            {
+                return;
+            }
+            // 块状光标压住的那个组字字符用背景色重绘,否则正在敲的这个字母被涂没。
+            foreach ((string text, int column) in runs)
+            {
+                if (column == PreeditCaretColumnForTest)
+                {
+                    context.DrawText(
+                        new FormattedText(
+                            text,
+                            CultureInfo.CurrentCulture,
+                            FlowDirection.LeftToRight,
+                            new Typeface(FontFamily),
+                            FontSize,
+                            BrushFor(palette.DefaultBackground)
+                        ),
+                        new(caretX, y + _glyphYOffset)
+                    );
+                    break;
+                }
+            }
+        }
+    }
 
     // ---- Line gutter(时间/行号/折叠侧栏,WindTerm 式) ---------------------
 
@@ -2743,18 +3024,44 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
         double y = screenRow * CellHeightForTest;
         // 光标块与格子背景共用吸附后的矩形,否则分数缩放下它会比背景带错开半个像素。
         Rect rect = CellRect(screen.CursorX, 1, y);
-        ImmutableSolidColorBrush cursorBrush = BrushFor(palette.CursorColor);
+        if (!DrawCursorShape(context, rect, BrushFor(palette.CursorColor)))
+        {
+            return;
+        }
+        // 块状光标压住的字形用背景色重绘一遍以增强对比。
+        TerminalCell cell = screen.GetCell(screen.CursorX, screen.CursorY);
+        if (cell.Rune != 0)
+        {
+            FormattedText ft = GlyphFor(cell, palette.DefaultBackground, false, false);
+            context.DrawText(ft, new(x, y + _glyphYOffset));
+        }
+    }
+
+    /// <summary>
+    /// 按当前 <see cref="CursorStyle" />(与聚焦/闪烁相位)在 <paramref name="rect" /> 处画一次光标。
+    /// 返回 true 表示画的是<b>实心块</b>,调用方应把压在它下面的字形用背景色重绘一遍。
+    /// </summary>
+    /// <remarks>
+    /// 正文与 IME 组字串共用本方法:组字期间光标只是移进了组字串里,不该换一种长相 ——
+    /// 用户配的是块就仍是块,配了不闪就仍不闪。
+    /// </remarks>
+    private bool DrawCursorShape(
+        DrawingContext context,
+        Rect rect,
+        ImmutableSolidColorBrush cursorBrush
+    )
+    {
         if (!_hasFocus)
         {
             // 未聚焦:无论何种风格都画空心轮廓,使光标位置保持可见。
             context.DrawRectangle(new Pen(cursorBrush), rect);
-            return;
+            return false;
         }
 
         // 闪烁相位:"熄灭"的那半周期直接跳过绘制(仅聚焦时;未聚焦轮廓从不闪烁)。
         if ((CursorBlink || Emulator.Modes.CursorBlink) && !_cursorBlinkVisible)
         {
-            return;
+            return false;
         }
         switch (CursorStyle)
         {
@@ -2763,23 +3070,16 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
                     cursorBrush,
                     _pixels.Snap(rect.WithWidth(Math.Max(1.5, CellWidthForTest * 0.15)))
                 );
-                break;
+                return false;
             case "underline":
                 context.FillRectangle(
                     cursorBrush,
                     _pixels.Snap(new(rect.X, rect.Bottom - 2, rect.Width, 2))
                 );
-                break;
+                return false;
             default: // block
                 context.FillRectangle(cursorBrush, rect);
-                // 用背景色重绘光标下的字形以增强对比。
-                TerminalCell cell = screen.GetCell(screen.CursorX, screen.CursorY);
-                if (cell.Rune != 0)
-                {
-                    FormattedText ft = GlyphFor(cell, palette.DefaultBackground, false, false);
-                    context.DrawText(ft, new(x, y + _glyphYOffset));
-                }
-                break;
+                return true;
         }
     }
 
@@ -3062,6 +3362,9 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
         // _ctrlHeld 一并复位:松开 Ctrl 的那次 KeyUp 会送给新的焦点控件,这里再不清就永远卡在按下态。
         _ctrlHeld = false;
         ClearLinkHover();
+        // 焦点走了就没人在组字了。Win32 换客户端时会替我们清一次,但别的后端未必,
+        // 漏掉就是一段拼音永久挂在光标上。
+        SetPreedit(null, null);
         UpdateCursorBlinkTimer();
         InvalidateTerminal();
     }
@@ -3898,27 +4201,43 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
     }
 
     /// <summary>
-    /// 最小 IME 客户端:无缓冲区内的预编辑、无环绕文本 —— 终端并非可编辑文档;
-    /// 已提交的文本通过 OnTextInput 作为主机字节到达。只有光标矩形有意义,
-    /// 用于定位候选窗口。
+    /// 终端的 IME 客户端:承接组字串(预编辑)与光标矩形,不提供环绕文本 —— 终端并非可编辑
+    /// 文档,光标左右的字节属于对端程序,输入法无从改写。已提交的文本仍通过 OnTextInput
+    /// 作为主机字节到达;<b>未</b>提交的组字串只是叠画在光标处的一层视觉,一个字节都不下发。
     /// </summary>
+    /// <remarks>
+    /// <see cref="SupportsPreedit" /> 必须为 true:Avalonia 的 Win32 后端从不让输入法自己画
+    /// 组字窗(<c>Imm32InputMethod.ShowCompositionWindow</c> 恒为 false,它只用
+    /// <c>ImmSetCandidateWindow</c> 摆候选窗),组字串<b>唯一</b>的出口就是
+    /// <see cref="SetPreeditText(string, int?)" />,而那一句被 <c>Client.SupportsPreedit</c>
+    /// 挡着。报 false 等于让平台把拼音静默丢弃 —— 候选窗浮在那里,用户却看不见自己敲了什么,
+    /// 打错了也不知道该退几下。
+    /// </remarks>
     private sealed class TerminalImeClient(VelaTerminalControl owner) : TextInputMethodClient
     {
         public override Visual TextViewVisual => owner;
 
-        public override bool SupportsPreedit => false;
+        public override bool SupportsPreedit => true;
 
         public override bool SupportsSurroundingText => false;
 
         public override string SurroundingText => string.Empty;
 
-        public override Rect CursorRectangle => owner.GetImeCursorRect();
+        public override Rect CursorRectangle => owner.GetImeCompositionRect();
 
         public override TextSelection Selection
         {
             get => default;
             set { }
         }
+
+        /// <summary>组字串更新(不带插入点的后端:X11 / 部分移动端)。</summary>
+        public override void SetPreeditText(string? preeditText) =>
+            owner.SetPreedit(preeditText, null);
+
+        /// <summary>组字串更新(带串内插入点的后端:Win32 IMM 的 GCS_CURSORPOS)。</summary>
+        public override void SetPreeditText(string? preeditText, int? cursorPosition) =>
+            owner.SetPreedit(preeditText, cursorPosition);
 
         public void NotifyCursorMoved() => RaiseCursorRectangleChanged();
     }
