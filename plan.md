@@ -4548,3 +4548,86 @@ VM 用例单跑全绿、混跑偶发红:状态栏最后应是「同步完成…�
 - **没有验证的**:真实 FTP 服务器(FileZilla Server、ProFTPD `mod_digest`、IIS)对 `HASH` / `XSHA256` 的实际应答格式;
   大目录首次比较的耗时(没有做基准)。
 
+
+## ✅ 76. 2026-09-14 终端里打中文看不见拼音:合成串没人画(用户反馈)
+
+> 「他没有显示输入的拼音,导致用户输入错误的时候不知道删除多少个字符。」
+
+截图里候选窗好端端浮在提示符下方,提示符后面却什么都没有 —— 同一台机器上的 Windows 终端显示的是
+`ni'hao`。选错字想退回去改,只能靠数自己敲了几下。
+
+### 一、根因:两头都不画
+
+反编译 `Avalonia.Win32` 12.1.2 的 `Imm32InputMethod` 后,这条链是闭合的:
+
+```csharp
+public bool ShowCompositionWindow => false;          // 从不让输入法自己画合成窗
+
+public void CompositionChanged(string? composition, int? cursorPosition)
+{
+    if (IsActive && Client.SupportsPreedit)          // ← 卡在这里
+        Client.SetPreeditText(composition, cursorPosition);
+}
+```
+
+Avalonia 只用 `ImmSetCandidateWindow` 摆候选窗的**位置**,合成串本身一个像素都不画;它唯一的出口
+`SetPreeditText` 又被 `Client.SupportsPreedit` 挡着。而 `TerminalImeClient` 当时报的是 `false`
+(§#14b 只做了候选窗定位,注释里写着「终端并非可编辑文档、无缓冲区内的预编辑」)——
+于是拼音被平台**静默丢弃**:输入法那边不画,终端这边收不到,屏幕上就只剩一个悬空的候选窗。
+
+「终端不是可编辑文档」这句本身没错,错在由此推出「所以不需要预编辑」。合成串压根不属于文档:
+它还没提交,一个字节都不该进屏幕缓冲、不该下发 PTY。它属于**叠画**,和幽灵文本是同一类东西。
+
+### 二、修法:合成串住进 CursorOverlay
+
+`SupportsPreedit` 改 `true`,`SetPreeditText` 的两个重载都接住(带串内插入点的给 Win32 IMM,
+不带的给 X11 等后端),状态落在控件上,绘制交给已有的光标/幽灵叠加层 ——
+每敲一个拼音字母只重记录这一层,正文的绘制记录原样复用。
+
+呈现一律照搬各家编辑器与 Windows 终端的既有约定,不自创交互:
+
+- **列宽走正文那套 `CharWidth`**,不走 `FormattedText` 的比例排版。合成串一提交就变成屏幕缓冲里的
+  单元格,两套度量对不齐的话,候选一上屏文字会横向跳一下。日文输入法在选字前就把罗马字转成假名
+  (`にほんご`),这时插入点在第 2 个字符之后、屏幕上却是第 4 列。
+- **下划线标「尚未提交」**,取**前景色**而非光标色 —— 它属于文字,不属于光标。
+- **光标移进合成串里**,停在输入法报的串内插入点上(IMM32 的 `GCS_CURSORPOS`),
+  **长相仍是用户配的那一种**:配的是块就仍是块,配了不闪就仍不闪。为此把 `RenderCursor` 里的风格分支
+  抽成 `DrawCursorShape`,正文与合成串共用;它返回「画的是不是实心块」,块状光标压住的那个字
+  由调用方用背景色重绘(正文取自屏幕缓冲,合成期间取自合成串)。程序自己隐了光标(DECTCEM)就不画。
+- **合成期间幽灵文本让位**:幽灵是按「光标左侧已回显文本」现算的,和未提交的合成串叠在一起就是重影。
+  VS Code 在 IME 合成期间同样藏起内联建议。
+- **报给平台的光标矩形横跨整条合成串**。Avalonia 把它直接当候选窗的 `CFS_EXCLUDE` 排除区
+  (`CANDIDATEFORM.rcArea` 就取自它),只报光标那一格的话,拼音一长就被候选窗压在下面,等于白显示。
+  命令补全弹层用的 `GetCursorRect()` 仍取单格,不受影响。
+
+按键路径**没动**:`TerminalKeyRouter` 早就把 `Key.ImeProcessed` 归到 `ImePassthrough`(§#14a 的
+htop 事故),合成期间的方向键/回车/ESC 本来就不会编码下发。这次只补上「看得见」。
+
+### 三、三处会卡住的收尾
+
+合成态是平台推过来的,平台不收尾就会永久挂在光标上:
+
+- **失焦**:Win32 换客户端时会替我们清一次(`SetClient` 里那句 `Client.SetPreeditText(null, null)`),
+  别的后端未必,`OnLostFocus` 自己再清一次。
+- **关掉「启用输入法」设置**:此后平台不会再回调,`ImeEnabled` 的 setter 顺手清掉。
+- **回滚态**:叠加层在 `_scrollOffset != 0` 时整层不画,不管的话用户翻着历史打中文就是对着空白敲。
+  合成**开始**那一刻按 `ScrollOnKeystroke` 把视口拉回底部(与敲普通字符的既有语义一致)。
+
+空串与 `null` 等价视作「合成结束」—— 部分后端用前者,留下 0 字符的合成态会让光标让位给一个画不出
+东西的叠加层。
+
+### 四、验收
+
+`dotnet build VelaShell.slnx -c Debug -warnaserror` 零警告零错误;`dotnet test VelaShell.slnx`
+**3399 通过 / 20 跳过 / 0 失败**。
+
+- `ImePreeditTests`(`Ime` 分类,9 条):一律经 `ImeClientForTest` 走「平台索要客户端」的真路喂合成串,
+  把 `SupportsPreedit` 一起锁在断言里 —— 这是原故障的开关,报 false 就整条链断掉。覆盖:
+  插入点列(含宽字符按 2 列)、后端不给插入点时落在末尾、空串等价 null、合成串一个字节都不下发 PTY、
+  候选窗排除矩形横跨整串而补全锚点仍是单格、关掉 IME 清掉卡住的合成态。
+- `ImePreeditRenderTests`(`GlyphRendering` 分类):**像素级**——合成期间屏幕必须真的变,
+  撤销后必须一像素不差地复原。逻辑层看着一切正常(合成串收到了、列也算对了)而屏幕上什么都没有,
+  正是原故障的样子,只有真读像素才验得到。
+- **没有验证的**:macOS / Linux 的实机输入法(本次只在 Windows + 微软拼音下看过实际效果);
+  韩文那种「逐字节组字、每一击都在改同一个音节」的输入法;IMM32 的分段属性(已转换/未转换子句)
+  —— Avalonia 不转发这份信息,因此整条合成串画成同一种样式。
