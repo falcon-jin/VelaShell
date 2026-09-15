@@ -92,4 +92,4 @@ dotnet test  VelaShell.slnx
 
 ### 提交约束
 
-- 不要附加Claude Code等作者信息
+- **所有提交信息与 PR 描述都不要附加 Claude Code 等 AI 工具的作者信息** —— 不加 `Co-Authored-By: Claude …` 行,也不加 `🤖 Generated with Claude Code` 之类的署名。VelaShellLabs 下所有仓库一致适用。
