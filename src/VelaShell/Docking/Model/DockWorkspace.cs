@@ -311,7 +311,7 @@ public sealed class DockWorkspace : DockElement
         ArgumentNullException.ThrowIfNull(group);
         if (group.Documents.Count > 0)
         {
-            RequestCloseMany(group.Documents.ToArray());
+            RequestCloseMany([.. group.Documents]);
             return;
         }
         CollapseIfEmpty(group);
@@ -424,7 +424,7 @@ public sealed class DockWorkspace : DockElement
             return;
         }
         // 经 RequestCloseMany:一次确认放行全部,而不是逐个弹框。
-        RequestCloseMany(group.Documents.Where(d => !ReferenceEquals(d, document)).ToArray());
+        RequestCloseMany([.. group.Documents.Where(d => !ReferenceEquals(d, document))]);
     }
 
     /// <summary>关闭该文档所在组的所有标签(含自身)。</summary>
@@ -435,7 +435,7 @@ public sealed class DockWorkspace : DockElement
         {
             return;
         }
-        RequestCloseMany(group.Documents.ToArray());
+        RequestCloseMany([.. group.Documents]);
     }
 
     /// <summary>关闭同组内位于该文档左侧的所有标签。</summary>
