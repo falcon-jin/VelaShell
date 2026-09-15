@@ -187,7 +187,7 @@ public sealed class AntiIdleTests
         using var bridge = new SshTerminalBridge(terminal, stream);
         bridge.AntiIdleInterval = TimeSpan.FromMilliseconds(50);
 
-        bool sawNul()
+        bool SawNul()
         {
             lock (writes)
             {
@@ -196,10 +196,10 @@ public sealed class AntiIdleTests
         }
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        while (!sawNul() && sw.ElapsedMilliseconds < 5000)
+        while (!SawNul() && sw.ElapsedMilliseconds < 5000)
         {
             Thread.Sleep(10);
         }
-        Assert.IsTrue(sawNul(), "配了间隔却什么都没发到流上 —— 这条路上有一段没接。");
+        Assert.IsTrue(SawNul(), "配了间隔却什么都没发到流上 —— 这条路上有一段没接。");
     }
 }

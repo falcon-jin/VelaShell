@@ -60,9 +60,11 @@ public class DevPluginRootTests
     }
 
     [TestMethod]
-    public void Resolve_NoListFileAndNoEnvironment_IsEmpty() =>
+    public void Resolve_NoListFileAndNoEnvironment_IsEmpty()
+    {
         // 生产路径:两个来源都空 → 发现期一个额外目录都不扫。
         Assert.IsEmpty(DevPluginRootResolver.Resolve(_base, readFile: _ => null));
+    }
 
     [TestMethod]
     public void Resolve_MalformedLine_DoesNotThrow()
@@ -160,7 +162,7 @@ public class DevPluginRootTests
     /// 全部失效,断言测的就不是它要测的东西了。
     /// </summary>
     private static string Abs(params string[] segments) =>
-        Path.Combine(OperatingSystem.IsWindows() ? @"C:\" : "/", Path.Combine(segments));
+        Path.Combine([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
 
     private static void WritePlugin(string directory, string id)
     {

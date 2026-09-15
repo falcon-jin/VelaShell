@@ -57,30 +57,6 @@ public sealed class RemoteEditSessionManagerTests
         Assert.AreEqual(before, CountTempChildren(), "非法文件名却已经在 temp 下建了目录。");
     }
 
-    /// <summary>
-    /// 经管理器开一个会话(谁也不打开、下载走桩),这样 <c>ActiveSessions</c> 里才有它 ——
-    /// 直接 new 出来的 <c>SessionFixture</c> 没在管理器登记,测不了"会话有没有被收掉"。
-    /// </summary>
-    private static async Task<RemoteEditSession> OpenStubSessionAsync(Func<string, string, Task>? uploadAsync = null)
-    {
-        RemoteEditSession? session = await RemoteEditSessionManager.OpenAsync(new()
-        {
-            SftpService = Substitute.For<ISftpService>(),
-            SessionId = Guid.NewGuid(),
-            RemotePath = "/etc/app.conf",
-            FileName = "app.conf",
-            OpenWith = RemoteEditOpenWith.Nothing,
-            DownloadAsync = async (local, _) =>
-            {
-                await File.WriteAllTextAsync(local, "original");
-                return true;
-            },
-            UploadAsync = uploadAsync ?? ((_, _) => Task.CompletedTask),
-        });
-        Assert.IsNotNull(session);
-        return session;
-    }
-
     /// <summary>remote-edit 临时根下现有的子目录数(不存在算 0)。</summary>
     private static int CountTempChildren() =>
         Directory.Exists(RemoteEditSessionManager.TempRoot)
@@ -184,9 +160,9 @@ public sealed class RemoteEditSessionManagerTests
             RemotePath = "/etc/app.conf",
             FileName = "app.conf",
             OpenWith = RemoteEditOpenWith.Nothing,
-            DownloadAsync = async (local, _) =>
+            DownloadAsync = async (local, ct) =>
             {
-                await File.WriteAllTextAsync(local, "original");
+                await File.WriteAllTextAsync(local, "original", ct);
                 return true;
             },
             UploadAsync = (_, _) => Task.CompletedTask,
@@ -218,9 +194,9 @@ public sealed class RemoteEditSessionManagerTests
             FileName = "app.conf",
             OpenWith = RemoteEditOpenWith.Nothing,
             OnError = errors.Add,
-            DownloadAsync = async (local, _) =>
+            DownloadAsync = async (local, ct) =>
             {
-                await File.WriteAllTextAsync(local, "server side");
+                await File.WriteAllTextAsync(local, "server side", ct);
                 return true;
             },
             // 让回传一直失败,改动就一直停在"没落地"的状态 —— 这正是复用时最怕被覆盖的那份。

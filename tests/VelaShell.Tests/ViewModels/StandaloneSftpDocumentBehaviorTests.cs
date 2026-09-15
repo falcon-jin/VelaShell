@@ -247,14 +247,14 @@ public sealed class StandaloneSftpDocumentBehaviorTests
         SessionTreeNodeViewModel node = vm.Sidebar.SessionTree.Nodes.Single();
         vm.Sidebar.SessionTree.SetSessionStatus(profile.Id, SessionStatus.Connected);
         List<int> notificationThreads = [];
-        void propertyChanged(object? _, PropertyChangedEventArgs args)
+        void OnPropertyChanged(object? _, PropertyChangedEventArgs args)
         {
             if (args.PropertyName == nameof(SessionTreeNodeViewModel.Status))
             {
                 notificationThreads.Add(Environment.CurrentManagedThreadId);
             }
         }
-        node.PropertyChanged += propertyChanged;
+        node.PropertyChanged += OnPropertyChanged;
 
         var document = new SftpDocument(
             new SftpDocumentViewModel(
@@ -285,7 +285,7 @@ public sealed class StandaloneSftpDocumentBehaviorTests
         }
         finally
         {
-            node.PropertyChanged -= propertyChanged;
+            node.PropertyChanged -= OnPropertyChanged;
         }
     }
 
@@ -514,7 +514,7 @@ public sealed class StandaloneSftpDocumentBehaviorTests
         Assert.IsNotNull(
             document.RemoteFiles.GetDefaultEditorPath,
             "远程栏没有拿到默认编辑器解析回调,「使用默认编辑器打开」会误报未配置。");
-        Assert.AreEqual("code", await document.RemoteFiles.GetDefaultEditorPath!());
+        Assert.AreEqual("code", await document.RemoteFiles.GetDefaultEditorPath());
     }
 
     /// <summary>未注入解析回调时的失败形态:面板只能当作“未配置”处理(即修复前的行为)。</summary>
@@ -557,10 +557,10 @@ public sealed class StandaloneSftpDocumentBehaviorTests
 
             int uiThread = Environment.CurrentManagedThreadId;
             List<int> notificationThreads = [];
-            void propertyChanged(object? _1, PropertyChangedEventArgs _2) => notificationThreads.Add(Environment.CurrentManagedThreadId);
-            void collectionChanged(object? _1, NotifyCollectionChangedEventArgs _2) => notificationThreads.Add(Environment.CurrentManagedThreadId);
-            document.ViewModel.LocalFiles.PropertyChanged += propertyChanged;
-            document.ViewModel.LocalFiles.Entries.CollectionChanged += collectionChanged;
+            void OnPropertyChanged(object? _1, PropertyChangedEventArgs _2) => notificationThreads.Add(Environment.CurrentManagedThreadId);
+            void OnCollectionChanged(object? _1, NotifyCollectionChangedEventArgs _2) => notificationThreads.Add(Environment.CurrentManagedThreadId);
+            document.ViewModel.LocalFiles.PropertyChanged += OnPropertyChanged;
+            document.ViewModel.LocalFiles.Entries.CollectionChanged += OnCollectionChanged;
 
             var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -589,8 +589,8 @@ public sealed class StandaloneSftpDocumentBehaviorTests
             }
             finally
             {
-                document.ViewModel.LocalFiles.PropertyChanged -= propertyChanged;
-                document.ViewModel.LocalFiles.Entries.CollectionChanged -= collectionChanged;
+                document.ViewModel.LocalFiles.PropertyChanged -= OnPropertyChanged;
+                document.ViewModel.LocalFiles.Entries.CollectionChanged -= OnCollectionChanged;
 
                 // 收尾必须留在 Dispatch 体**内部** await。headless 会话只在派发的工作项执行期间
                 // 泵送 Avalonia dispatcher;把 CloseAsync 挪到工作项之外等,它要排空的在途操作

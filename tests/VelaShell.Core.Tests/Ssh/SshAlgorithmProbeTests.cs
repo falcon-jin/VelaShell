@@ -140,8 +140,8 @@ public class SshAlgorithmProbeTests
         // 协商失败另有原因(比如对端在 KEXINIT 之后才出问题)时不能硬凑一段说明:
         // 指着一堆其实能用的算法说"没有交集"比不说更糟。
         await using var server = FakeSshServer.Start((stream, ct) =>
-            ServeKexInitAsync(stream, ct, BastionVersion, BastionKex,
-                              ["rsa-sha2-256"], ["chacha20-poly1305@openssh.com"], ["hmac-sha2-256"]));
+            ServeKexInitAsync(stream, BastionVersion, BastionKex,
+                              ["rsa-sha2-256"], ["chacha20-poly1305@openssh.com"], ["hmac-sha2-256"], null, ct));
         var settings = new SshClientSettings("probe@127.0.0.1")
         {
             HostName = IPAddress.Loopback.ToString(),
@@ -155,7 +155,7 @@ public class SshAlgorithmProbeTests
     public TestContext TestContext { get; set; } = null!;
 
     private static Task ServeBastionKexInitAsync(NetworkStream stream, CancellationToken ct, string? banner = null) =>
-        ServeKexInitAsync(stream, ct, BastionVersion, BastionKex, BastionHostKey, BastionEncryption, BastionMac, banner);
+        ServeKexInitAsync(stream, BastionVersion, BastionKex, BastionHostKey, BastionEncryption, BastionMac, banner, ct);
 
     /// <summary>假服务端:banner(可选) → 版本串 → 等客户端的版本串 → 一个 KEXINIT。</summary>
     /// <remarks>
@@ -163,8 +163,9 @@ public class SshAlgorithmProbeTests
     /// 测试会以超时而不是"碰巧通过"的方式失败。
     /// </remarks>
     private static async Task ServeKexInitAsync(
-        NetworkStream stream, CancellationToken ct, string version,
-        string[] kex, string[] hostKey, string[] encryption, string[] mac, string? banner = null)
+        NetworkStream stream, string version,
+        string[] kex, string[] hostKey, string[] encryption, string[] mac,
+        string? banner, CancellationToken ct)
     {
         if (banner is not null)
         {

@@ -525,7 +525,7 @@ dotnet_diagnostic.CA1819.severity = none
 
 # STARTUPINFOEX / PROCESS_INFORMATION 的字段名(cb、lpReserved、dwX、hProcess…)与 WM_* 消息常量
 # 照抄 Windows SDK,对着文档能一眼对上;这几个文件不套命名规则。
-[{src/VelaShell.Infrastructure/Pty/ConPtyShellStream.cs,src/VelaShell/Views/Win32WindowChrome.cs,src/VelaShell/Views/WindowMoveDrag.cs,src/VelaShell.PluginHost/PluginHostShellWindow.cs}]
+[{src/VelaShell.Infrastructure/Pty/ConPtyShellStream.cs,src/VelaShell/Views/Win32WindowChrome.cs,src/VelaShell/Views/WindowMoveDrag.cs,src/VelaShell/Program.cs,src/VelaShell.PluginHost/PluginHostShellWindow.cs}]
 dotnet_diagnostic.IDE1006.severity = none
 
 # ---- 测试项目的放宽 --------------------------------------------------------

@@ -156,7 +156,7 @@ public class TunnelService(
     }
 
     /// <summary>停止指定转发通道:释放底层监听端口并将其状态置为 <see cref="TunnelStatus.Stopped" />;找不到通道时抛出异常。</summary>
-    public async Task StopTunnelAsync(Guid tunnelId, CancellationToken cancellationToken = default)
+    public Task StopTunnelAsync(Guid tunnelId, CancellationToken cancellationToken = default)
     {
         if (!_tunnelPorts.TryRemove(tunnelId, out (IPortForwardHandle Handle, TunnelInfo Info) tunnelData))
         {
@@ -198,6 +198,8 @@ public class TunnelService(
             logger?.LogError(ex, "Failed to stop tunnel {TunnelId}", tunnelId);
             throw;
         }
+        // 收尾全是同步的(取消令牌 + 关监听);签名留成 Task 是 ITunnelService 的契约。
+        return Task.CompletedTask;
     }
 
     /// <summary>释放服务:停止并释放所有会话下的转发通道与可观察列表资源。</summary>

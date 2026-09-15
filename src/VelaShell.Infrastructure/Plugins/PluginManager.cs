@@ -435,7 +435,7 @@ public sealed class PluginManager(PluginManagerOptions options) : IAsyncDisposab
             }
         }
         RaiseChanged();
-        return manifest!.Id;
+        return manifest.Id;
     }
 
     /// <summary>

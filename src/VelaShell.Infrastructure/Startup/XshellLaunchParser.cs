@@ -216,7 +216,7 @@ public static class XshellLaunchParser
             Scheme = scheme.Length == 0 ? "ssh" : scheme,
             ConnectionType = type,
             IsSupported = supported,
-            Host = parsed.Host!.Trim(),
+            Host = parsed.Host.Trim(),
             Port = parsed.Port > 0 ? parsed.Port : defaultPort,
             Username = parsed.UserName?.Trim() ?? string.Empty,
             PrivateKeyPath = string.IsNullOrWhiteSpace(parsed.UserKey) ? null : parsed.UserKey.Trim(),

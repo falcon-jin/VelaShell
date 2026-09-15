@@ -41,7 +41,7 @@ public class GlyphRenderingTests
         }, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>渲染一帧并返回 BGRA 像素。</summary>
-    private static (uint[] Pixels, int Width, int Height) RenderFrame(VelaTerminalControl control, Window window)
+    private static (uint[] Pixels, int Width, int Height) RenderFrame(Window window)
     {
         Dispatcher.UIThread.RunJobs();
         using WriteableBitmap bitmap = window.CaptureRenderedFrame()
@@ -120,12 +120,12 @@ public class GlyphRenderingTests
     {
         OnUi(() =>
         {
-            (VelaTerminalControl control, Window window) = ShowTerminal("hello world");
-            (uint[] withText, _, _) = RenderFrame(control, window);
+            (_, Window window) = ShowTerminal("hello world");
+            (uint[] withText, _, _) = RenderFrame(window);
             window.Close();
 
-            (VelaTerminalControl empty, Window emptyWindow) = ShowTerminal("");
-            (uint[] blank, _, _) = RenderFrame(empty, emptyWindow);
+            (_, Window emptyWindow) = ShowTerminal("");
+            (uint[] blank, _, _) = RenderFrame(emptyWindow);
             emptyWindow.Close();
 
             int textInk = InkPixels(withText);
@@ -156,14 +156,14 @@ public class GlyphRenderingTests
             }
             many.Append("[0m");
 
-            (VelaTerminalControl multi, Window multiWindow) = ShowTerminal(many.ToString());
-            (uint[] multiPixels, _, _) = RenderFrame(multi, multiWindow);
+            (_, Window multiWindow) = ShowTerminal(many.ToString());
+            (uint[] multiPixels, _, _) = RenderFrame(multiWindow);
             multiWindow.Close();
 
             // 对照:同样多的字符,但全程单一风格 → 单个 run。
-            (VelaTerminalControl single, Window singleWindow) =
+            (_, Window singleWindow) =
                 ShowTerminal(string.Concat(Enumerable.Repeat("SEGMENT", 12)));
-            (uint[] singlePixels, _, _) = RenderFrame(single, singleWindow);
+            (uint[] singlePixels, _, _) = RenderFrame(singleWindow);
             singleWindow.Close();
 
             int multiInk = InkPixels(multiPixels);
@@ -189,13 +189,13 @@ public class GlyphRenderingTests
             // 后续帧会画不出文本(或崩)。连画多帧,每帧都必须有同等墨水量。
             (VelaTerminalControl control, Window window) = ShowTerminal("persistent text across frames");
 
-            int first = InkPixels(RenderFrame(control, window).Pixels);
+            int first = InkPixels(RenderFrame(window).Pixels);
             Assert.IsGreaterThan(200, first, "首帧就没画出文本。");
 
             for (int frame = 0; frame < 5; frame++)
             {
                 control.InvalidateTerminal();
-                int ink = InkPixels(RenderFrame(control, window).Pixels);
+                int ink = InkPixels(RenderFrame(window).Pixels);
                 Assert.IsGreaterThan(
                     first / 2,
                     ink,

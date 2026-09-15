@@ -150,9 +150,9 @@ public class ModelSerializationTests
         SessionProfile? roundTrip = JsonSerializer.Deserialize<SessionProfile>(json, _options);
 
         Assert.IsNotNull(roundTrip);
-        Assert.AreEqual(ConnectionType.FTP, roundTrip!.ConnectionType);
+        Assert.AreEqual(ConnectionType.FTP, roundTrip.ConnectionType);
         Assert.IsNotNull(roundTrip.Ftp);
-        Assert.AreEqual(FtpEncryptionMode.Implicit, roundTrip.Ftp!.EncryptionMode);
+        Assert.AreEqual(FtpEncryptionMode.Implicit, roundTrip.Ftp.EncryptionMode);
         Assert.AreEqual(FtpDataConnectionMode.Active, roundTrip.Ftp.DataConnectionMode);
         Assert.IsTrue(roundTrip.Ftp.Anonymous);
         Assert.AreEqual("AABBCC", roundTrip.Ftp.TrustedCertificateThumbprint);
@@ -212,14 +212,14 @@ public class ModelSerializationTests
         SessionProfile? roundTrip = JsonSerializer.Deserialize<SessionProfile>(json);
 
         Assert.IsNotNull(roundTrip);
-        Assert.AreEqual(ConnectionType.Plugin, roundTrip!.ConnectionType);
+        Assert.AreEqual(ConnectionType.Plugin, roundTrip.ConnectionType);
         Assert.AreEqual("velashell.s3", roundTrip.PluginProtocolId);
         Assert.IsNotNull(roundTrip.PluginSettings);
-        Assert.AreEqual("cn-north-1", roundTrip.PluginSettings!["region"]);
+        Assert.AreEqual("cn-north-1", roundTrip.PluginSettings["region"]);
         Assert.AreEqual("backups", roundTrip.PluginSettings["defaultBucket"]);
         // 机密与非机密分成两个字典:仓储层据此"整本加密"而不必去查某个协议的字段声明。
         Assert.IsNotNull(roundTrip.PluginSecrets);
-        Assert.AreEqual("sts-token", roundTrip.PluginSecrets!["sessionToken"]);
+        Assert.AreEqual("sts-token", roundTrip.PluginSecrets["sessionToken"]);
         // Ftp 与插件协议互不干扰:一条配置只带自己那一块。
         Assert.IsNull(roundTrip.Ftp);
     }
@@ -235,7 +235,7 @@ public class ModelSerializationTests
             """{"ConnectionType":3,"Name":"legacy","Host":"s3.amazonaws.com"}""");
 
         Assert.IsNotNull(roundTrip);
-        Assert.AreEqual(ConnectionType.SSH, roundTrip!.ConnectionType);
+        Assert.AreEqual(ConnectionType.SSH, roundTrip.ConnectionType);
     }
 
     [TestMethod]
@@ -410,7 +410,7 @@ public class ModelSerializationTests
         SessionProfile? restored = JsonSerializer.Deserialize<SessionProfile>(
             """{"authMethod":2,"certificatePath":"/key-cert.pub"}""", _options);
         Assert.IsNotNull(restored);
-        Assert.AreEqual(AuthMethod.Certificate, restored!.AuthMethod);
+        Assert.AreEqual(AuthMethod.Certificate, restored.AuthMethod);
         Assert.AreEqual("/key-cert.pub", restored.CertificatePath);
     }
 

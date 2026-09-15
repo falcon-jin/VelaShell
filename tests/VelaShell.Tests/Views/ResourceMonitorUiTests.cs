@@ -524,7 +524,7 @@ public sealed partial class ResourceMonitorUiTests
             // 表头与行的列数必须一致,否则读数会串列。
             IEnumerable<TextBlock> headers = window.GetVisualDescendants().OfType<TextBlock>()
                 .Where(t => t.Classes.Contains("col") && t.IsEffectivelyVisible);
-            foreach (string column in stringArray)
+            foreach (string column in MemoryPageProcessColumns)
             {
                 Assert.Contains(h => h.Text == column, headers, $"内存页进程表缺少“{column}”列。");
             }
@@ -1148,7 +1148,7 @@ public sealed partial class ResourceMonitorUiTests
         "__TP__\n7104|2147483648|1073741824\n2481|536870912|0\n3902|629145600|0\n1204|104857600|0\n" +
         "4517|314572800|0\n881|419430400|0\n5730|104857600|0\n6011|83886080|\n2290|52428800|0\n" +
         "1099|41943040|0\n7788|31457280|0\n8123|20971520|0\n";
-    private static readonly string[] stringArray = ["常驻内存", "占比", "共享", "交换", "CPU"];
+    private static readonly string[] MemoryPageProcessColumns = ["常驻内存", "占比", "共享", "交换", "CPU"];
 
     /// <summary>
     /// 采集服务替身(实现真实接口,不伪造生产类型)。每次调用在基准快照上叠一层确定性游走,

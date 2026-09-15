@@ -152,7 +152,7 @@ public sealed class PluginTerminalProtocolEndToEndTests
         byte[] hello = new byte[64];
         int helloLength = await serverStream.ReadAsync(hello).AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         Assert.IsGreaterThanOrEqualTo(3, helloLength);
-        Assert.AreSequenceEqual(TestTerminalPlugin.Greeting.ToArray(), hello[..3],
+        Assert.AreSequenceEqual(TestTerminalPlugin.Greeting, hello.AsSpan(0, 3),
             "连接建立后应立即发出夹具的问候序列。");
 
         // 服务端发数据 → 宿主的读循环拿得到。

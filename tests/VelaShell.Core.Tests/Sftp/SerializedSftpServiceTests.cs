@@ -249,57 +249,57 @@ public sealed class SerializedSftpServiceTests
 
         public void ReleaseFirstOperation() => _releaseFirstOperation.TrySetResult();
 
-        public Task<List<RemoteFileInfo>> ListDirectoryAsync(Guid sessionId, string path, CancellationToken cancellationToken = default) => InvokeAsync("ListDirectory", sessionId, new List<RemoteFileInfo>(), cancellationToken);
+        public Task<List<RemoteFileInfo>> ListDirectoryAsync(Guid sessionId, string path, CancellationToken cancellationToken = default) => InvokeAsync("ListDirectory", new List<RemoteFileInfo>(), cancellationToken);
 
         public Task UploadFileAsync(Guid sessionId, string localPath, string remotePath, IProgress<TransferProgress>? progress = null, long resumeOffset = 0, CancellationToken cancellationToken = default)
         {
             progress?.Report(CreateTransferProgress(localPath));
-            return InvokeAsync("Upload", sessionId, cancellationToken);
+            return InvokeAsync("Upload", cancellationToken);
         }
 
         public Task DownloadFileAsync(Guid sessionId, string remotePath, string localPath, IProgress<TransferProgress>? progress = null, long resumeOffset = 0, CancellationToken cancellationToken = default)
         {
             progress?.Report(CreateTransferProgress(remotePath));
-            return InvokeAsync("Download", sessionId, cancellationToken);
+            return InvokeAsync("Download", cancellationToken);
         }
 
         public Task CopyAsync(Guid sessionId, string sourcePath, string destPath, IProgress<TransferProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             progress?.Report(CreateTransferProgress(sourcePath));
-            return InvokeAsync("Copy", sessionId, cancellationToken);
+            return InvokeAsync("Copy", cancellationToken);
         }
 
         public Task DeleteAsync(Guid sessionId, string remotePath, IProgress<SftpDeleteProgress>? progress = null, CancellationToken cancellationToken = default)
         {
             progress?.Report(new(1, 1, remotePath));
-            return InvokeAsync("Delete", sessionId, cancellationToken);
+            return InvokeAsync("Delete", cancellationToken);
         }
 
-        public Task CreateDirectoryAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("CreateDirectory", sessionId, cancellationToken);
-        public Task CreateFileAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("CreateFile", sessionId, cancellationToken);
-        public Task EnsureDirectoryAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("EnsureDirectory", sessionId, cancellationToken);
-        public Task RenameAsync(Guid sessionId, string oldPath, string newPath, CancellationToken cancellationToken = default) => InvokeAsync("Rename", sessionId, cancellationToken);
-        public Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default) => InvokeAsync("SetPermissions", sessionId, cancellationToken);
-        public Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default) => InvokeAsync("SetLastWriteTime", sessionId, cancellationToken);
-        public Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default) => InvokeAsync<IReadOnlyDictionary<string, string?>>("ComputeSha256", sessionId, new Dictionary<string, string?>(), cancellationToken);
-        public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) => InvokeAsync("CreateSymbolicLink", sessionId, cancellationToken);
-        public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("GetFileInfo", sessionId, CreateRemoteFileInfo(remotePath), cancellationToken);
+        public Task CreateDirectoryAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("CreateDirectory", cancellationToken);
+        public Task CreateFileAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("CreateFile", cancellationToken);
+        public Task EnsureDirectoryAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("EnsureDirectory", cancellationToken);
+        public Task RenameAsync(Guid sessionId, string oldPath, string newPath, CancellationToken cancellationToken = default) => InvokeAsync("Rename", cancellationToken);
+        public Task SetPermissionsAsync(Guid sessionId, string remotePath, short octalMode, CancellationToken cancellationToken = default) => InvokeAsync("SetPermissions", cancellationToken);
+        public Task SetLastWriteTimeAsync(Guid sessionId, string remotePath, DateTime lastWriteTimeUtc, CancellationToken cancellationToken = default) => InvokeAsync("SetLastWriteTime", cancellationToken);
+        public Task<IReadOnlyDictionary<string, string?>> ComputeSha256Async(Guid sessionId, IReadOnlyList<string> remotePaths, CancellationToken cancellationToken = default) => InvokeAsync<IReadOnlyDictionary<string, string?>>("ComputeSha256", new Dictionary<string, string?>(), cancellationToken);
+        public Task CreateSymbolicLinkAsync(Guid sessionId, string linkPath, string targetPath, CancellationToken cancellationToken = default) => InvokeAsync("CreateSymbolicLink", cancellationToken);
+        public Task<RemoteFileInfo> GetFileInfoAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("GetFileInfo", CreateRemoteFileInfo(remotePath), cancellationToken);
 
-        public Task<Stream> OpenReadAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync<Stream>("OpenRead", sessionId, new MemoryStream(), cancellationToken);
-        public Task<bool> ExistsAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("Exists", sessionId, true, cancellationToken);
-        public Task<string> GetWorkingDirectoryAsync(Guid sessionId, CancellationToken cancellationToken = default) => InvokeAsync("GetWorkingDirectory", sessionId, "/", cancellationToken);
+        public Task<Stream> OpenReadAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync<Stream>("OpenRead", new MemoryStream(), cancellationToken);
+        public Task<bool> ExistsAsync(Guid sessionId, string remotePath, CancellationToken cancellationToken = default) => InvokeAsync("Exists", true, cancellationToken);
+        public Task<string> GetWorkingDirectoryAsync(Guid sessionId, CancellationToken cancellationToken = default) => InvokeAsync("GetWorkingDirectory", "/", cancellationToken);
 
         public Task CloseSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
         {
             CloseCalls++;
-            return InvokeAsync("CloseSession", sessionId, cancellationToken);
+            return InvokeAsync("CloseSession", cancellationToken);
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-        private async Task InvokeAsync(string operationName, Guid sessionId, CancellationToken cancellationToken) => _ = await InvokeAsync(operationName, sessionId, true, cancellationToken);
+        private async Task InvokeAsync(string operationName, CancellationToken cancellationToken) => _ = await InvokeAsync(operationName, true, cancellationToken);
 
-        private async Task<T> InvokeAsync<T>(string operationName, Guid sessionId, T result, CancellationToken cancellationToken)
+        private async Task<T> InvokeAsync<T>(string operationName, T result, CancellationToken cancellationToken)
         {
             lock (_sync)
             {

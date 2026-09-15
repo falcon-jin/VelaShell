@@ -38,12 +38,12 @@ public static class InputEncoder
         int mod = ModifierCode(mods);
         return key switch
         {
-            Key.Up => Cursor('A', app, vt52, mod, alt),
-            Key.Down => Cursor('B', app, vt52, mod, alt),
-            Key.Right => Cursor('C', app, vt52, mod, alt),
-            Key.Left => Cursor('D', app, vt52, mod, alt),
-            Key.Home => Cursor('H', app, vt52, mod, alt),
-            Key.End => Cursor('F', app, vt52, mod, alt),
+            Key.Up => Cursor('A', app, vt52, mod),
+            Key.Down => Cursor('B', app, vt52, mod),
+            Key.Right => Cursor('C', app, vt52, mod),
+            Key.Left => Cursor('D', app, vt52, mod),
+            Key.Home => Cursor('H', app, vt52, mod),
+            Key.End => Cursor('F', app, vt52, mod),
             Key.Insert => Tilde(2, mod, alt),
             Key.Delete => Tilde(3, mod, alt),
             Key.PageUp => Tilde(5, mod, alt),
@@ -56,10 +56,10 @@ public static class InputEncoder
             // 与普通 Backspace 毫无区别,达不到删词效果。
             Key.Back => ctrl ? [0x1B, 0x7F] : WithAlt([0x7F], alt),
             Key.Escape => WithAlt([0x1B], alt),
-            Key.F1 => Function(1, 'P', mod, alt, vt52),
-            Key.F2 => Function(2, 'Q', mod, alt, vt52),
-            Key.F3 => Function(3, 'R', mod, alt, vt52),
-            Key.F4 => Function(4, 'S', mod, alt, vt52),
+            Key.F1 => Function('P', mod, alt, vt52),
+            Key.F2 => Function('Q', mod, alt, vt52),
+            Key.F3 => Function('R', mod, alt, vt52),
+            Key.F4 => Function('S', mod, alt, vt52),
             Key.F5 => Tilde(15, mod, alt),
             Key.F6 => Tilde(17, mod, alt),
             Key.F7 => Tilde(18, mod, alt),
@@ -72,7 +72,7 @@ public static class InputEncoder
         };
     }
 
-    private static byte[] Cursor(char final, bool app, bool vt52, int mod, bool alt)
+    private static byte[] Cursor(char final, bool app, bool vt52, int mod)
     {
         if (vt52)
         {
@@ -82,8 +82,9 @@ public static class InputEncoder
         {
             return Encoding.ASCII.GetBytes($"\e[1;{mod}{final}");
         }
+        // 走到这里 Alt 必然没按下(按下的话 mod >= 3,上面那条分支已经返回),所以不加 ESC 前缀。
         string prefix = app ? "\eO" : "\e[";
-        return WithAlt(Encoding.ASCII.GetBytes($"{prefix}{final}"), false);
+        return Encoding.ASCII.GetBytes($"{prefix}{final}");
     }
 
     private static byte[] Tilde(int code, int mod, bool alt)
@@ -92,7 +93,7 @@ public static class InputEncoder
         return WithAlt(Encoding.ASCII.GetBytes(seq), alt && mod == 1);
     }
 
-    private static byte[] Function(int number, char final, int mod, bool alt, bool vt52)
+    private static byte[] Function(char final, int mod, bool alt, bool vt52)
     {
         if (vt52)
         {

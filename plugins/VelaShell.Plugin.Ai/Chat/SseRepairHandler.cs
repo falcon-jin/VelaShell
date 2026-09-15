@@ -93,11 +93,11 @@ internal sealed class SseRepairHandler(Action<string, bool> onDropped) : Delegat
     /// <summary>JSON 里有没有 <c>"stream": true</c>(容忍冒号两边的空白)。</summary>
     internal static bool HasStreamTrue(string body)
     {
-        const string Key = "\"stream\"";
-        int at = body.IndexOf(Key, StringComparison.Ordinal);
+        const string key = "\"stream\"";
+        int at = body.IndexOf(key, StringComparison.Ordinal);
         while (at >= 0)
         {
-            int i = at + Key.Length;
+            int i = at + key.Length;
             while (i < body.Length && char.IsWhiteSpace(body[i]))
             {
                 i++;
@@ -114,7 +114,7 @@ internal sealed class SseRepairHandler(Action<string, bool> onDropped) : Delegat
                     return true;
                 }
             }
-            at = body.IndexOf(Key, at + Key.Length, StringComparison.Ordinal);
+            at = body.IndexOf(key, at + key.Length, StringComparison.Ordinal);
         }
         return false;
     }

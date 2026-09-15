@@ -21,7 +21,6 @@ public sealed class BridgeService(IPluginContext context, AiSettingsStore aiStor
 
     private ChannelHub? _hub;
     private ConversationRouter? _router;
-    private ImApprovalBroker? _approvals;
     private Timer? _idleTimer;
 
     /// <summary>
@@ -51,7 +50,7 @@ public sealed class BridgeService(IPluginContext context, AiSettingsStore aiStor
             BridgeSettings bridge = await _bridgeStore.LoadAsync(cancellationToken).ConfigureAwait(false);
             AiSettings ai = await aiStore.LoadAsync(cancellationToken).ConfigureAwait(false);
             _loc.Switch(context.Host.Locale);
-            if (!bridge.Enabled || bridge.Channels.Count(c => c.Enabled) == 0)
+            if (!bridge.Enabled || !bridge.Channels.Any(c => c.Enabled))
             {
                 await StopCoreAsync().ConfigureAwait(false);
                 return;
@@ -69,7 +68,6 @@ public sealed class BridgeService(IPluginContext context, AiSettingsStore aiStor
             hub.StatusChanged += status => StatusChanged?.Invoke(status);
             _hub = hub;
             _router = router;
-            _approvals = approvals;
 
             foreach (ChannelConfig config in bridge.Channels.Where(c => c.Enabled))
             {
@@ -160,7 +158,6 @@ public sealed class BridgeService(IPluginContext context, AiSettingsStore aiStor
         }
         _hub = null;
         _router = null;
-        _approvals = null;
     }
 
     /// <inheritdoc />

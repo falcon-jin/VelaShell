@@ -79,5 +79,5 @@ public class VelaShellStartupArgumentsTests
 
     /// <summary>拼一条本平台的绝对路径(Windows <c>C:\a\b</c> / Unix <c>/a/b</c>)。</summary>
     private static string Abs(params string[] segments) =>
-        Path.Combine(OperatingSystem.IsWindows() ? @"C:\" : "/", Path.Combine(segments));
+        Path.Combine([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
 }

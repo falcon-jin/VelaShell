@@ -323,7 +323,4 @@ public partial class ChatPanelView
         int caret = Math.Clamp(InputBox.CaretOffset, 0, text.Length);
         return text.AsSpan(caret).IndexOf('\n') < 0;
     }
-
-    private Avalonia.Styling.ControlTheme? FindTheme(string key)
-        => this.TryFindResource(key, out object? value) && value is Avalonia.Styling.ControlTheme theme ? theme : null;
 }

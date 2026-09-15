@@ -85,16 +85,16 @@ public sealed class ToolPickerView : UserControl
         // 右边这 20 拆成 10(根)+ 10(滚动区内):滚动条是浮在内容上、贴着<b>滚动区</b>右缘画的,
         // 全放根上的话它就飘在卡片边上了;拆开之后滚动区比卡片宽出 10,条子正好落在空档里。
         // 卡片左右仍旧各离窗口 20(离屏渲染量过:左 20 / 右 20)。
-        const double Gutter = 10;
-        var right = new DockPanel { Margin = new Avalonia.Thickness(20, 16, 20 - Gutter, 16) };
-        _status.Margin = new Avalonia.Thickness(0, 10, Gutter, 0);
+        const double gutter = 10;
+        var right = new DockPanel { Margin = new Avalonia.Thickness(20, 16, 20 - gutter, 16) };
+        _status.Margin = new Avalonia.Thickness(0, 10, gutter, 0);
         DockPanel.SetDock(_status, Dock.Bottom);
         var hint = new TextBlock
         {
             Classes = { "dim" },
             Text = _loc["McpHint"],
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Avalonia.Thickness(0, 0, Gutter, 10)
+            Margin = new Avalonia.Thickness(0, 0, gutter, 10)
         };
         DockPanel.SetDock(hint, Dock.Top);
         right.Children.Add(hint);
@@ -103,7 +103,7 @@ public sealed class ToolPickerView : UserControl
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             // 覆盖式滚动条会压住右缘,留白放在内容上而不是 ScrollViewer.Padding
-            Content = new Border { Padding = new Avalonia.Thickness(0, 0, Gutter, 0), Child = _groups }
+            Content = new Border { Padding = new Avalonia.Thickness(0, 0, gutter, 0), Child = _groups }
         });
 
         // 左栏:MCP 服务器概览。配好一台服务器紧接着就要挑它的工具,那份勾选列表就在右边 ——

@@ -2759,7 +2759,7 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
         // 多段选区不会把渲染热路径变成 O(格 × 段)。
         int rowSpans = CollectRowSpans(spans, absoluteRow, cols);
         // 本行的搜索命中区间同样逐行取一次:原先每一格都要在字典里 TryGetValue 一遍。
-        List<(int Start, int End, bool Current)>? rowSearchSpans = null;
+        List<(int start, int end, bool current)>? rowSearchSpans = null;
         _ = _searchHighlights?.TryGetValue(absoluteRow, out rowSearchSpans);
         // 整行有没有 OSC 8 链接逐行问一次:绝大多数行没有,格子循环里连数组都不必碰。
         bool hasLinks = line.HasLinks;
@@ -2795,11 +2795,11 @@ public sealed partial class VelaTerminalControl : Control, ITerminalEmulator
             }
             if (rowSearchSpans is not null)
             {
-                foreach ((int Start, int End, bool Current) in rowSearchSpans)
+                foreach ((int start, int end, bool current) in rowSearchSpans)
                 {
-                    if (col >= Start && col < End)
+                    if (col >= start && col < end)
                     {
-                        bg = Current ? palette.SearchCurrentBackground : palette.SearchMatchBackground;
+                        bg = current ? palette.SearchCurrentBackground : palette.SearchMatchBackground;
                         break;
                     }
                 }

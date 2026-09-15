@@ -308,7 +308,7 @@ public sealed class PluginPanelUiTests
                 Controls.Controls.LucideIcon icon = TitleIconOf(panel);
 
                 Assert.IsNotNull(icon.Data);
-                Assert.AreEqual(new Rect(4, 4, 16, 16), icon.Data!.Bounds, "标题栏画的应当是插件那段路径。");
+                Assert.AreEqual(new Rect(4, 4, 16, 16), icon.Data.Bounds, "标题栏画的应当是插件那段路径。");
                 Assert.AreEqual(1024d, icon.ViewBoxSize, "视框没到渲染层:按 24 缩放会把它放大四十多倍。");
                 Assert.IsNotNull(icon.Fill, "填充没到渲染层:实心 logo 会被描成一圈轮廓线。");
             }
