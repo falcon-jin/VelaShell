@@ -61,7 +61,6 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Avalonia.AvaloniaEdit" />
-    <PackageReference Include="Avalonia.Wayland" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
@@ -113,8 +112,7 @@
          与 GetVelaPluginPayload 按 TargetDir 取件的约定对不上)。插件由宿主的 ALC 装载,
          天然是框架依赖、RID 无关的类库,这里显式把这些属性摘掉,让本机构建与发布构建
          落在同一个输出目录。 -->
-    <ProjectReference Include="..\..\plugins\*\*.csproj" ReferenceOutputAssembly="false" Private="false"
-                      UndefineProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishTrimmed;PublishReadyToRun;PublishAot" />
+    <ProjectReference Include="..\..\plugins\*\*.csproj" ReferenceOutputAssembly="false" Private="false" UndefineProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishTrimmed;PublishReadyToRun;PublishAot" />
   </ItemGroup>
 
   <!--
@@ -162,15 +160,12 @@
            把它从输出里剪掉 —— 此前只增不减,删了源头输出里那份能一直留到手动删为止。
        只登记本目标复制的文件:自建插件(velashell-ai)由插件工程自己铺进同一个 plugins/,
        不在这份台账里,因此绝不会被误剪。 -->
-  <Target Name="CopyVelaPluginsToOutput" AfterTargets="CopyFilesToOutputDirectory"
-          Condition="Exists('$(VelaPluginsStageDir)')">
+  <Target Name="CopyVelaPluginsToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="Exists('$(VelaPluginsStageDir)')">
     <ItemGroup>
       <_VelaStagedPluginFile Include="$(VelaPluginsStageDir)\**\*" />
       <_VelaStagedPluginOutput Include="@(_VelaStagedPluginFile->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')" />
     </ItemGroup>
-    <Copy SourceFiles="@(_VelaStagedPluginFile)"
-          DestinationFiles="@(_VelaStagedPluginOutput)"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_VelaStagedPluginFile)" DestinationFiles="@(_VelaStagedPluginOutput)" SkipUnchangedFiles="true" />
     <ItemGroup>
       <FileWrites Include="@(_VelaStagedPluginOutput)" />
     </ItemGroup>
@@ -180,10 +175,8 @@
          判据用"没有 plugin.json"而不是"目录为空":对宿主而言这两者等价,
          而前者顺带也清掉了剪剩半截的残骸。 -->
     <ItemGroup>
-      <_VelaOutputPluginDir Include="$([System.IO.Directory]::GetDirectories('$(OutDir)plugins'))"
-                            Condition="Exists('$(OutDir)plugins')" />
-      <_VelaOrphanPluginDir Include="@(_VelaOutputPluginDir)"
-                            Condition="!Exists('%(Identity)\plugin.json')" />
+      <_VelaOutputPluginDir Include="$([System.IO.Directory]::GetDirectories('$(OutDir)plugins'))" Condition="Exists('$(OutDir)plugins')" />
+      <_VelaOrphanPluginDir Include="@(_VelaOutputPluginDir)" Condition="!Exists('%(Identity)\plugin.json')" />
     </ItemGroup>
     <RemoveDir Directories="@(_VelaOrphanPluginDir)" />
   </Target>
@@ -225,10 +218,7 @@
     <ItemGroup>
       <_VelaLocalPluginProject Include="$(MSBuildThisFileDirectory)..\..\plugins\*\*.csproj" />
     </ItemGroup>
-    <MSBuild Projects="@(_VelaLocalPluginProject)"
-             Targets="GetVelaPluginPayload"
-             Properties="Configuration=$(Configuration)"
-             RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishTrimmed;PublishReadyToRun;PublishAot;PublishDir">
+    <MSBuild Projects="@(_VelaLocalPluginProject)" Targets="GetVelaPluginPayload" Properties="Configuration=$(Configuration)" RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile;PublishTrimmed;PublishReadyToRun;PublishAot;PublishDir">
       <Output TaskParameter="TargetOutputs" ItemName="_VelaLocalPluginPayload" />
     </MSBuild>
 
@@ -240,8 +230,7 @@
 
     <!-- 一个插件都没有会悄无声息地发出"插件系统看着在、实则没插件"的包,宁可在这里断掉发布。
          正常路径靠①兜底:②不进发行包之后,这条只会在自建插件也全军覆没时才响。 -->
-    <Error Condition="'@(_VelaLocalPluginPayload)' == '' and '@(_VelaStagedPluginPayload)' == ''"
-           Text="发布产物里没有任何插件:plugins/ 下没有 &lt;VelaPluginShip&gt;true&lt;/VelaPluginShip&gt; 的插件工程,插件暂存目录 '$(VelaPluginsStageDir)' 也是空的或不存在。发行包里的插件本该来自 plugins/ 下的自建工程 —— 先查那边为什么没产出;确实想把插件仓库侧的插件一并打进去,把它们铺进暂存目录再发布。" />
+    <Error Condition="'@(_VelaLocalPluginPayload)' == '' and '@(_VelaStagedPluginPayload)' == ''" Text="发布产物里没有任何插件:plugins/ 下没有 &lt;VelaPluginShip&gt;true&lt;/VelaPluginShip&gt; 的插件工程,插件暂存目录 '$(VelaPluginsStageDir)' 也是空的或不存在。发行包里的插件本该来自 plugins/ 下的自建工程 —— 先查那边为什么没产出;确实想把插件仓库侧的插件一并打进去,把它们铺进暂存目录再发布。" />
 
     <ItemGroup>
       <ResolvedFileToPublish Include="@(_VelaLocalPluginPayload)">
@@ -278,10 +267,8 @@
 
   <Target Name="VerifyVelaAppPublishAssetsIntact" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
-      <_VelaAppPublishAssetDropped Include="@(_VelaAppPublishAssetBefore)"
-                                   Exclude="@(_ResolvedCopyLocalPublishAssets)" />
+      <_VelaAppPublishAssetDropped Include="@(_VelaAppPublishAssetBefore)" Exclude="@(_ResolvedCopyLocalPublishAssets)" />
     </ItemGroup>
-    <Error Condition="'@(_VelaAppPublishAssetDropped)' != ''"
-           Text="发布产物缺少应用自身的依赖(被发布期文件名冲突消重删掉了):@(_VelaAppPublishAssetDropped->'%(Filename)%(Extension)', ', ')。多半是又有 target 在 ComputeResolvedFilesToPublishList **之前**往 ResolvedFileToPublish 里登记了同名文件(见 AddVelaPluginsToPublish 的注释,#181)。" />
+    <Error Condition="'@(_VelaAppPublishAssetDropped)' != ''" Text="发布产物缺少应用自身的依赖(被发布期文件名冲突消重删掉了):@(_VelaAppPublishAssetDropped->'%(Filename)%(Extension)', ', ')。多半是又有 target 在 ComputeResolvedFilesToPublishList **之前**往 ResolvedFileToPublish 里登记了同名文件(见 AddVelaPluginsToPublish 的注释,#181)。" />
   </Target>
 </Project>
