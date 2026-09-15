@@ -1064,7 +1064,7 @@ public class FileBrowserViewModel : ReactiveObject
     /// <summary>协议动作菜单的分组名(即协议显示名);无动作时菜单项不显示。</summary>
     public string ProtocolActionsHeader
     {
-        get => field;
+        get;
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
@@ -1101,7 +1101,7 @@ public class FileBrowserViewModel : ReactiveObject
     /// </summary>
     public RemoteFileInfoViewModel? ContextTarget
     {
-        get => field;
+        get;
         set
         {
             field = value;

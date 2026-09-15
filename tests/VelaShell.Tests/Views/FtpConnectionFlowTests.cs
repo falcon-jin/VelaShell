@@ -26,16 +26,14 @@ namespace VelaShell.Tests.Views;
 [TestCategory("FtpConnectionFlow")]
 public sealed class FtpConnectionFlowTests
 {
-    private static HeadlessUnitTestSession _session = null!;
-
     /// <summary>
     /// 本用例不往 UI 线程上派发(理由见测试方法的 remarks),但仍要启动 headless 会话:
     /// <see cref="MainWindowViewModel" /> 途中会碰 <c>Dispatcher.UIThread</c>,没有 Avalonia 应用
-    /// 就会因测试执行顺序不同而偶发失败。
+    /// 就会因测试执行顺序不同而偶发失败。会话本身按程序集缓存,这里拿不拿返回值都一样。
     /// </summary>
     [ClassInitialize]
     public static void Init(TestContext _) =>
-        _session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(FtpConnectionFlowTests).Assembly);
+        HeadlessUnitTestSession.GetOrStartForAssembly(typeof(FtpConnectionFlowTests).Assembly);
 
     /// <remarks>
     /// 用 <c>await await Dispatch(async …)</c> 而不是在 UI 线程里 <c>GetResult()</c>:
@@ -72,7 +70,7 @@ public sealed class FtpConnectionFlowTests
             SftpDocument? document = await vm.OpenFtpDocumentForProfileAsync(profile);
 
             Assert.IsNotNull(document, "FTP 配置应能直接连上并打开一个文档标签。");
-            Assert.IsNull(document!.ViewModel.Session, "FTP 文档没有 SSH 会话 —— 这正是文档视图模型被泛化的原因。");
+            Assert.IsNull(document.ViewModel.Session, "FTP 文档没有 SSH 会话 —— 这正是文档视图模型被泛化的原因。");
             Assert.Contains(document, vm.Layout.AllDocuments().ToList());
 
             await document.ViewModel.InitialLoadTask;

@@ -129,7 +129,7 @@ public sealed class PluginRowViewModel(PluginDescriptor descriptor, bool hasTerm
     /// 而"看着像能核对"比"明说不能核对"更糟。
     /// </summary>
     public string PublisherText =>
-        HasPublisher ? Strings.Format("PluginManager_PublisherPinned", PublisherFingerprint!) : "";
+        HasPublisher ? Strings.Format("PluginManager_PublisherPinned", PublisherFingerprint) : "";
 
     /// <summary>商店上的最新版本号;没有比本地更新的版本时为 <see langword="null" />。</summary>
     public string? AvailableVersion { get; init; }

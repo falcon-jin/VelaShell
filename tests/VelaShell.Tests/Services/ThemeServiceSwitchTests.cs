@@ -59,9 +59,9 @@ public class ThemeServiceSwitchTests
     {
         var sut = new ThemeService("dark");
 
-        void act() => sut.SetTheme("ocean");
+        void Act() => sut.SetTheme("ocean");
 
-        Assert.ThrowsExactly<ArgumentException>(act);
+        Assert.ThrowsExactly<ArgumentException>(Act);
     }
 
     [TestMethod]

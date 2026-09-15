@@ -20,7 +20,7 @@ public class PluginPermissionGateTests
 
         public Task UpsertAsync<T>(string collection, string id, T value, CancellationToken cancellationToken = default) where T : class
         {
-            _docs[$"{collection}|{id}"] = value!;
+            _docs[$"{collection}|{id}"] = value;
             return Task.CompletedTask;
         }
 

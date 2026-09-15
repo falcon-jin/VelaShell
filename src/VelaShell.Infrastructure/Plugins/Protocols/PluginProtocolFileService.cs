@@ -36,7 +36,7 @@ public sealed class PluginProtocolFileService(PluginProtocolRegistry registry)
 
     /// <inheritdoc />
     /// <remarks>正在打开的也算:从解析(可能刚惰性激活)到连接建好之间,空闲回收不能把插件卸掉。</remarks>
-    public int CountOpenSurfaces(PluginSdk.PluginManifest manifest)
+    public int CountOpenSurfaces(PluginManifest manifest)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         if (manifest.Contributes?.Protocols is not { Length: > 0 } protocols)

@@ -101,12 +101,12 @@ public class SettingsViewModel : ReactiveObject
     private readonly ISettingsService _settingsService;
     private readonly IThemeService _themeService;
     private readonly IUpdateService? _updateService;
-    private readonly JsonSerializerOptions jsonOption = new()
+    private readonly JsonSerializerOptions _jsonOption = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
     };
-    private readonly JsonSerializerOptions exportJsonOption = new()
+    private readonly JsonSerializerOptions _exportJsonOption = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -1335,7 +1335,7 @@ public class SettingsViewModel : ReactiveObject
     {
         AppSettings redacted = JsonClone(_loaded);
         redacted.Proxy.Password = string.Empty;
-        return JsonSerializer.Serialize(redacted, exportJsonOption);
+        return JsonSerializer.Serialize(redacted, _exportJsonOption);
     }
 
     /// <summary>从导出的 JSON 导入配置(常规页“导入”)。</summary>
@@ -1346,7 +1346,7 @@ public class SettingsViewModel : ReactiveObject
         AppSettings? imported;
         try
         {
-            imported = JsonSerializer.Deserialize<AppSettings>(json, jsonOption);
+            imported = JsonSerializer.Deserialize<AppSettings>(json, _jsonOption);
         }
         catch (JsonException)
         {
@@ -1612,7 +1612,7 @@ public class SettingsViewModel : ReactiveObject
             _previewDebounce = new() { Interval = TimeSpan.FromMilliseconds(50) };
             _previewDebounce.Tick += (_, _) =>
             {
-                _previewDebounce!.Stop();
+                _previewDebounce.Stop();
                 BroadcastPreview();
             };
         }

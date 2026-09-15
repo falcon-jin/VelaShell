@@ -105,7 +105,7 @@ public sealed class ConversationRouter(
             return;
         }
         // 审批回复优先:这句话是在回上一条"要不要放行",不该被当成新问题
-        if (approvals.TryConsume(message, config, Loc))
+        if (approvals.TryConsume(message, Loc))
         {
             return;
         }

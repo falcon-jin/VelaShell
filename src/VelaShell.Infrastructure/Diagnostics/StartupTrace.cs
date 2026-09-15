@@ -29,8 +29,8 @@ public static class StartupTrace
     /// <summary>设为 <c>1</c> 时把打点同时打到控制台。</summary>
     public const string VerboseEnvironmentVariable = "VELASHELL_STARTUP_TRACE";
 
-    private static readonly long _originTimestamp = ResolveOrigin();
-    private static readonly ConcurrentQueue<(string Name, TimeSpan At)> _marks = new();
+    private static readonly long OriginTimestamp = ResolveOrigin();
+    private static readonly ConcurrentQueue<(string Name, TimeSpan At)> MarkQueue = new();
     private static int _summaryWritten;
 
     /// <summary>是否把打点同时打到控制台。</summary>
@@ -41,10 +41,10 @@ public static class StartupTrace
     public static bool HasProcessOrigin { get; private set; }
 
     /// <summary>已记录的打点,按记录顺序。</summary>
-    public static IReadOnlyList<(string Name, TimeSpan At)> Marks => [.. _marks];
+    public static IReadOnlyList<(string Name, TimeSpan At)> Marks => [.. MarkQueue];
 
     /// <summary>自基准时刻起已过去的时间。</summary>
-    public static TimeSpan Elapsed => Stopwatch.GetElapsedTime(_originTimestamp);
+    public static TimeSpan Elapsed => Stopwatch.GetElapsedTime(OriginTimestamp);
 
     /// <summary>
     /// 记一个打点。
@@ -59,7 +59,7 @@ public static class StartupTrace
         try
         {
             TimeSpan at = Elapsed;
-            _marks.Enqueue((name, at));
+            MarkQueue.Enqueue((name, at));
             if (IsVerbose)
             {
                 Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"[startup] {at.TotalMilliseconds,8:F1} ms  {name}"));
@@ -98,7 +98,7 @@ public static class StartupTrace
     /// <returns>多行文本;没有打点时是一行说明。</returns>
     public static string Format()
     {
-        (string Name, TimeSpan At)[] marks = [.. _marks];
+        (string Name, TimeSpan At)[] marks = [.. MarkQueue];
         if (marks.Length == 0)
         {
             return "[Startup] no marks recorded";

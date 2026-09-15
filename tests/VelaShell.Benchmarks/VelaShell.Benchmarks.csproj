@@ -11,7 +11,10 @@
     <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
     <!-- 基准方法都是 public 且必须能被 BDN 反射到,XML 文档注释对它们没有意义。 -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CA1822;</NoWarn>
+    <!-- EnableGenerateDocumentationFile:上面那一关会让 IDE0005(多余 using)在
+         EnforceCodeStyleInBuild 下失效,分析器为此报一条 meta 警告劝你把文档文件打开。
+         这里是刻意关的,压掉这条劝告。 -->
+    <NoWarn>$(NoWarn);CA1822;EnableGenerateDocumentationFile;</NoWarn>
     <!-- BDN 会为每个 job 生成并编译一个宿主工程,ServerGC/分层编译等由 job 决定。 -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>

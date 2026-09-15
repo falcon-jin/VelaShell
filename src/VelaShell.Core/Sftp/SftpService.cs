@@ -94,7 +94,7 @@ public class SftpService : ISftpService
         // 以此刻的远端状态重新核实续传起点;核实不通过会抛错,核实为"无可续"则整份重传。
         if (resumeOffset > 0)
         {
-            resumeOffset = await ResolveUploadResumeAsync(client, remotePath, localPath, totalBytes, resumeOffset, cancellationToken).ConfigureAwait(false);
+            resumeOffset = await ResolveUploadResumeAsync(client, remotePath, localPath, totalBytes, cancellationToken).ConfigureAwait(false);
         }
 
         // 续传与全新上传只差一个偏移量参数,其余(限速包装、收尾上报)完全一致。
@@ -163,7 +163,7 @@ public class SftpService : ISftpService
         // 以此刻本地残留文件的实际长度重新核实续传起点(理由同上传侧)。
         if (resumeOffset > 0)
         {
-            resumeOffset = await ResolveDownloadResumeAsync(client, remotePath, localPath, totalBytes, resumeOffset, cancellationToken).ConfigureAwait(false);
+            resumeOffset = await ResolveDownloadResumeAsync(client, remotePath, localPath, totalBytes, cancellationToken).ConfigureAwait(false);
         }
 
         if (resumeOffset > 0)
@@ -606,10 +606,10 @@ public class SftpService : ISftpService
     /// <summary>
     /// 核实一次上传的续传起点。
     /// <para>
-    /// 调用方给出的 <paramref name="claimedOffset" /> 是更早之前探测远端大小得到的,从探测到
-    /// 真正开始写之间隔着冲突对话框和传输队列,远端文件完全可能已经变了 —— 直接照着旧偏移
-    /// 追加会静默产出损坏文件。这里以"此刻的远端长度"为准,并比对尾部字节确认远端那半截
-    /// 确实是本地文件的前缀。
+    /// 调用方手里那个偏移是更早之前探测远端大小得到的,从探测到真正开始写之间隔着冲突对话框
+    /// 和传输队列,远端文件完全可能已经变了 —— 直接照着旧偏移追加会静默产出损坏文件。
+    /// 所以它只用来决定"要不要核实"(调用方的 <c>resumeOffset &gt; 0</c>),不传进来:
+    /// 这里一律以"此刻的远端长度"为准,并比对尾部字节确认远端那半截确实是本地文件的前缀。
     /// </para>
     /// </summary>
     /// <returns>经核实的续传偏移量;返回 0 表示没有可续的半截,应整份重传。</returns>
@@ -617,7 +617,6 @@ public class SftpService : ISftpService
         string remotePath,
         string localPath,
         long localLength,
-        long claimedOffset,
         CancellationToken cancellationToken)
     {
         long remoteLength = await client.GetFileSizeAsync(remotePath, cancellationToken).ConfigureAwait(false);
@@ -654,7 +653,6 @@ public class SftpService : ISftpService
         string remotePath,
         string localPath,
         long remoteLength,
-        long claimedOffset,
         CancellationToken cancellationToken)
     {
         var local = new FileInfo(localPath);

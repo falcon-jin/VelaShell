@@ -2263,7 +2263,7 @@ public partial class ChatPanelView : UserControl
             if (meta.Thinking.Length > 0)
             {
                 _thinkingText.Append(meta.Thinking);
-                _thinking = new Collapsible(_owner, _owner._loc.F("ThinkingDone",
+                _thinking = new Collapsible(_owner._loc.F("ThinkingDone",
                     ChatFormatting.Duration(TimeSpan.FromMilliseconds(meta.ThinkingMs))), trailingIconKey: "AiIcon.sparkles");
                 _stack.Children.Insert(1, _thinking.Root);
                 _thinking.SetBody(meta.Thinking);
@@ -2375,7 +2375,7 @@ public partial class ChatPanelView : UserControl
                 // 默认收起(用户决策):标题一行就够说明"在想",要看内容自己点开。
                 // 展开过就一路留着,标题从"正在思考…"变成"已思考 N 秒",正文照样往里灌。
                 _thinkingStartedAt = Environment.TickCount64;
-                _thinking = new Collapsible(_owner, _owner._loc["ThinkingActive"], trailingIconKey: "AiIcon.sparkles");
+                _thinking = new Collapsible(_owner._loc["ThinkingActive"], trailingIconKey: "AiIcon.sparkles");
                 _stack.Children.Insert(1, _thinking.Root);
             }
             // 逐 token 全量刷文本是 O(n²) 的字符串与排版开销,所以节流;但别压太狠 ——
@@ -2582,7 +2582,6 @@ public partial class ChatPanelView : UserControl
 
         public Border Root { get; }
 
-        /// <param name="owner">宿主面板(取图标与令牌)。</param>
         /// <param name="title">头部文案。</param>
         /// <param name="expanded">初始是否展开。</param>
         /// <param name="iconKey">
@@ -2591,7 +2590,7 @@ public partial class ChatPanelView : UserControl
         /// </param>
         /// <param name="iconBrushKey">图标颜色令牌;省略走弱化色。</param>
         /// <param name="trailingIconKey">贴在行尾的图标(思考 = 星火,见设计图)。</param>
-        public Collapsible(ChatPanelView owner, string title, bool expanded = false,
+        public Collapsible(string title, bool expanded = false,
             string? iconKey = null, string? iconBrushKey = null, string? trailingIconKey = null)
         {
             var header = new Grid

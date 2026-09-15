@@ -42,7 +42,7 @@ public static class RemotePathInput
         )
         {
             string tail = text.Length > 1 ? text[2..] : string.Empty;
-            text = tail.Length == 0 ? homePath! : homePath!.TrimEnd('/') + "/" + tail;
+            text = tail.Length == 0 ? homePath : homePath.TrimEnd('/') + "/" + tail;
         }
 
         // 相对路径以当前目录为基准;绝对路径直接用。

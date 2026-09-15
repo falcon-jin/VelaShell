@@ -427,7 +427,7 @@ public class SidebarQuickCommandsUiTests
     private static byte BorderAlpha(Border row)
     {
         Assert.IsInstanceOfType<ISolidColorBrush>(row.BorderBrush, "描边画刷未解析");
-        return ((ISolidColorBrush)row.BorderBrush!).Color.A;
+        return ((ISolidColorBrush)row.BorderBrush).Color.A;
     }
 
     /// <summary>

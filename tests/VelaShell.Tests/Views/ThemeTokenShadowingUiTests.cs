@@ -129,6 +129,6 @@ public sealed class ThemeTokenShadowingUiTests
     {
         Assert.IsTrue(app.TryGetResource(key, app.ActualThemeVariant, out object? value), $"令牌 {key} 解析不到。");
         Assert.IsInstanceOfType<ISolidColorBrush>(value, $"令牌 {key} 不是画刷。");
-        return ((ISolidColorBrush)value!).Color;
+        return ((ISolidColorBrush)value).Color;
     }
 }

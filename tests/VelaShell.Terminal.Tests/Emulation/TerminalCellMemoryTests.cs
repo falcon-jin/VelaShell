@@ -59,15 +59,15 @@ public class TerminalCellMemoryTests
     [TestMethod]
     public void Scrollback_ShortLinesInAWideTerminal_DoNotPayForTheFullWidth()
     {
-        const int Columns = 200;
-        const int Lines = 10_000;
-        const int LineLength = 20;
+        const int columns = 200;
+        const int lines = 10_000;
+        const int lineLength = 20;
 
-        var emulator = new TerminalEmulator(Columns, 24, TerminalType.XtermColor256, Lines * 2);
-        StringBuilder log = new(Lines * (LineLength + 2));
-        for (int i = 0; i < Lines; i++)
+        var emulator = new TerminalEmulator(columns, 24, TerminalType.XtermColor256, lines * 2);
+        StringBuilder log = new(lines * (lineLength + 2));
+        for (int i = 0; i < lines; i++)
         {
-            log.Append($"line {i}".PadRight(LineLength, '.')).Append("\r\n");
+            log.Append($"line {i}".PadRight(lineLength, '.')).Append("\r\n");
         }
         emulator.Feed(Encoding.UTF8.GetBytes(log.ToString()));
 
@@ -79,7 +79,7 @@ public class TerminalCellMemoryTests
         {
             storedCells += screen.ViewLine(row).StoredColumns;
         }
-        long naiveCells = (long)screen.ScrollbackCount * Columns;
+        long naiveCells = (long)screen.ScrollbackCount * columns;
 
         // 每行实际内容 20 格,列宽 200 —— 截短后应当落在内容那一侧,而不是列宽那一侧。
         Assert.IsLessThan(

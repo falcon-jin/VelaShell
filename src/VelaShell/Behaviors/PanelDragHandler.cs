@@ -20,8 +20,6 @@ namespace VelaShell.Behaviors;
 /// </summary>
 public sealed class PanelDragHandler
 {
-    private readonly Control _handle;
-
     private readonly Control _panel;
 
     /// <summary>按下拖拽手柄时的指针位置(父容器坐标),用于计算位移增量。</summary>
@@ -34,18 +32,14 @@ public sealed class PanelDragHandler
 
     private bool _isDragging;
 
-    private PanelDragHandler(Control panel, Control handle)
-    {
-        _panel = panel;
-        _handle = handle;
-    }
+    private PanelDragHandler(Control panel) => _panel = panel;
 
     /// <summary>把 <paramref name="handle" /> 接成 <paramref name="panel" /> 的拖拽手柄。</summary>
     public static PanelDragHandler Attach(Control panel, Control handle)
     {
         ArgumentNullException.ThrowIfNull(panel);
         ArgumentNullException.ThrowIfNull(handle);
-        var dragHandler = new PanelDragHandler(panel, handle);
+        var dragHandler = new PanelDragHandler(panel);
         handle.PointerPressed += dragHandler.OnPressed;
         handle.PointerMoved += dragHandler.OnMoved;
         handle.PointerReleased += dragHandler.OnReleased;

@@ -345,7 +345,7 @@ public sealed class SftpDocumentViewModel : ReactiveObject, IAsyncDisposable
         }
     }
 
-    private void OnSessionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SshSession.Status) or null)
         {

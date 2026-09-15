@@ -90,7 +90,7 @@ public sealed class ImApprovalBroker(ChannelHub hub, IPluginContext context)
     /// <summary>
     /// 看这条消息是不是在回审批。是就地消化掉并返回 true(不再送去 agent)。
     /// </summary>
-    public bool TryConsume(InboundMessage message, ChannelConfig config, Loc loc)
+    public bool TryConsume(InboundMessage message, Loc loc)
     {
         Pending? pending;
         lock (_sync)

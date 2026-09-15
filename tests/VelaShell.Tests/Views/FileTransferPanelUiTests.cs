@@ -67,8 +67,7 @@ public sealed class FileTransferPanelUiTests
 
             // 最后一行的下边必须够到视口底部;够不到的那段就是截图里的空白。
             double bottom = realized
-                .Select(row => row.TranslatePoint(new(0, row.Bounds.Height), viewport)?.Y ?? double.NaN)
-                .Max();
+                .Max(row => row.TranslatePoint(new(0, row.Bounds.Height), viewport)?.Y ?? double.NaN);
             Assert.IsGreaterThanOrEqualTo(
                 viewport.Bounds.Height,
                 bottom,

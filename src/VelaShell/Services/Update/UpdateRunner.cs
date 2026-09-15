@@ -174,7 +174,7 @@ internal static class UpdateRunner
             }
             Process.Start(new ProcessStartInfo(launcher)
             {
-                WorkingDirectory = Path.GetDirectoryName(launcher)!,
+                WorkingDirectory = Path.GetDirectoryName(launcher),
                 UseShellExecute = false,
                 ArgumentList = { "--after-update" }
             });

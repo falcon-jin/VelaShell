@@ -90,7 +90,7 @@ public class ThemeTokenContrastTests
             Tokens[variant].TryGetValue(key, out string? literal),
             $"{variant} 主题缺少令牌 {key}。"
         );
-        return Parse(literal!);
+        return Parse(literal);
     }
 
     /// <summary>半透明令牌压在基底上的实际观感色(令牌本身不透明时原样返回)。</summary>

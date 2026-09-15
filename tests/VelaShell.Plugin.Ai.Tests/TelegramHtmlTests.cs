@@ -126,7 +126,7 @@ public sealed class TelegramHtmlTests
         {
             // 开标签有的带属性(<a href=…>、<code class=…>),所以按"名字后面跟空格或 >"数 ——
             // 直接数 "<b" 会把 <blockquote> 也算成一个加粗。
-            int opened = Regex.Matches(html, $"<{tag}[ >]").Count;
+            int opened = Regex.Count(html, $"<{tag}[ >]");
             Assert.AreEqual(opened, Count(html, $"</{tag}>"), $"<{tag}> 没有配对");
         }
         Assert.DoesNotContain("<script>", html);

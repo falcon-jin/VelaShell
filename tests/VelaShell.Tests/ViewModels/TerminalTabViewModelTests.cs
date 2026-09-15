@@ -429,7 +429,7 @@ public class TerminalTabViewModelTests
         // 算法协商失败这类原因是多行的(双方的算法名单都列出来),正是照着屏幕抄不动、
         // 必须能整段拿走的那种。复制的内容必须与覆盖层上显示的完全一致 ——
         // 少一行就会让人以为漏复制了。
-        const string Failure = """
+        const string failure = """
             连接失败:probe@10.0.3.21:22
             The connection could not be established - KeyExchangeFailed - No common encryption algorithm.
             加密:对端提供 [aes128-ctr];本客户端支持 [aes256-gcm@openssh.com]
@@ -441,7 +441,7 @@ public class TerminalTabViewModelTests
             return Task.CompletedTask;
         };
 
-        _vm.MarkConnectionFailed(Failure);
+        _vm.MarkConnectionFailed(failure);
         Assert.IsTrue(_vm.HasConnectionError);
         Assert.IsFalse(_vm.ErrorCopied);
 

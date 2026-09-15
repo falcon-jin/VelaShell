@@ -47,7 +47,7 @@ public sealed class ProviderLoginTests
             {
                 using var http = new HttpClient();
                 pages.Add(await http.GetStringAsync($"{redirect}?{callback(query)}"));
-            });
+            }, CancellationToken.None);
             return Task.CompletedTask;
         };
 

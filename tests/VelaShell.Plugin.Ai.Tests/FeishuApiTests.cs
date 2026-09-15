@@ -7,6 +7,9 @@ namespace VelaShell.Plugin.Ai.Tests;
 [TestClass]
 public sealed class FeishuApiTests
 {
+    /// <summary>与 <c>PostAsJsonAsync</c> 的默认值一致(camelCase)—— 这条用例测的就是它。</summary>
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
     /// <summary>
     /// 长连接接入点那条请求的字段名必须逐字是 <c>AppID</c> / <c>AppSecret</c>。
     /// </summary>
@@ -25,8 +28,7 @@ public sealed class FeishuApiTests
     [TestMethod]
     public void EndpointRequest_KeepsItsPascalCaseFieldNames()
     {
-        string json = JsonSerializer.Serialize(new FeishuApi.EndpointRequest("cli_x", "s3cret"),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        string json = JsonSerializer.Serialize(new FeishuApi.EndpointRequest("cli_x", "s3cret"), WebJson);
 
         Assert.Contains("\"AppID\"", json);
         Assert.Contains("\"AppSecret\"", json);

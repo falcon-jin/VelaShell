@@ -25,8 +25,8 @@ internal sealed class RemoteTunnelCapability(ISshConnectionService connections) 
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(socketPath);
-        return OpenAsync(sessionId, options, cancellationToken,
-            (client, ct) => client.OpenUnixConnectionAsync(socketPath, ct));
+        return OpenAsync(sessionId, options,
+            (client, ct) => client.OpenUnixConnectionAsync(socketPath, ct), cancellationToken);
     }
 
     public Task<Stream> OpenTcpAsync(string sessionId, string host, int port, TunnelOptions? options = null,
@@ -35,12 +35,12 @@ internal sealed class RemoteTunnelCapability(ISshConnectionService connections) 
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
-        return OpenAsync(sessionId, options, cancellationToken,
-            (client, ct) => client.OpenTcpConnectionAsync(host, port, ct));
+        return OpenAsync(sessionId, options,
+            (client, ct) => client.OpenTcpConnectionAsync(host, port, ct), cancellationToken);
     }
 
     private async Task<Stream> OpenAsync(string sessionId, TunnelOptions? options,
-        CancellationToken cancellationToken, Func<ISshClientWrapper, CancellationToken, Task<Stream>> open)
+        Func<ISshClientWrapper, CancellationToken, Task<Stream>> open, CancellationToken cancellationToken)
     {
         ISshClientWrapper client = Resolve(sessionId);
         // 先占坑再干活:隧道不限时,每条占一个 SSH 通道。一个漏掉 Dispose 的插件

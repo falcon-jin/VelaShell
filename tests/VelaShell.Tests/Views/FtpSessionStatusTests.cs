@@ -19,11 +19,13 @@ namespace VelaShell.Tests.Views;
 [TestCategory("FtpSessionStatus")]
 public sealed class FtpSessionStatusTests
 {
-    private static HeadlessUnitTestSession _session = null!;
-
+    /// <summary>
+    /// 只为把 Avalonia 应用起起来:本用例全程在测试线程上跑,不往 UI 线程派发。
+    /// 会话按程序集缓存,返回值这里用不上。
+    /// </summary>
     [ClassInitialize]
     public static void Init(TestContext _) =>
-        _session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(FtpSessionStatusTests).Assembly);
+        HeadlessUnitTestSession.GetOrStartForAssembly(typeof(FtpSessionStatusTests).Assembly);
 
     [TestMethod]
     public async Task ConnectingFtp_TurnsTreeDotGreen_AndClosingTurnsItBack()

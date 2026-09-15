@@ -37,7 +37,7 @@ public static class StartupWarmup
     /// </remarks>
     public const string DisableEnvironmentVariable = "VELASHELL_NO_DB_WARMUP";
 
-    private static readonly Lock _gate = new();
+    private static readonly Lock Gate = new();
     private static Task<SonnetDbEngine>? _pending;
     private static string? _pendingRoot;
 
@@ -46,7 +46,7 @@ public static class StartupWarmup
     {
         get
         {
-            lock (_gate)
+            lock (Gate)
             {
                 return _pending is not null;
             }
@@ -64,7 +64,7 @@ public static class StartupWarmup
         {
             return;
         }
-        lock (_gate)
+        lock (Gate)
         {
             if (_pending is not null)
             {
@@ -91,7 +91,7 @@ public static class StartupWarmup
         ArgumentNullException.ThrowIfNull(paths);
         Task<SonnetDbEngine>? pending;
         bool sameRoot;
-        lock (_gate)
+        lock (Gate)
         {
             pending = _pending;
             sameRoot = string.Equals(_pendingRoot, paths.RootDirectory, StringComparison.OrdinalIgnoreCase);
@@ -123,7 +123,7 @@ public static class StartupWarmup
     public static void DiscardIfUnclaimed()
     {
         Task<SonnetDbEngine>? pending;
-        lock (_gate)
+        lock (Gate)
         {
             pending = _pending;
             _pending = null;

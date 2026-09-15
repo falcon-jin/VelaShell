@@ -75,15 +75,15 @@ public sealed class XshellImportService(ISessionRepository repository) : ISessio
             items.Add(new ImportedSession
             {
                 Name = Path.GetFileNameWithoutExtension(file),
-                Host = parsed.Host!.Trim(),
+                Host = parsed.Host.Trim(),
                 Port = port,
                 Username = parsed.UserName?.Trim() ?? string.Empty,
                 ConnectionType = type,
-                Protocol = string.IsNullOrWhiteSpace(parsed.Protocol) ? "SSH" : parsed.Protocol!.Trim(),
+                Protocol = string.IsNullOrWhiteSpace(parsed.Protocol) ? "SSH" : parsed.Protocol.Trim(),
                 IsSupported = supported,
                 HasEncryptedPassword = hasEncrypted,
                 Password = password,
-                AlreadyExists = existingKeys.Contains(DedupKey(parsed.Host!, port, parsed.UserName ?? string.Empty)),
+                AlreadyExists = existingKeys.Contains(DedupKey(parsed.Host, port, parsed.UserName ?? string.Empty)),
                 Source = file,
                 FtpSettings = ftpSettings
             });

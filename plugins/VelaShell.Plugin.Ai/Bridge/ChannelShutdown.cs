@@ -90,11 +90,20 @@ internal static class ChannelShutdown
         {
             // 对端已经不在了,Close 帧发不出去 —— 直接走下面的 Abort 兜底。
         }
-        if (await Task.WhenAny(receiveLoop, Task.Delay(CloseGrace)).ConfigureAwait(false) != receiveLoop)
+        try
+        {
+            await receiveLoop.WaitAsync(CloseGrace).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
         {
             // 对端不回 Close。退出不能因此挂住,只能掐断 —— 这是唯一一条会制造收摊异常的路,
             // 也只有在平台确实失联时才会走到。
             socket.Abort();
+        }
+        catch
+        {
+            // 读循环自己结束在异常上:连接早就没了,不必再 Abort。
+            // (原先的 Task.WhenAny 同样不观察这个异常,这里保持一致。)
         }
     }
 }

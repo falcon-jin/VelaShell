@@ -18,23 +18,14 @@ namespace VelaShell.Infrastructure.Diagnostics;
 /// 磁盘满、目录只读、文件被占,统统吞掉:日志写不进去是小事,把应用带崩不是。
 /// </para>
 /// </remarks>
-public sealed class RollingFileTraceListener : TraceListener
+/// <param name="directory">日志目录(须已存在)。</param>
+/// <param name="prefix">文件名前缀,最终文件名为 <c>{prefix}yyyyMMdd.log</c>。</param>
+public sealed class RollingFileTraceListener(string directory, string prefix) : TraceListener
 {
-    private readonly string _directory;
-    private readonly string _prefix;
     private readonly Lock _gate = new();
     private readonly StringBuilder _pending = new();
     private DateTime _currentDay = DateTime.MinValue;
     private string? _currentPath;
-
-    /// <summary>创建监听器。</summary>
-    /// <param name="directory">日志目录(须已存在)。</param>
-    /// <param name="prefix">文件名前缀,最终文件名为 <c>{prefix}yyyyMMdd.log</c>。</param>
-    public RollingFileTraceListener(string directory, string prefix)
-    {
-        _directory = directory;
-        _prefix = prefix;
-    }
 
     /// <summary>当前正在写入的文件路径(尚未写过任何一行时为 null)。</summary>
     public string? CurrentPath
@@ -92,8 +83,8 @@ public sealed class RollingFileTraceListener : TraceListener
         {
             _currentDay = today;
             _currentPath = Path.Combine(
-                _directory,
-                string.Create(CultureInfo.InvariantCulture, $"{_prefix}{today:yyyyMMdd}.log"));
+                directory,
+                string.Create(CultureInfo.InvariantCulture, $"{prefix}{today:yyyyMMdd}.log"));
         }
         return _currentPath;
     }
