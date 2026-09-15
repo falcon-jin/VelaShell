@@ -89,3 +89,7 @@ dotnet test  VelaShell.slnx
 插件契约 SDK、`vela-plugin` CLI、`dotnet new` 模板、第一方插件与插件商店都在
 [VelaShellLabs](https://github.com/VelaShellLabs) 组织下,文档全部在
 [velashell-docs](https://github.com/VelaShellLabs/velashell-docs)。
+
+### 提交约束
+
+- 不要附加Claude Code等作者信息

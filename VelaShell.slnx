@@ -8,6 +8,8 @@
     <File Path=".github/workflows/release.yml" />
   </Folder>
   <Folder Name="/Solution Items/">
+    <File Path="AGENTS.md" />
+    <File Path="DESIGN.md" />
     <File Path="Directory.Build.props" />
     <File Path="global.json" />
     <File Path="LICENSE" />
@@ -38,6 +40,9 @@
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
 	<File Path="tests/Directory.Packages.props" />
+    <File Path="tests/fixtures/README.md" />
+    <Project Path="tests/fixtures/VelaShell.TestPlugin.Terminal/VelaShell.TestPlugin.Terminal.csproj" />
+    <Project Path="tests/fixtures/VelaShell.TestPlugin/VelaShell.TestPlugin.csproj" />
     <Project Path="tests/VelaShell.Benchmarks/VelaShell.Benchmarks.csproj" />
     <Project Path="tests/VelaShell.Controls.Tests/VelaShell.Controls.Tests.csproj" />
     <Project Path="tests/VelaShell.Core.Tests/VelaShell.Core.Tests.csproj" />
@@ -47,8 +52,5 @@
     <Project Path="tests/VelaShell.Terminal.RenderTests/VelaShell.Terminal.RenderTests.csproj" />
     <Project Path="tests/VelaShell.Terminal.Tests/VelaShell.Terminal.Tests.csproj" />
     <Project Path="tests/VelaShell.Tests/VelaShell.Tests.csproj" />
-    <File Path="tests/fixtures/README.md" />
-    <Project Path="tests/fixtures/VelaShell.TestPlugin/VelaShell.TestPlugin.csproj" />
-    <Project Path="tests/fixtures/VelaShell.TestPlugin.Terminal/VelaShell.TestPlugin.Terminal.csproj" />
   </Folder>
 </Solution>
